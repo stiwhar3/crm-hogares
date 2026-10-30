@@ -5,7 +5,7 @@
 <title>CRM Hogares Fuenlabrada</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
-<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icono-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0f5a4f"><style>
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icono-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#7d6a3c"><style>
 /* Layout: barra de pestañas fija arriba, una columna de listas operativas; "Hoy" primero porque el CRM existe para que nada se quede sin próximo paso. */
 :root{
   --bg:#f5f7f6; --surface:#ffffff; --fg:#17211f; --muted:#5d6b68; --line:#dfe5e3;
@@ -106,6 +106,14 @@ tr.viv{cursor:pointer} tr.viv:hover td{background:var(--accent-soft)} tr.viv.ed 
 .he .hn{white-space:pre-wrap} .he .hc{font-size:13px;color:var(--muted)} .he s{opacity:.75}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;font-weight:600;z-index:20}
 @media (prefers-reduced-motion:no-preference){.row{transition:background .12s}}
+/* Colores de Hogares Group: dorado de la marca sobre blanco */
+:root{--bg:#f7f6f2;--surface:#ffffff;--fg:#1f1d19;--muted:#6b665c;--line:#e6e2d8;--accent:#7d6a3c;--accent-soft:#f1ebdc;--on-accent:#ffffff;--marca:#a8935f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141310;--surface:#1c1a16;--fg:#ece8df;--muted:#a49e91;--line:#2f2c25;--accent:#cdb780;--accent-soft:#2e2819;--on-accent:#1a160c;--marca:#cdb780}}
+:root[data-theme="dark"]{--bg:#141310;--surface:#1c1a16;--fg:#ece8df;--muted:#a49e91;--line:#2f2c25;--accent:#cdb780;--accent-soft:#2e2819;--on-accent:#1a160c;--marca:#cdb780}
+header{border-bottom:2px solid var(--marca)}
+h1{text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-size:18px}
+h1 small{text-transform:none;letter-spacing:0}
+.login .lbox h1{font-size:22px}
 .login{position:fixed;inset:0;background:var(--bg);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px}
 .login[hidden]{display:none}
 .lbox{max-width:360px;width:100%;display:flex;flex-direction:column;gap:12px}
