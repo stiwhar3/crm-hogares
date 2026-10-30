@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CRM Hogares Fuenlabrada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icono-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0f5a4f"><style>
+/* Layout: barra de pestañas fija arriba, una columna de listas operativas; "Hoy" primero porque el CRM existe para que nada se quede sin próximo paso. */
+:root{
+  --bg:#f5f7f6; --surface:#ffffff; --fg:#17211f; --muted:#5d6b68; --line:#dfe5e3;
+  --accent:#0d6b62; --accent-soft:#e1f0ed; --on-accent:#ffffff;
+  --ok:#2f7d3a; --ok-soft:#e5f3e6; --warn:#a86200; --warn-soft:#fbefd9; --bad:#b3261e; --bad-soft:#fbe4e2;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101615; --surface:#18201f; --fg:#e4ecea; --muted:#9aaba7; --line:#2a3533;
+  --accent:#4fc2b4; --accent-soft:#173532; --on-accent:#08201d;
+  --ok:#7fcf88; --ok-soft:#1c3320; --warn:#f0b65a; --warn-soft:#3a2c12; --bad:#ff8a80; --bad-soft:#3d1c1a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101615; --surface:#18201f; --fg:#e4ecea; --muted:#9aaba7; --line:#2a3533;
+  --accent:#4fc2b4; --accent-soft:#173532; --on-accent:#08201d;
+  --ok:#7fcf88; --ok-soft:#1c3320; --warn:#f0b65a; --warn-soft:#3a2c12; --bad:#ff8a80; --bad-soft:#3d1c1a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px 4px;flex-wrap:wrap}
+h1{font-family:var(--display);font-size:20px;margin:0;letter-spacing:-.01em}
+h1 small{font-family:var(--body);font-weight:500;color:var(--muted);font-size:13px;margin-left:6px}
+nav{display:flex;gap:4px;overflow-x:auto;padding-block:6px 8px}
+nav button{border:0;background:none;color:var(--muted);font:600 14px var(--body);padding:8px 12px;border-radius:8px;cursor:pointer;white-space:nowrap}
+nav button[aria-current="true"]{background:var(--accent-soft);color:var(--accent)}
+nav .count{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:18px;text-align:center}
+main{padding-block:20px 60px;display:grid;gap:24px}
+h2{font-family:var(--display);font-size:17px;margin:0 0 10px;text-wrap:balance}
+h2 .n{color:var(--muted);font-family:var(--body);font-weight:500;font-size:14px}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 14px var(--body);padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.small{padding:4px 10px;font-size:13px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpi .l{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.kpi .v{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .s{font-size:13px;color:var(--muted)}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:11px 14px;border-top:1px solid var(--line);cursor:pointer;text-align:left;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;color:inherit;font:inherit}
+.row:first-child{border-top:0}
+.row:hover{background:var(--accent-soft)}
+.row .t{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.row .m{grid-column:1/-1;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.row .r{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.empty{padding:18px 14px;color:var(--muted);font-size:14px}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:10px;background:var(--line);color:var(--fg);white-space:nowrap}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+.zone{display:inline-flex;align-items:center;gap:5px}
+.zone::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--z,#999);border:1px solid rgba(0,0,0,.15)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.tools input,.tools select{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);min-width:0}
+.tools input[type=search]{flex:1 1 200px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px}
+#view section{min-width:0;max-width:100%}
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:9px 12px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-top:0}
+th:first-child,td:first-child{text-align:left}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:12px 14px;font-size:14px}
+.modal{position:fixed;inset:0;z-index:30;background:rgba(10,20,18,.45);display:flex;align-items:center;justify-content:center;padding:calc(12px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.modal[hidden]{display:none!important}
+.modal form{display:flex;flex-direction:column;width:min(640px,100%);max-height:100%;background:var(--surface);color:var(--fg);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.dh{padding:16px 18px 8px;font-family:var(--display);font-size:18px;font-weight:700}
+.db{padding:8px 18px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.db label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted);min-width:0}
+.db label.full{grid-column:1/-1}
+.db label.check{flex-direction:row;align-items:center;gap:8px;color:var(--fg)}
+.db input,.db select,.db textarea{font:inherit;font-size:15px;font-weight:400;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+.db textarea{min-height:90px;resize:vertical}
+.db label.check input{width:auto}
+.df{display:flex;justify-content:space-between;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.df .right{display:flex;gap:8px;margin-left:auto}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 13px var(--body);padding:6px 12px;border-radius:16px;cursor:pointer}
+.chip span{color:var(--muted);font-weight:500;margin-left:2px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip[aria-pressed="true"] span{color:var(--on-accent)}
+details.bld{border-top:1px solid var(--line)} details.bld:first-child{border-top:0}
+details.bld summary{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;padding:11px 14px;cursor:pointer;list-style:none}
+details.bld summary::-webkit-details-marker{display:none}
+details.bld summary .t{font-weight:600} details.bld summary .m{font-size:13px;color:var(--muted)}
+details.bld[open] summary{background:var(--accent-soft)}
+details.bld .tbl-wrap{border:0;border-radius:0;border-top:1px solid var(--line)}
+.kos{display:grid;gap:8px;padding:10px 14px}
+.ko{font-size:14px} .ko .s{font-size:13px;color:var(--muted);margin-top:2px}
+tr.viv{cursor:pointer} tr.viv:hover td{background:var(--accent-soft)} tr.viv.ed td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.hist{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
+.hist .hl{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.he{font-size:14px;line-height:1.4;border-left:2px solid var(--line);padding-left:10px}
+.he .hf{display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.he .hn{white-space:pre-wrap} .he .hc{font-size:13px;color:var(--muted)} .he s{opacity:.75}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;font-weight:600;z-index:20}
+@media (prefers-reduced-motion:no-preference){.row{transition:background .12s}}
+.login{position:fixed;inset:0;background:var(--bg);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px}
+.login[hidden]{display:none}
+.lbox{max-width:360px;width:100%;display:flex;flex-direction:column;gap:12px}
+.lbox h1{margin:0 0 4px}.lbox p{margin:0;color:var(--muted)}
+.lbox input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.lmsg{min-height:1.4em}
+.yo{display:flex;gap:8px;align-items:center;margin-left:auto;margin-right:8px;font-size:13px;color:var(--muted)}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+
+<div id="login" class="login" hidden>
+  <div class="lbox">
+    <h1>Hogares Fuenlabrada <small>CRM</small></h1>
+    <div id="l-paso1">
+      <p>Escribe tu email y te mandamos un enlace para entrar. No hace falta contraseña.</p>
+      <input id="l-email" type="email" autocomplete="email" placeholder="tu@email.com">
+      <button class="btn primary" type="button" id="l-enviar">Enviarme el enlace</button>
+    </div>
+    <p id="l-msg" class="lmsg"></p>
+  </div>
+</div>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>Hogares Fuenlabrada <small>CRM</small></h1>
+      <span class="yo"><span id="yo-nombre"></span><button class="btn small" id="btn-salir" type="button">Salir</button></span><button class="btn primary small" id="btn-new" type="button">+ Nuevo</button>
+    </div>
+    <nav id="tabs" aria-label="Secciones">
+      <button data-v="hoy" type="button">Hoy</button>
+      <button data-v="contactos" type="button">Noticias</button>
+      <button data-v="captaciones" type="button">Captaciones</button>
+      <button data-v="encargos" type="button">Encargos</button>
+      <button data-v="operaciones" type="button">Operaciones</button>
+      <button data-v="censo" type="button">Censo</button>
+      <button data-v="localizar" type="button">Localizar</button>
+      <button data-v="equipo" type="button">Equipo</button>
+    </nav>
+  </div>
+</header>
+<main class="wrap" id="view"></main>
+<div id="dlg" class="modal" role="dialog" aria-modal="true" hidden><form id="frm" novalidate></form></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* Ventana propia en vez de <dialog>: en algunas vistas de la app showModal() no abre nada. */
+(function(){const d=document.getElementById("dlg");d.open=false;
+  d.showModal=function(){d.hidden=false;d.open=true;document.body.style.overflow="hidden";setTimeout(()=>{const f=d.querySelector("input,select,textarea");if(f&&window.innerWidth>700)f.focus()},30)};
+  d.close=function(){if(!d.open)return;d.hidden=true;d.open=false;document.body.style.overflow="";d.dispatchEvent(new Event("close"))};
+  d.addEventListener("click",e=>{if(e.target===d)d.close()});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&d.open)d.close()});})();
+const ZONAS = {VERDE:"#3a9a4a",AZUL:"#2f6fd0",AMARILLA:"#e3b300",ROJA:"#cf3b30",ROSA:"#e57ab0",NARANJA:"#ee8a2a",MORADA:"#7d4fc4",MARRON:"#8a5a35",BLANCA:"#f2f2f2"};
+const ETAPAS = ["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo","KO"];
+const ETAPA_ANTIGUA = {"Noticia":"Desarrollo","En seguimiento":"Seguimiento"};
+const ORIGENES = ["Lead central (con contacto)","Consulta de valor (solo dirección)","Otra oficina Hogares","Puerta fría / buzoneo","Llamada a oficina","Particular que vende solo","Con otra agencia","Base de datos antigua","Recomendación","Otro"];
+const MOTIVOS = ["","Herencia","Divorcio","Extinción de condominio","Cambio de vivienda","Inversor","Vacío","Alquilado","Otro"];
+const EST_ENC = ["Activo","Reservado","Vendido","Retirado","Devuelto"];
+const EST_OP = ["Reserva","Aceptada","Arras","Escriturada","Caída"];
+const DEF_AJUSTES = {asesores:[{nombre:"Carlos",zona:"ROSA"},{nombre:"Iván",zona:"AZUL"},{nombre:"Sergio",zona:"AMARILLA"},{nombre:"Mery",zona:"VERDE"},{nombre:"Mario",zona:""}],
+  objetivoMes:40000,objetivoPeriodo:200000,periodoInicio:"2026-10-01",periodoFin:"2026-12-31",gastosMes:24000,diasRevisionPrecio:30};
+
+const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},lf:{zona:"",calle:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
+const $ = s=>document.querySelector(s);
+const esc = v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur = n=>(Number(n)||0).toLocaleString("es-ES",{maximumFractionDigits:0})+" €";
+const hoyISO = ()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const dias = (a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+const fmtF = s=>s?new Date(s+"T12:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"";
+const zona = z=>z?`<span class="zone" style="--z:${ZONAS[z]||"#999"}">${esc(z.charAt(0)+z.slice(1).toLowerCase())}</span>`:"";
+const personas = ()=>[...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","OFICINA"];
+function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2200)}
+
+/* ---------- reglas de negocio ---------- */
+function urgPub(c){
+  if(!c.publicado||c.etapa!=="Desarrollo") return null;
+  const lim=c.publicado==="Particular"?1:2,d0=new Date((c.fechaPublicado||hoyISO())+"T12:00");d0.setDate(d0.getDate()+lim);
+  const lv=d0.toISOString().slice(0,10),d=dias(hoyISO(),lv);
+  return {limite:lv,d,cls:d<=0?"bad":"warn",txt:d<0?`Publicada sin localizar: venció hace ${-d} d`:d===0?"Publicada: localizar HOY":`Publicada: localizar antes del ${fmtF(lv)}`};
+}
+const urgentes=()=>S.contactos.filter(urgPub).sort((a,b)=>urgPub(a).limite.localeCompare(urgPub(b).limite));
+function proxEstado(c){
+  if(c.etapa==="KO"||c.etapa==="Encargo") return null;
+  if(!c.proxFecha) return {cls:"bad",txt:"Sin próximo paso"};
+  const d=dias(hoyISO(),c.proxFecha);
+  if(d<0) return {cls:"bad",txt:`Vencido hace ${-d} d`};
+  if(d===0) return {cls:"warn",txt:"Hoy"};
+  return {cls:"",txt:fmtF(c.proxFecha)};
+}
+function alertaEncargo(e){
+  const out=[]; if(e.estado!=="Activo") return out;
+  const base=[e.fechaCaptacion,e.ultimaRevisionPrecio].filter(Boolean).sort().pop();
+  if(base){const d=dias(base,hoyISO()); if(d>=S.ajustes.diasRevisionPrecio) out.push({cls:"bad",txt:`Revisar precio (${d} d)`});}
+  if(e.exclusiva==="Sí"&&e.finExclusiva){const d=dias(hoyISO(),e.finExclusiva); if(d<0) out.push({cls:"warn",txt:"Exclusiva vencida: confirmar renovación"}); else if(d<=10) out.push({cls:"warn",txt:`Exclusiva vence en ${d} d`});}
+  if(e.exclusiva!=="Sí") out.push({cls:"warn",txt:"Sin exclusiva"});
+  return out;
+}
+const enRango=(f,a,b)=>f&&f>=a&&f<=b;
+const facturada=o=>o.fechaAceptacion&&o.estado!=="Caída";
+function sumFact(a,b,quien){return S.operaciones.filter(o=>facturada(o)&&enRango(o.fechaAceptacion,a,b)&&(!quien||o.asesor===quien)).reduce((s,o)=>s+(+o.honorarios||0),0)}
+function sumCobr(a,b){return S.operaciones.filter(o=>o.estado!=="Caída"&&enRango(o.fechaCobro,a,b)).reduce((s,o)=>s+(+o.honorarios||0),0)}
+function mesActual(){const h=hoyISO();return [h.slice(0,8)+"01",h.slice(0,8)+"31"]}
+const contactosPendientes=()=>S.contactos.filter(c=>{const p=proxEstado(c);return p&&c.proxFecha&&(p.cls==="bad"||p.cls==="warn")});
+const sinPaso=()=>S.contactos.filter(c=>{const p=proxEstado(c);return p&&!c.proxFecha});
+
+/* ---------- vistas ---------- */
+function rowContacto(c){
+  const p=proxEstado(c);
+  return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
+    <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
+    <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}</span>
+  </button>`;
+}
+function rowEncargo(e){
+  const al=alertaEncargo(e); const dm=e.fechaCaptacion&&e.estado==="Activo"?dias(e.fechaCaptacion,hoyISO())+" días":"";
+  return `<button class="row" type="button" data-open="encargos" data-id="${esc(e.id)}">
+    <span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span>
+    <span class="m">${zona(e.zona)}<span>${esc(e.asesor||"")}</span><span class="pill ${e.estado==="Activo"?"acc":e.estado==="Reservado"?"ok":""}">${esc(e.estado)}</span>${dm?`<span>${dm} en mercado</span>`:""}${al.map(a=>`<span class="pill ${a.cls}">${esc(a.txt)}</span>`).join("")}${e.riesgo?`<span class="pill bad">${esc(e.riesgo)}</span>`:""}</span>
+  </button>`;
+}
+function rowOp(o){
+  const est=o.fechaCobro?"Cobrada":o.estado;
+  return `<button class="row" type="button" data-open="operaciones" data-id="${esc(o.id)}">
+    <span class="t">${esc(o.inmueble)}</span><span class="r">${eur(o.honorarios)}</span>
+    <span class="m"><span>${esc(o.asesor||"")}</span><span class="pill ${est==="Cobrada"?"ok":est==="Caída"?"bad":est==="Reserva"?"warn":"acc"}">${esc(est)}</span>${o.fechaAceptacion?`<span>Facturado ${fmtF(o.fechaAceptacion)}</span>`:"<span>Sin aceptar</span>"}${o.fechaCobro?`<span>Cobrado ${fmtF(o.fechaCobro)}</span>`:""}<span>${esc(o.ladoCobrado||"")}</span></span>
+  </button>`;
+}
+const listOr=(rows,vacio)=>`<div class="list">${rows.length?rows.join(""):`<div class="empty">${vacio}</div>`}</div>`;
+function kpi(l,v,s,pct){return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:""}${pct!=null?`<div class="bar"><i style="width:${Math.min(100,Math.max(0,pct))}%"></i></div>`:""}</div>`}
+
+function vHoy(){
+  const A=S.ajustes,[m0,m1]=mesActual(),fm=sumFact(m0,m1),fp=sumFact(A.periodoInicio,A.periodoFin);
+  const eq=A.gastosMes/0.7;
+  const pend=contactosPendientes().sort((a,b)=>(a.proxFecha||"").localeCompare(b.proxFecha||""));
+  const sti=S.contactos.filter(c=>c.necesitaSti&&c.etapa!=="KO");
+  const encAl=S.encargos.filter(e=>alertaEncargo(e).some(a=>a.cls==="bad"||a.txt.startsWith("Exclusiva")));
+  const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
+  const TIT={contactos:"Noticia",encargos:"Encargo",operaciones:"Operación",captaciones:"Captación"};
+  const urg=urgentes(),vend=S.contactos.filter(c=>c.vendida&&!c.vendidaVista);
+  const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
+  const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro);
+  return `
+  ${urg.length?`<section><h2>Urgente: publicadas sin localizar <span class="n">${urg.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">En Desarrollo y a la venta. Hay que localizar al propietario y pasarlas a Seguimiento: 2 días si está con agencia o portal, 1 día si vende un particular.</p>${listOr(urg.slice(0,40).map(rowContacto),"")}${urg.length>40?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-etapa-go="__urg">Ver las ${urg.length}</button></div>`:""}</section>`:""}
+  ${vend.length?`<section><h2>Avisos: se han vendido <span class="n">${vend.length}</span></h2>${listOr(vend.map(rowContacto),"")}</section>`:""}
+  <section class="kpis">
+    ${kpi("Facturado este mes",eur(fm),`Objetivo ${eur(A.objetivoMes)} · equilibrio ${eur(eq)}`,fm/A.objetivoMes*100)}
+    ${kpi("Facturado del periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,fp/A.objetivoPeriodo*100)}
+    ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
+    ${kpi("Encargos activos",S.encargos.filter(e=>e.estado==="Activo").length,`${S.encargos.filter(e=>e.estado==="Activo"&&e.exclusiva==="Sí").length} en exclusiva`)}
+  </section>
+  ${solBorr.length?`<section><h2>Solicitudes de borrado <span class="n">${solBorr.length}</span></h2><div class="list">${solBorr.map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div></section>`:""}
+  <div class="grid2">
+    <section><h2>Próximos pasos vencidos o de hoy <span class="n">${pend.length}</span></h2>${listOr(pend.slice(0,40).map(rowContacto),"Nada vencido. Todos los propietarios tienen su próximo paso en fecha.")}
+      <div class="tools" style="margin-top:10px">${pend.length>40?`<button class="btn small" type="button" data-go="vencidos">Ver los ${pend.length} vencidos</button>`:""}${sinPaso().length?`<button class="btn small" type="button" data-go="sinpaso">${sinPaso().length} propietarios sin próximo paso</button>`:""}</div></section>
+    <section><h2>Esperan a Stiwhar <span class="n">${sti.length}</span></h2>${listOr(sti.map(rowContacto),"Ningún asesor ha marcado nada para ti.")}</section>
+    <section><h2>Encargos que piden atención <span class="n">${encAl.length}</span></h2>${listOr(encAl.map(rowEncargo),"Todos los encargos activos tienen precio revisado y exclusiva en vigor.")}</section>
+    <section><h2>Reservas en negociación <span class="n">${reservas.length}</span></h2>${listOr(reservas.map(rowOp),"No hay reservas abiertas.")}</section>
+  </div>`;
+}
+function selOpts(arr,val,todos){return (todos?`<option value="">${todos}</option>`:"")+arr.map(x=>`<option${x===val?" selected":""}>${esc(x)}</option>`).join("")}
+function vContactos(){
+  const f=S.f,q=f.q.toLowerCase();
+  const pasoOk=c=>{const p=proxEstado(c);return !f.paso||(f.paso==="vencidos"?!!(p&&c.proxFecha&&p.cls):!!(p&&!c.proxFecha))};
+  const base=S.contactos.filter(c=>(!f.asesor||(f.asesor==="__none"?!c.asesor:c.asesor===f.asesor))&&pasoOk(c)&&(!q||[c.direccion,c.nombre,c.telefono,c.notas,c.proxAccion].join(" ").toLowerCase().includes(q)));
+  const enCurso=c=>c.etapa!=="KO"&&c.etapa!=="Encargo";
+  let L=base.filter(c=>f.etapa==="activos"?enCurso(c):f.etapa==="__urg"?!!urgPub(c):c.etapa===f.etapa);
+  L.sort((a,b)=>(a.proxFecha||"0").localeCompare(b.proxFecha||"0"));
+  const chips=[["activos","Todas en curso",base.filter(enCurso).length],...["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo"].map(e=>[e,e==="Valorada"?"Valoradas":e==="Paralizado"?"Paralizados":e,base.filter(c=>c.etapa===e).length]),["__urg","Publicadas sin localizar",base.filter(urgPub).length]];
+  return `<section><div class="chips" role="tablist">${chips.map(([v,l,n])=>`<button type="button" class="chip" data-etapa="${esc(v)}" aria-pressed="${f.etapa===v}">${esc(l)} <span>${n}</span></button>`).join("")}</div>
+  <div class="tools">
+    <input type="search" id="f-q" placeholder="Buscar dirección, nombre, teléfono, nota…" value="${esc(f.q)}">
+    <select id="f-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}<option value="__none"${f.asesor==="__none"?" selected":""}>Sin asesor</option></select>
+    <select id="f-paso"><option value="">Cualquier próximo paso</option><option value="vencidos"${f.paso==="vencidos"?" selected":""}>Vencidos u hoy</option><option value="sinpaso"${f.paso==="sinpaso"?" selected":""}>Sin próximo paso</option></select>
+  </div>
+  <h2>Noticias <span class="n">${L.length}</span></h2>${listOr(L.map(rowContacto),S.contactos.length?"Ninguna noticia coincide con el filtro.":"Aún no hay noticias. Pulsa «+ Nuevo» para añadir la primera.")}</section>`;
+}
+const EST_CAP=["Pendiente","Encontrada","Pasada a noticia","Descartada"];
+function rowCap(k){
+  return `<button class="row" type="button" data-open="captaciones" data-id="${esc(k.id)}">
+    <span class="t">${esc(k.direccion)}${k.propietario?` · <span style="font-weight:500">${esc(k.propietario)}</span>`:""}</span><span class="r">${k.valVenta?eur(k.valVenta):""}</span>
+    <span class="m">${zona(k.zona)}<span>${esc(k.asesor||"Sin asesor")}</span><span class="pill ${k.estado==="Pendiente"?"warn":k.estado==="Encontrada"?"acc":k.estado==="Pasada a noticia"?"ok":""}">${esc(k.estado||"")}</span>${[k.tipo,k.m2,k.relacion].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${k.venderEn&&/vender/i.test(k.venderEn)?`<span class="pill ${/urgent/i.test(k.venderEn)?"bad":""}">${esc(k.venderEn)}</span>`:""}${k.fecha?`<span>Valorada ${fmtF(k.fecha)}</span>`:""}</span>
+  </button>`;
+}
+function vCaptaciones(){
+  const f=S.kf,q=f.q.toLowerCase();
+  const base=S.captaciones.filter(k=>(!f.zona||k.zona===f.zona)&&(!f.asesor||k.asesor===f.asesor)&&(!q||[k.direccion,k.propietario,k.telefono,k.encontrado,k.pisosPosibles,k.comentario].join(" ").toLowerCase().includes(q)));
+  const L=base.filter(k=>!f.estado||k.estado===f.estado).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const zonas=[...new Set(S.captaciones.map(k=>k.zona).filter(Boolean))].sort();
+  const chips=[...EST_CAP.map(e=>[e,e==="Pendiente"?"Pendientes de encontrar":e==="Encontrada"?"Encontradas":e==="Descartada"?"Descartadas":e]),["","Todas"]];
+  return `<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-kest="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(k=>!v||k.estado===v).length}</span></button>`).join("")}</div>
+  <div class="tools">
+    <input type="search" id="k-q" placeholder="Buscar dirección, propietario, pisos posibles…" value="${esc(f.q)}">
+    <select id="k-zona">${selOpts(zonas,f.zona,"Todas las zonas")}</select>
+    <select id="k-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}</select>
+  </div>
+  <p class="hint" style="color:var(--muted);font-size:13px;margin:0 0 8px">Valoraciones online del mapa de captaciones. Encuentra la vivienda, apunta qué piso es y pásala a noticia.</p>
+  <h2>Captaciones <span class="n">${L.length}</span></h2>${listOr(L.map(rowCap),S.captaciones.length?"Ninguna captación coincide con el filtro.":"Aún no hay captaciones.")}</section>`;
+}
+function vEncargos(){
+  const f=S.f; const L=S.encargos.filter(e=>(!f.asesor||e.asesor===f.asesor)&&(!f.estado||e.estado===f.estado)).sort((a,b)=>(b.fechaCaptacion||"").localeCompare(a.fechaCaptacion||""));
+  return `<section><div class="tools">
+    <select id="f-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}</select>
+    <select id="f-estado">${selOpts(EST_ENC,f.estado,"Todos los estados")}</select></div>
+  <h2>Encargos <span class="n">${L.length}</span></h2>${listOr(L.map(rowEncargo),"No hay encargos con este filtro.")}</section>`;
+}
+function vOps(){
+  const A=S.ajustes,L=[...S.operaciones].sort((a,b)=>(b.fechaAceptacion||"9").localeCompare(a.fechaAceptacion||"9"));
+  const y=hoyISO().slice(0,4),fa=sumFact(y+"-01-01",y+"-12-31"),ca=sumCobr(y+"-01-01",y+"-12-31");
+  return `<section class="kpis">${kpi("Facturado "+y,eur(fa),"Por fecha de aceptación")}${kpi("Cobrado "+y,eur(ca),"Por fecha de cobro")}${kpi("Comisiones (30 %)",eur(sumFact(A.periodoInicio,A.periodoFin)*0.3),"Del periodo: 15 % asesor + 15 % responsable")}</section>
+  <section><h2>Operaciones <span class="n">${L.length}</span></h2>${listOr(L.map(rowOp),"No hay operaciones.")}</section>`;
+}
+function vEquipo(){
+  const A=S.ajustes,[m0,m1]=mesActual(),h=hoyISO();
+  const rows=personas().map(p=>{
+    const c=S.contactos.filter(x=>x.asesor===p);
+    const val=c.filter(x=>enRango(x.fechaValoracion,m0,m1)).length;
+    const cap=S.encargos.filter(e=>e.asesor===p&&enRango(e.fechaCaptacion,m0,m1)).length;
+    const act=S.encargos.filter(e=>e.asesor===p&&e.estado==="Activo").length;
+    const venc=c.filter(x=>{const s=proxEstado(x);return s&&s.cls==="bad"}).length;
+    const z=(A.asesores.find(a=>a.nombre===p)||{}).zona;
+    return `<tr><td>${esc(p)} ${zona(z)}</td><td>${eur(sumFact(m0,m1,p))}</td><td>${eur(sumFact(A.periodoInicio,A.periodoFin,p))}</td><td>${val}</td><td>${cap}</td><td>${act}</td><td>${venc?`<span class="pill bad">${venc}</span>`:"0"}</td></tr>`;
+  }).join("");
+  return `<section><h2>Equipo este mes</h2><div class="tbl-wrap"><table><thead><tr><th>Asesor</th><th>Facturado mes</th><th>Facturado periodo</th><th>Valoraciones</th><th>Captaciones</th><th>Cartera activa</th><th>Vencidos</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <p class="s" style="color:var(--muted);font-size:13px">Valoraciones cuentan por la fecha de valoración del propietario; captaciones por la fecha de captación del encargo. Objetivo de octubre: 2 valoraciones por asesor.</p></section>
+  <section><h2>Ajustes</h2><button class="btn" type="button" id="btn-ajustes">Editar objetivos y asesores</button></section>`;
+}
+/* ---------- censo (solo lectura, importado de los Excel de zona) ---------- */
+let censoCargando=false;
+async function cargarCenso(){
+  if(censoCargando) return; censoCargando=true;
+  try{const s=await S.db.collection("censo").limit(200).get(); const C={};
+    for(const d of s.docs){const o=JSON.parse(JSON.stringify(d.data())),z=C[o.zona]||(C[o.zona]={edificios:[],resumen:null,koSinUbicar:[]});
+      if(o.resumen){z.resumen=o.resumen;z.koSinUbicar=o.koSinUbicar||[]} else {o.edificios.forEach((b,bi)=>b.u.forEach((u,ui)=>u._id=d.id+"."+bi+"."+ui));z.parts=(z.parts||[]).concat([[o.parte,o.edificios]]);}}
+    for(const z of Object.values(C)){z.edificios=(z.parts||[]).sort((a,b)=>a[0]-b[0]).flatMap(p=>p[1]);delete z.parts}
+    S.censo=C; if(!S.cf.zona) S.cf.zona=Object.keys(C).sort()[0]||"";
+    S.db.collection("censoEdits").limit(1000).onSnapshot(sn=>{S.censoEd={};sn.docs.forEach(x=>S.censoEd[x.id]=x.data());if(S.view==="censo"&&!$("#dlg").open)render()},()=>{});
+  }catch(e){toast("No se ha podido cargar el censo")}
+  censoCargando=false; if(S.view==="censo"||S.view==="localizar") render();
+}
+const pct=(a,b)=>b?Math.round(a/b*100)+" %":"–";
+function vLocalizar(){
+  if(!S.censo) return `<div class="empty">${S.db?"Cargando el censo…":"Sin conexión con la base de datos."}</div>`;
+  const f=S.lf,zonas=Object.keys(S.censo).sort(),inp=(id,v,ph,t="text",w="")=>`<input id="${id}" type="${t}"${t==="number"?' inputmode="numeric"':""} placeholder="${ph}" value="${esc(v)}"${w?` style="max-width:${w}"`:""}>`;
+  const tools=`<div class="tools">
+    <select id="l-zona"><option value="">Todas las zonas</option>${zonas.map(z=>`<option value="${z}"${z===f.zona?" selected":""}>Zona ${z.charAt(0)+z.slice(1).toLowerCase()}</option>`).join("")}</select>
+    ${inp("l-calle",f.calle,"Calle (opcional)")}
+    <select id="l-tipo"><option value="">Pisos y chalets</option><option value="piso"${f.tipo==="piso"?" selected":""}>Solo pisos</option><option value="chalet"${f.tipo==="chalet"?" selected":""}>Solo chalets / unifamiliares</option></select></div>
+  <div class="tools">${inp("l-m2",f.m2,"m²","number","90px")}<span style="align-self:center">±</span>${inp("l-dm2",f.dm2,"margen","number","70px")}
+    ${inp("l-anio",f.anio,"Año constr.","number","110px")}<span style="align-self:center">±</span>${inp("l-danio",f.danio,"margen","number","70px")}
+    ${inp("l-planta",f.planta,"Planta","text","80px")}${inp("l-rc",f.rc,"Ref. catastral","text","190px")}
+    <button class="btn primary small" type="button" id="l-buscar">Buscar</button>${Object.entries(f).some(([k,v])=>v&&!["dm2","danio"].includes(k))?`<button class="btn small" type="button" id="l-limpiar">Limpiar</button>`:""}</div>`;
+  const m2=parseFloat(f.m2),dm=parseFloat(f.dm2)||0,an=parseInt(f.anio),da=parseInt(f.danio)||0,calle=f.calle.trim()?zCalle(f.calle):"",rc=f.rc.replace(/\s/g,"").toUpperCase(),pl=f.planta.trim().toUpperCase().replace(/^0+(?=\d)/,"").replace(/[ºª°]/g,"");
+  if(!(m2||an||calle||rc||pl)) return `<section>${tools}<p style="color:var(--muted);font-size:14px">Pon los datos del anuncio o de la valoración (m², año, calle, planta…) y te saco las viviendas del censo que encajan, con su referencia catastral.</p></section>`;
+  const R=[];
+  for(const [zn,Z] of Object.entries(S.censo)){ if(f.zona&&zn!==f.zona) continue;
+    for(const b of Z.edificios){ if(calle&&!zCalle(b.via).includes(calle)) continue;
+      for(const u0 of b.u){const u={...u0,...(S.censoEd[u0._id]||{})},um=parseFloat(u.m2),ua=parseInt(u.anio),ch=u.esc==="T"||u.planta==="OD";
+        if(f.tipo==="piso"&&ch||f.tipo==="chalet"&&!ch) continue;
+        if(m2&&!(um&&Math.abs(um-m2)<=dm)) continue;
+        if(an&&!(ua&&Math.abs(ua-an)<=da)) continue;
+        if(pl&&String(u.planta||"").toUpperCase().replace(/^0+(?=\d)/,"")!==pl) continue;
+        if(rc&&!String(u.rc||"").toUpperCase().includes(rc)) continue;
+        R.push({zn,b,u,id:u0._id,d:(m2?Math.abs(um-m2):0)*10+(an?Math.abs(ua-an):0)})}}}
+  R.sort((a,b)=>a.d-b.d||a.b.via.localeCompare(b.b.via)||parseInt(a.b.num)-parseInt(b.b.num));
+  const tel=t=>/\d{6}/.test((t||"").replace(/\s/g,""));
+  const fila=({zn,b,u,id})=>`<tr class="viv" data-viv="${esc(id)}" tabindex="0"><td style="text-align:left;white-space:normal;min-width:170px"><b>${esc(b.via)} ${esc(b.num)}${u.letra?" "+esc(u.letra):""}</b><div style="font-size:12px;color:var(--muted)">${esc([u.esc&&u.esc!=="T"&&("Esc "+u.esc),u.planta&&u.planta!=="OD"&&(u.planta+"º"),u.puerta&&u.puerta!=="OS"&&u.puerta].filter(Boolean).join(" ")||(u.esc==="T"?"Unifamiliar":""))}</div></td>
+    <td>${zona(zn)}</td><td>${esc(u.m2||"")}</td><td>${esc(u.anio||"")}</td><td style="font-family:ui-monospace,monospace;font-size:12px;user-select:all">${esc(u.rc||"")}</td>
+    <td style="text-align:left;white-space:normal;min-width:140px">${esc(u.prop||u.abre||"")}${tel(u.tel)?` <span class="pill ok">tel</span>`:""}${b.ko&&b.ko.length?` <span class="pill bad">KO en portal</span>`:""}</td></tr>`;
+  return `<section>${tools}<h2>Viviendas que encajan <span class="n">${R.length}${R.length>150?" · mostrando las 150 más parecidas":""}</span></h2>
+  ${R.length?`<div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Dirección</th><th>Zona</th><th>m²</th><th>Año</th><th>Ref. catastral</th><th style="text-align:left">Propietario</th></tr></thead><tbody>${R.slice(0,150).map(fila).join("")}</tbody></table></div>`:`<div class="empty">Ninguna vivienda encaja. Prueba a ampliar el margen de m² o de año.</div>`}
+  <p style="color:var(--muted);font-size:13px">Ordenadas de más a menos parecida. Toca una para abrir su ficha del censo.</p></section>`;
+}
+function vCenso(){
+  if(!S.censo) return `<div class="empty">${S.db?"Cargando el censo…":"Sin conexión con la base de datos."}</div>`;
+  const cf=S.cf,Z=S.censo[cf.zona]; const zonas=Object.keys(S.censo).sort();
+  const tools=`<div class="tools"><select id="c-zona">${zonas.map(z=>`<option value="${z}"${z===cf.zona?" selected":""}>Zona ${z.charAt(0)+z.slice(1).toLowerCase()}${(S.ajustes.asesores.find(a=>a.zona===z)||{}).nombre?" · "+S.ajustes.asesores.find(a=>a.zona===z).nombre:""}</option>`).join("")}</select>
+    <input type="search" id="c-q" placeholder="Buscar calle, número o propietario…" value="${esc(cf.q)}">
+    <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="c-ko"${cf.ko?" checked":""}> Solo con KO</label></div>`;
+  if(!Z) return tools+`<div class="empty">No hay censo de esta zona.</div>`;
+  const viv=u=>({...u,...(S.censoEd[u._id]||{})});
+  const R=Z.resumen||{};
+  const q=cf.q.toLowerCase().trim();
+  let E=Z.edificios.filter(b=>(!cf.ko||(b.ko&&b.ko.length))&&(!q||(b.via+" "+b.num).toLowerCase().includes(q)||b.u.some(u0=>{const u=viv(u0);return [u.prop,u.abre,u.tel].join(" ").toLowerCase().includes(q)})));
+  const total=E.length; E=E.slice(0,80);
+  const tel=t=>/\d{6}/.test((t||"").replace(/\s/g,""));
+  const fila=u0=>{const u=viv(u0);return `<tr class="viv${S.censoEd[u0._id]?" ed":""}" data-viv="${esc(u0._id)}" tabindex="0"><td>${esc([u.esc&&("Esc "+u.esc),u.planta,u.puerta].filter(Boolean).join(" · "))}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(u.prop||u.abre||"")}</td><td>${esc(u.tel||"")}</td><td style="text-align:left">${esc(u.ocu||"")}</td><td>${esc(u.ult||"")}</td><td style="text-align:left;white-space:normal;min-width:220px;color:var(--muted)">${esc((u.com||"").slice(0,180))}</td></tr>`};
+  const koRow=k=>`<div class="ko"><span class="pill bad">KO${k.estado?" · "+esc(k.estado):""}</span> <b>${esc(k.dir)}</b>${k.prop?" · "+esc(k.prop):""}${k.tel?" · "+esc(k.tel):""}${k.inmo?" · "+esc(k.inmo):""}${k.precio?" · "+esc(k.precio):""}<div class="s">${esc((k.com||"").slice(0,300))}</div></div>`;
+  const ed=b=>{const U=b.u.map(viv),nt=U.filter(u=>tel(u.tel)).length,nn=U.filter(u=>u.prop||u.abre).length;
+    return `<details class="bld"><summary><span class="t">${esc(b.via)} ${esc(b.num)}</span><span class="m">${b.u.length} viv. · ${nn} con nombre · ${nt} con teléfono${b.ko&&b.ko.length?` · <span class="pill bad">${b.ko.length} KO</span>`:""}</span></summary>
+      ${b.ko&&b.ko.length?`<div class="kos">${b.ko.map(koRow).join("")}</div>`:""}
+      <div class="tbl-wrap"><table><thead><tr><th>Vivienda</th><th style="text-align:left">Propietario</th><th>Teléfono</th><th style="text-align:left">Ocupado por</th><th>Últ. contacto</th><th style="text-align:left">Comentarios</th></tr></thead><tbody>${b.u.map(fila).join("")}</tbody></table></div></details>`};
+  return `<section>${tools}
+  <div class="kpis">${kpi("Viviendas",(R.viviendas||0).toLocaleString("es-ES"),`${R.edificios||0} portales`)}${kpi("Con nombre",pct(R.conNombre,R.viviendas),`${(R.conNombre||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conNombre/R.viviendas*100:0)}${kpi("Con teléfono",pct(R.conTel,R.viviendas),`${(R.conTel||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conTel/R.viviendas*100:0)}${kpi("KO",R.ko||0,`${R.koUbicados||0} ubicados en su portal`)}</div></section>
+  <p style="margin:0;color:var(--muted);font-size:13px">Toca una vivienda para añadir contacto, teléfono o notas, o para pasarla a noticia.</p><section><h2>Portales <span class="n">${total}${total>80?" · mostrando 80, afina la búsqueda":""}</span></h2><div class="list">${E.length?E.map(ed).join(""):`<div class="empty">Ningún portal coincide.</div>`}</div></section>
+  ${cf.ko&&Z.koSinUbicar.length?`<section><h2>KO sin portal en el censo <span class="n">${Z.koSinUbicar.length}</span></h2><div class="list kos">${Z.koSinUbicar.map(koRow).join("")}</div></section>`:""}`;
+}
+function render(){
+  document.querySelectorAll("#tabs button").forEach(b=>{b.setAttribute("aria-current",b.dataset.v===S.view);
+    if(b.dataset.v==="hoy"){const n=contactosPendientes().length;b.innerHTML="Hoy"+(n?`<span class="count">${n}</span>`:"")}});
+  const ban=!S.db?`<div class="banner">${S.dbIntentado?"No hay conexión con la base de datos. Revisa tu conexión a internet y recarga la página.":"Conectando con la base de datos…"}</div>`
+    :S.permDb==="denied"?`<div class="banner">Has bloqueado el permiso de guardar datos en esta página. <button class="btn small" type="button" id="btn-perm">Activar permiso</button></div>`
+    :S.soloLectura?`<div class="banner">No se ha podido guardar (${esc(S.soloLectura)}). Puede que esta vista sea solo de lectura. <button class="btn small" type="button" id="btn-perm">Revisar permisos</button></div>`:"";
+  $("#view").innerHTML=ban+({hoy:vHoy,contactos:vContactos,captaciones:vCaptaciones,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo}[S.view])();
+  if((S.view==="censo"||S.view==="localizar")&&!S.censo&&S.db) cargarCenso();
+}
+
+/* ---------- formularios ---------- */
+const FORMS={
+  contactos:{titulo:"propietario",fields:[
+    ["direccion","Dirección del inmueble *","text",{full:1,req:1}],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
+    ["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
+    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["motivo","Situación","sel",()=>MOTIVOS],
+    ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],
+    ["fechaValoracion","Fecha de valoración","date"],["precioValorado","Precio valorado (€)","number"],["precioPropietario","Precio que pide el propietario (€)","number"],
+    ["necesitaSti","Necesita a Stiwhar","check"],["notaSti","Qué necesita de Stiwhar","text",{full:1}],
+    ["notas","Notas generales","textarea",{full:1}]]},
+  encargos:{titulo:"encargo",fields:[
+    ["direccion","Dirección *","text",{full:1,req:1}],["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
+    ["fechaCaptacion","Fecha de captación","date"],["precio","Precio (€)","number"],["exclusiva","Exclusiva","sel",()=>["Sí","No"]],["finExclusiva","Fin de la exclusiva","date"],
+    ["honorarioPrevisto","Honorario previsto vendedor (€)","number"],["estado","Estado","sel",()=>EST_ENC],["ultimaRevisionPrecio","Última revisión de precio","date"],
+    ["riesgo","Riesgo o bloqueo","text",{full:1}],["notas","Notas (visitas, informes al vendedor…)","textarea",{full:1}]]},
+  operaciones:{titulo:"operación",fields:[
+    ["inmueble","Inmueble *","text",{full:1,req:1}],["asesor","Asesor","sel",()=>personas()],["tipo","Tipo","sel",()=>["Venta","Alquiler"]],
+    ["ladoCobrado","Lado cobrado","sel",()=>["Ambos","Vendedor","Comprador"]],["precio","Precio (€)","number"],["honorarios","Honorarios sin IVA (€)","number"],
+    ["estado","Estado","sel",()=>EST_OP],["fechaAceptacion","Fecha de aceptación (facturado)","date"],["fechaCobro","Fecha de cobro","date"],["notas","Notas","textarea",{full:1}]]}
+};
+FORMS.captaciones={titulo:"captación",fields:[
+    ["direccion","Dirección *","text",{full:1,req:1}],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],["asesor","Asesor","sel",()=>personas()],
+    ["estado","Estado","sel",()=>EST_CAP],["origen","Origen / trayectoria","text"],["tipo","Tipología","text"],["m2","Superficie","text"],
+    ["valVenta","Valoración venta (€)","number"],["valAlquiler","Valoración alquiler","text"],["relacion","Relación","text"],["venderEn","Vender en","text"],
+    ["fecha","Fecha de la valoración","date"],["propietario","Propietario","text"],["telefono","Teléfono","tel"],
+    ["pisosPosibles","Pisos posibles","textarea",{full:1}],["encontrado","Encontrado (qué piso es, quién)","textarea",{full:1}],["comentario","Comentarios","textarea",{full:1}]]};
+const DEFAULTS={captaciones:()=>({estado:"Pendiente",fecha:hoyISO()}),contactos:()=>({etapa:"Desarrollo",proxFecha:hoyISO()}),encargos:()=>({estado:"Activo",exclusiva:"Sí",fechaCaptacion:hoyISO()}),operaciones:()=>({estado:"Reserva",tipo:"Venta",ladoCobrado:"Ambos"})};
+let cur=null;
+function field([k,l,t,opt],v){
+  const o=typeof opt==="object"?opt:{}; const cls=o.full?"full":t==="check"?"check":"";
+  if(t==="check") return `<label class="check"><input type="checkbox" id="fld-${k}" name="${k}"${v?" checked":""}> ${l}</label>`;
+  let inp;
+  if(t==="sel") inp=`<select id="fld-${k}" name="${k}">${selOpts(opt(),v??"")}</select>`;
+  else if(t==="textarea") inp=`<textarea id="fld-${k}" name="${k}">${esc(v)}</textarea>`;
+  else inp=`<input id="fld-${k}" name="${k}" type="${t}"${t==="number"?' step="any" inputmode="decimal"':""} value="${esc(v)}"${o.req?" required":""}>`;
+  return `<label class="${cls}">${l}${inp}</label>`;
+}
+function abrir(col,id){
+  const F=FORMS[col]; const d=id?S[col].find(x=>x.id===id):DEFAULTS[col]();
+  if(!d) return; cur={col,id};
+  const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
+  const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
+  const extraEnc=col==="encargos"&&id?`<button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
+  $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
+    <div class="db">${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}</div>`:""}${bloqueHist(d,!!id)}</div>
+    <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">Solicitar borrado</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  $("#dlg").showModal(); pistaZona();
+}
+function fmtFH(iso){const d=new Date(iso);return d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}
+function bloqueHist(d,conHist){
+  const H=[...((d&&d.historial)||[])].reverse();
+  return `<label class="full">Nueva nota (se guarda con fecha en el historial)<textarea id="fld-nuevaNota" placeholder="Qué ha pasado hoy…"></textarea></label>
+  ${conHist?`<div class="full hist"><div class="hl">Historial</div>${H.length?H.map(h=>`<div class="he"><span class="hf">${fmtFH(h.f)}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join(""):`<div class="he" style="color:var(--muted)">Aún no hay cambios guardados desde el CRM.</div>`}</div>`:""}`;
+}
+function leerForm(){
+  const F=FORMS[cur.col],o={};
+  for(const [k,,t] of F.fields){const el=$("#fld-"+k); if(t==="check") o[k]=el.checked; else if(t==="number") o[k]=el.value===""?null:Number(el.value); else o[k]=el.value.trim();}
+  return o;
+}
+function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()
+  .replace(/^\s*(C\/|CL\.?\s|CALLE\s|AVDA\.?\s|AVENIDA\s|AV\.?\s|PZA\.?\s|PZ\.?\s|PLAZA\s|PASEO\s)/,"").replace(/\bESC(ALERA)?\b/g,"").replace(/[^A-Z0-9]/g,"")}
+function etiqueta(col,k){const f=(FORMS[col]?.fields||[]).find(x=>x[0]===k);return f?f[1].replace(" *",""):k}
+function anterior(col,id){if(!id)return null;if(col==="censoEdits"){const r=buscarViv(id);return {...(r?r.u:{}),...(S.censoEd[id]||{})}}return S[col].find(x=>x.id===id)||null}
+async function guardar(col,id,data,nota){
+  if(!S.db){toast("Sin conexión: no se ha guardado");return null}
+  const ahora=new Date().toISOString(),old=anterior(col,id);
+  const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","borrarSolicitado","vendidaVista"].includes(k)&&String(old[k]??"")!==String(data[k]??"")&&!(old[k]==null&&data[k]===false))
+    .map(k=>({campo:etiqueta(col,k),antes:String(old[k]??"").slice(0,200),despues:String(data[k]??"").slice(0,200)})):[];
+  const out={...(old||{}),...data}; delete out.id; delete out._id; out.actualizado=ahora;
+  const hist=[...((old&&old.historial)||[])];
+  if(!old||cambios.length||nota) hist.push({f:ahora,...(old?{}:{alta:true}),...(cambios.length?{c:cambios}:{}),...(nota?{n:nota}:{})});
+  out.historial=hist.slice(-300);
+  try{ if(id){await S.db.collection(col).doc(id).set(out);return id}
+       const r=S.db.collection(col).doc(); out.creado=ahora; await r.set(out); return r.id; }
+  catch(e){console.error("guardar",col,e);S.soloLectura=e.code||e.message||"error";toast(e.code==="quota_exceeded"?"La base de datos está llena: borra registros antiguos":"No se ha guardado: "+(e.code||"")+" "+(e.message||""));return null}
+}
+$("#frm").addEventListener("submit",async ev=>{
+  ev.preventDefault(); const data=leerForm();
+  if(cur.col==="ajustes"){return guardarAjustes()}
+  if(cur.col==="contactos"&&data.etapa!=="KO"&&data.etapa!=="Encargo"&&!data.proxFecha){toast("Pon fecha a la próxima acción");$("#fld-proxFecha").focus();return}
+  if(CON_ZONA.includes(cur.col)){const z=zonaDe(data.direccion);if(z)data.zona=z}
+  if(cur.col==="contactos"&&data.publicado&&!data.fechaPublicado)data.fechaPublicado=hoyISO();
+  const nota=($("#fld-nuevaNota")?.value||"").trim();
+  if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
+    if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
+  if(await guardar(cur.col,cur.id,data,nota)){$("#dlg").close();toast("Guardado")}
+});
+$("#frm").addEventListener("input",e=>{if(e.target.id==="fld-direccion")pistaZona()});
+$("#frm").addEventListener("click",async ev=>{
+  const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
+  if(a==="cerrar") return $("#dlg").close();
+  if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
+    if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200)}},"Solicitud de borrado: "+m)){$("#dlg").close();toast("Solicitud de borrado enviada. Apruébala desde Hoy")}return}
+  if(a==="aCenso"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué no era noticia");$("#fld-nuevaNota")?.focus();return}
+    if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200),tipo:"censo"}},"Pide que vuelva al censo (no era noticia): "+m)){$("#dlg").close();toast("Solicitud enviada. Apruébala desde Hoy")}return}
+  if(a==="rechazarBorrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(await guardar(cur.col,cur.id,{borrarSolicitado:null},"Borrado rechazado"+(m?": "+m:"."))){$("#dlg").close();toast("Solicitud rechazada: el registro se queda")}return}
+  if(a==="aprobarBorrar"){ if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para borrar";return}
+    const old=anterior(cur.col,cur.id); let msg="Borrado. Queda una copia en el registro de borrados";
+    if(old?.borrarSolicitado?.tipo==="censo"){
+      if(!S.censo){b.textContent="Cargando censo…";await cargarCenso()}
+      const vid=(old.censoId&&buscarViv(old.censoId)?old.censoId:null)||viviendaDeDir(old.direccion);
+      if(vid){const ex={...(buscarViv(vid)?.u||{}),...(S.censoEd[vid]||{})};
+        const com=[ex.com,`${fmtF(hoyISO())} Fue noticia y vuelve al censo (${old.borrarSolicitado.motivo||""}).`,[old.nombre,old.telefono].filter(Boolean).length?"Datos de la noticia: "+[old.nombre,old.telefono].filter(Boolean).join(" · "):"",old.notas].filter(Boolean).join("\n").slice(0,4000);
+        const ok=await guardar("censoEdits",vid,{prop:ex.prop||old.nombre||"",tel:ex.tel||old.telefono||"",com,noticia:false},"Vuelve al censo desde la noticia: "+(old.borrarSolicitado.motivo||""));
+        if(!ok){b.textContent="Aprobar: vuelve al censo";delete b.dataset.sure;return}
+        msg="Hecho: ya no es noticia y su información queda en la vivienda del censo"}
+      else msg="Ya no es noticia. No he encontrado la vivienda exacta en el censo: sus datos quedan en el registro de borrados"}
+    try{await S.db.collection("borrados").doc().set({col:cur.col,docId:cur.id,f:new Date().toISOString(),motivo:old?.borrarSolicitado?.motivo||"",datos:JSON.parse(JSON.stringify(old||{}))});
+      await S.db.collection(cur.col).doc(cur.id).delete();$("#dlg").close();toast(msg)}catch(e){toast("No se ha borrado")} return }
+  if(a==="nota"){const t=$("#fld-notas");t.value=`${fmtF(hoyISO())} · \n`+t.value;t.focus();t.setSelectionRange(t.value.indexOf("\n"),t.value.indexOf("\n"));return}
+  if(a==="ctoHoy"){$("#fld-ult").value=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});$("#fld-nuevaNota").focus();return}
+  if(a==="aNoticia"){const v=leerForm(),r=cur.viv,id=cur.id,nota=($("#fld-nuevaNota")?.value||"").trim();const ok=await guardar("censoEdits",id,{...v,noticia:true},nota||(S.censoEd[id]?.noticia?"":"Pasada a noticia."));if(!ok)return;$("#dlg").close();
+    const dir=[r.b.via,r.b.num,r.u.esc&&("Esc "+r.u.esc),r.u.planta&&(r.u.planta+"º"),r.u.puerta].filter(Boolean).join(" ");
+    const ya=S.contactos.find(c=>c.censoId===id)||S.contactos.find(c=>claveDir(c.direccion)===claveDir(dir));
+    if(ya){toast("Este inmueble ya tiene noticia: te la abro");S.view="contactos";S.f.etapa="activos";render();setTimeout(()=>{abrir("contactos",ya.id);if(nota)$("#fld-nuevaNota").value=nota},300);return}
+    const as=(S.ajustes.asesores.find(x=>x.zona===r.zona)||{}).nombre||"";
+    const nid=await guardar("contactos",null,{direccion:dir,nombre:v.prop||v.abre,telefono:v.tel,asesor:as,zona:r.zona,etapa:"Desarrollo",origen:"",motivo:"",proxAccion:"",proxFecha:hoyISO(),necesitaSti:false,notaSti:"",notas:(v.com||"")+"\n(Desde el censo.)",censoId:id},nota);
+    if(nid){S.view="contactos";S.f.etapa="Desarrollo";render();setTimeout(()=>abrir("contactos",nid),300)}return}
+  if(a==="aSeg"){const v=leerForm();v.etapa="Seguimiento";if(!v.proxFecha)v.proxFecha=hoyISO();const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,n||"Propietario localizado: pasa a Seguimiento.")){$("#dlg").close();toast("Pasada a Seguimiento")}return}
+  if(a==="vendida"){if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez";return}const v=leerForm();v.etapa="KO";v.vendida=hoyISO();v.vendidaVista=false;const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,"Se ha vendido"+(n?": "+n:"."))){$("#dlg").close();toast("Marcada como vendida. Le llega el aviso a Stiwhar")}return}
+  if(a==="vistoVend"){if(await guardar("contactos",cur.id,{vendidaVista:true},"Stiwhar enterado de la venta.")){$("#dlg").close();toast("Aviso quitado")}return}
+  if(a==="capLocalizar"){const v=leerForm();$("#dlg").close();const z=zonaDe(v.direccion);
+    S.lf={...S.lf,zona:"",calle:(v.direccion||"").replace(/^\s*(calle|c\/|cl|avenida|avda\.?|av\.?|plaza|paseo|urbanizaci[oó]n)\s+(de\s+(la\s+|los\s+|las\s+)?)?/i,"").replace(/[\s,]*\d.*$/,"").trim(),m2:String(parseFloat(String(v.m2||"").replace(",","."))||""),anio:"",planta:"",rc:"",tipo:/chalet|casa|adosad|unifamiliar/i.test(v.tipo||"")?"chalet":/piso|apartamento|[aá]tico|d[uú]plex/i.test(v.tipo||"")?"piso":""};
+    if(!S.lf.calle&&z)S.lf.zona=z; S.view="localizar";render();window.scrollTo(0,0);return}
+  if(a==="capNoticia"){const v=leerForm(),id=cur.id,nota=($("#fld-nuevaNota")?.value||"").trim();
+    const ya=S.contactos.find(c=>c.capId===id)||S.contactos.find(c=>claveDir(c.direccion)===claveDir(v.direccion));
+    const ok=await guardar("captaciones",id,{...v,estado:"Pasada a noticia"},nota||(ya?"":"Pasada a noticia."));if(!ok)return;$("#dlg").close();
+    if(ya){toast("Este inmueble ya tiene noticia: te la abro");S.view="contactos";S.f.etapa="activos";render();setTimeout(()=>{abrir("contactos",ya.id);if(nota)$("#fld-nuevaNota").value=nota},300);return}
+    const zn=zonaDe(v.direccion)||(Object.keys(ZONAS).includes(v.zona)?v.zona:"");
+    const notas=[v.tipo,v.m2,v.relacion,v.venderEn,v.valAlquiler&&("Alquiler "+v.valAlquiler)].filter(Boolean).join(" · ")+(v.encontrado?"\nEncontrado: "+v.encontrado:"")+(v.comentario?"\n"+v.comentario:"")+"\n(Desde el mapa de captaciones.)";
+    const nid=await guardar("contactos",null,{direccion:v.direccion,nombre:v.propietario||"",telefono:v.telefono||"",asesor:v.asesor,zona:zn,etapa:"Desarrollo",origen:"Consulta de valor (solo dirección)",motivo:"",proxAccion:"Contactar al propietario",proxFecha:hoyISO(),fechaValoracion:v.fecha||"",precioValorado:v.valVenta||null,necesitaSti:false,notaSti:"",notas,capId:id},nota);
+    if(nid){S.view="contactos";S.f.etapa="Desarrollo";render();setTimeout(()=>abrir("contactos",nid),300)}return}
+  if(a==="mas7"){const d=new Date();d.setDate(d.getDate()+7);$("#fld-proxFecha").value=new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);return}
+  if(a==="revisado"){$("#fld-ultimaRevisionPrecio").value=hoyISO();return}
+  if(a==="aEncargo"){const c=leerForm();c.etapa="Encargo";const id=await guardar("contactos",cur.id,c);if(!id)return;$("#dlg").close();
+    const nid=await guardar("encargos",null,{direccion:c.direccion,asesor:c.asesor,zona:c.zona,precio:c.precioPropietario||c.precioValorado||null,exclusiva:"Sí",estado:"Activo",fechaCaptacion:hoyISO(),honorarioPrevisto:6000,contactoId:cur.id,notas:""});
+    if(nid){S.view="encargos";render();setTimeout(()=>abrir("encargos",nid),300)}return}
+  if(a==="aOp"){const e=leerForm(),encId=cur.id;$("#dlg").close();
+    const nid=await guardar("operaciones",null,{inmueble:e.direccion,asesor:e.asesor,tipo:"Venta",ladoCobrado:"Ambos",precio:e.precio,honorarios:null,estado:"Reserva",encargoId:encId,notas:""});
+    if(nid){S.view="operaciones";render();setTimeout(()=>abrir("operaciones",nid),300)}return}
+});
+function abrirAjustes(){
+  const A=S.ajustes; cur={col:"ajustes"};
+  $("#frm").innerHTML=`<div class="dh">Objetivos y asesores</div><div class="db">
+   <label>Objetivo del mes (€)<input id="aj-mes" type="number" value="${A.objetivoMes}"></label>
+   <label>Objetivo del periodo (€)<input id="aj-per" type="number" value="${A.objetivoPeriodo}"></label>
+   <label>Inicio del periodo<input id="aj-ini" type="date" value="${A.periodoInicio}"></label>
+   <label>Fin del periodo<input id="aj-fin" type="date" value="${A.periodoFin}"></label>
+   <label>Gastos fijos al mes (€)<input id="aj-gas" type="number" value="${A.gastosMes}"></label>
+   <label>Días hasta revisar precio<input id="aj-rev" type="number" value="${A.diasRevisionPrecio}"></label>
+   <label class="full">Asesores (uno por línea: Nombre, ZONA)<textarea id="aj-ase">${esc(A.asesores.map(a=>a.nombre+(a.zona?", "+a.zona:"")).join("\n"))}</textarea></label>
+  </div><div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  $("#dlg").showModal();
+}
+async function guardarAjustes(){
+  const n=id=>Number($(id).value)||0;
+  const A={objetivoMes:n("#aj-mes"),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,
+    asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()}))};
+  if(!S.db) return toast("Sin conexión: no se ha guardado");
+  try{await S.db.doc("ajustes/general").set(A);$("#dlg").close();toast("Ajustes guardados")}catch(e){toast("No se han guardado los ajustes")}
+}
+
+
+/* ---------- zona por dirección (índice sacado del censo) ---------- */
+const ZTIPOS=/^\s*(C\/|(?:CL|CALLE|AV|AVD|AVDA|AVENIDA|PZA|PZ|PL|PLAZA|PASEO|PS|PSO|CAMINO|CM|CTRA|CARRETERA|TRAVESIA|TR|GLORIETA|GTA|RONDA|RD|URB|URBANIZACION)(?:\.|\s|\/)+)/;
+const zUp=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+const zCalle=t=>zUp(t).replace(ZTIPOS,"").replace(/\b(DE|DEL|LA|LAS|LOS|EL)\b/g," ").replace(/[^A-Z0-9]/g,"");
+function zonaDe(dir){
+  const I=S.zidx; if(!I||!dir) return "";
+  const a=zUp(dir).replace(ZTIPOS,""),m=a.match(/^(.*?[A-Z].*?)[\s,.ºª-]*(\d+)([A-Z](?![A-Z]))?/);
+  const c=zCalle(m?m[1]:a),n=m?+m[2]:null,l=m&&m[3]||""; let P=I[c];
+  if(!P&&c.length>=5){const ks=Object.keys(I).filter(k=>k.includes(c)||(k.length>=5&&c.includes(k)));if(ks.length===1)P=I[ks[0]]}
+  if(!P) return "";
+  if(n!=null&&P[n+l]) return P[n+l];
+  if(n!=null&&P[n]) return P[n];
+  const zs=[...new Set(Object.values(P))]; if(zs.length===1) return zs[0];
+  if(n==null) return "";
+  let best="",bd=1e9; for(const [k0,z] of Object.entries(P)){const k=parseInt(k0);const d=Math.abs(k-n)+(k%2===n%2?0:1000);if(d<bd){bd=d;best=z}} return best;
+}
+const CON_ZONA=["contactos","encargos","captaciones"];
+function pistaZona(){
+  if(!cur||!CON_ZONA.includes(cur.col)) return; const sel=$("#fld-zona"),di=$("#fld-direccion"); if(!sel||!di) return;
+  let h=$("#zhint"); if(!h){sel.insertAdjacentHTML("afterend",`<small id="zhint" style="display:block;margin-top:4px;font-size:12px;color:var(--muted)"></small>`);h=$("#zhint")}
+  const z=zonaDe(di.value);
+  if(z){sel.value=z;sel.disabled=true;sel.dataset.auto=1;h.textContent="Zona según el censo para esta dirección."}
+  else{if(sel.dataset.auto){sel.value="";delete sel.dataset.auto}sel.disabled=false;h.textContent=di.value.trim()?(S.zidx?"Calle fuera del censo: elige la zona a mano.":""):""}
+}
+function viviendaDeDir(dir){
+  if(!S.censo||!dir) return null;
+  const a=zUp(dir).replace(ZTIPOS,""),m=a.match(/^(.*?[A-Z].*?)[\s,.ºª-]*(\d+)/); if(!m) return null;
+  const c=zCalle(m[1]),n=+m[2],rest=a.slice(m.index+m[0].length),pp=rest.match(/(\d+|BJ|BAJO)\s*[ºª°]?\s*-?\s*([A-Z]|\d+)\b/),z0=t=>String(t||"").toUpperCase().replace(/^0+(?=\d)/,"");
+  for(const Z of Object.values(S.censo)) for(const b of Z.edificios){
+    if(zCalle(b.via)!==c||parseInt(b.num)!==n) continue;
+    if(pp){const u=b.u.find(u=>z0(u.planta)===z0(pp[1])&&z0(u.puerta)===z0(pp[2]));if(u) return u._id}
+    if(b.u.length===1) return b.u[0]._id;
+  }
+  return null;
+}
+function buscarViv(id){for(const [zn,Z] of Object.entries(S.censo||{}))for(const b of Z.edificios)for(const u of b.u)if(u._id===id)return {zona:zn,b,u};return null}
+const OCUPA=["","PROPIETARIO","INQUILINO","VACIO","FAMILIAR","OKUPA","NEGOCIO"];
+FORMS.censoEdits={titulo:"vivienda",fields:[["prop","Propietario","text",{full:1}],["abre","Quién abre","text"],["tel","Teléfono","tel"],["ocu","Ocupado por","sel",()=>OCUPA],
+  ["loc","Propietario localizado","sel",()=>["","SI","NO"]],["ult","Último contacto","text"],["tipo","Tipo de contacto","text"],["val","Valorada (fecha y precio)","text"],["com","Comentarios","textarea",{full:1}]]};
+function abrirViv(id){
+  const r=buscarViv(id); if(!r) return; const d={...r.u,...(S.censoEd[id]||{})}; cur={col:"censoEdits",id,viv:r};
+  const dir=[r.b.via,r.b.num,r.u.esc&&("Esc "+r.u.esc),r.u.planta&&(r.u.planta+"º"),r.u.puerta].filter(Boolean).join(" ");
+  $("#frm").innerHTML=`<div class="dh">${esc(dir)}<div style="font:500 13px var(--body);color:var(--muted)">Zona ${esc(r.zona.toLowerCase())}${r.u.m2?" · "+esc(r.u.m2)+" m²":""}${r.u.anio?" · "+esc(r.u.anio):""}${r.u.rc?` · <span style="font-family:ui-monospace,monospace;user-select:all">${esc(r.u.rc)}</span>`:""}</div></div>
+    <div class="db">${FORMS.censoEdits.fields.map(f=>field(f,f[0]==="ocu"&&d.ocu&&!OCUPA.includes(d.ocu)?d.ocu:d[f[0]])).join("")}
+    <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="ctoHoy">+ Contacto hoy</button><button class="btn small" type="button" data-act="aNoticia">${(S.contactos.find(c=>c.censoId===id))?"Abrir su noticia":"Pasar a noticia"}</button></div>${bloqueHist(S.censoEd[id]||{},true)}</div>
+    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  const o=$("#fld-ocu"); if(d.ocu&&!OCUPA.includes(d.ocu)){o.insertAdjacentHTML("beforeend",`<option selected>${esc(d.ocu)}</option>`)}
+  $("#dlg").showModal();
+}
+
+/* ---------- eventos ---------- */
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.view=b.dataset.v;S.f.asesor="";if(S.view==="contactos"){S.f.etapa="activos";S.f.paso=""}try{localStorage.setItem("crm-view",S.view)}catch(_){}render();window.scrollTo(0,0)});
+$("#view").addEventListener("click",e=>{const eg=e.target.closest("[data-etapa-go]");if(eg){S.view="contactos";S.f.asesor="";S.f.paso="";S.f.etapa=eg.dataset.etapaGo;render();window.scrollTo(0,0);return}const g=e.target.closest("[data-go]");if(g){S.view="contactos";S.f.asesor="";S.f.etapa="activos";S.f.paso=g.dataset.go;render();window.scrollTo(0,0);return}const ke=e.target.closest("[data-kest]");if(ke){S.kf.estado=ke.dataset.kest;render();return}const ch=e.target.closest("[data-etapa]");if(ch){S.f.etapa=ch.dataset.etapa;render();return}if(e.target.id==="btn-perm"){(async()=>{try{const pm=await window.claude.use("permissions");await pm.manage();S.permDb=await pm.state("db");S.soloLectura=null;render()}catch(_){toast("Abre el menú Permisos de la página (arriba a la derecha)")}})();return}const vv=e.target.closest("[data-viv]");if(vv)return abrirViv(vv.dataset.viv);const r=e.target.closest("[data-open]");if(r)return abrir(r.dataset.open,r.dataset.id);if(e.target.id==="btn-ajustes")abrirAjustes();if(e.target.id==="l-buscar")leerLoc();if(e.target.id==="l-limpiar"){S.lf={zona:"",calle:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""};render()}});
+function leerLoc(){for(const k of ["zona","calle","m2","dm2","anio","danio","tipo","planta","rc"]){const el=$("#l-"+k);if(el)S.lf[k]=el.value}render()}
+$("#view").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id&&e.target.id.startsWith("l-")){e.preventDefault();leerLoc()}});
+$("#view").addEventListener("input",e=>{const id=e.target.id;if(id==="f-q"||id==="c-q"||id==="k-q"){if(id==="f-q")S.f.q=e.target.value;else if(id==="k-q")S.kf.q=e.target.value;else S.cf.q=e.target.value;clearTimeout(render.t);render.t=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)}});
+$("#view").addEventListener("change",e=>{const m={"f-asesor":"asesor","f-paso":"paso","f-estado":"estado"}[e.target.id];if(m){S.f[m]=e.target.value;render()}if(["l-zona","l-tipo"].includes(e.target.id))leerLoc();if(e.target.id==="k-zona"){S.kf.zona=e.target.value;render()}if(e.target.id==="k-asesor"){S.kf.asesor=e.target.value;render()}if(e.target.id==="c-zona"){S.cf.zona=e.target.value;render()}if(e.target.id==="c-ko"){S.cf.ko=e.target.checked;render()}});
+$("#btn-new").addEventListener("click",()=>abrir({encargos:"encargos",operaciones:"operaciones",captaciones:"captaciones"}[S.view]||"contactos"));
+
+try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar")S.view=v}catch(_){}
+render();
+/* ---------- base de datos: Supabase (cada asesor solo recibe lo suyo; lo filtra el servidor) ---------- */
+const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
+const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
+const TABLA={contactos:"contactos",captaciones:"captaciones",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",borrados:"borrados"};
+const DOCS={"ajustes/general":"general","zonas/indice":"zonas_indice"};
+const nuevoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+function fila(t,id,d){const r={id,d};if(t==="censo")r.zona=d.zona;if(t==="censo_edits")r.zona=id.split("-")[0].toUpperCase();return r}
+function fallo(error){const e=new Error(error.message||"error");e.code=error.code==="42501"?"sin_permiso":error.code;return e}
+async function leerTabla(t,filtro){let out=[];for(let from=0;;from+=500){let q=sb.from(t).select("id,d").range(from,from+499);if(filtro)q=filtro(q);const {data,error}=await q;if(error)throw fallo(error);out=out.concat(data);if(data.length<500)break}return out}
+const snapCol=rows=>({docs:rows.map(r=>({id:r.id,data:()=>r.d}))});
+const snapDoc=r=>({exists:!!r,data:()=>r?r.d:undefined});
+function enVivo(t,recargar){let tm=null;sb.channel("rt-"+t+"-"+nuevoId()).on("postgres_changes",{event:"*",schema:"public",table:t},()=>{clearTimeout(tm);tm=setTimeout(recargar,400)}).subscribe()}
+function coleccion(nombre){
+  const t=TABLA[nombre];
+  const api={
+    limit(){return api},
+    async get(){return snapCol(await leerTabla(t))},
+    onSnapshot(cb,err){const go=()=>leerTabla(t).then(r=>cb(snapCol(r))).catch(e=>err&&err(e));go();enVivo(t,go);return()=>{}},
+    doc(id){id=id||nuevoId();return{id,
+      async set(d){const {error}=await sb.from(t).upsert(fila(t,id,d));if(error)throw fallo(error)},
+      async delete(){const {error}=await sb.from(t).delete().eq("id",id);if(error)throw fallo(error)}}}
+  };return api}
+function documento(ruta){
+  const id=DOCS[ruta];
+  const leer=async()=>{const {data,error}=await sb.from("ajustes").select("id,d").eq("id",id).maybeSingle();if(error)throw fallo(error);return data};
+  return{onSnapshot(cb,err){const go=()=>leer().then(r=>cb(snapDoc(r))).catch(e=>err&&err(e));go();enVivo("ajustes",go);return()=>{}},
+    async set(d){const {error}=await sb.from("ajustes").upsert({id,d});if(error)throw fallo(error)}}}
+const dbSupabase={collection:coleccion,doc:documento};
+
+/* ---------- quién soy ---------- */
+const esResp=()=>S.yo&&S.yo.rol==="responsable";
+function ajustarPorRol(){
+  $("#yo-nombre").textContent=S.yo?S.yo.nombre:"";
+  const eq=document.querySelector('#tabs [data-v="equipo"]');if(eq)eq.hidden=!esResp();
+  if(!esResp()&&S.view==="equipo")S.view="hoy";
+  if(!esResp())S.f.asesor="";
+}
+const _render=render;
+render=function(){_render();if(!S.yo)return;
+  if(!esResp()){const b=$("#btn-ajustes");if(b)b.closest("section").remove()}
+  else if(S.view==="equipo"&&!$("#btn-importar")){$("#view").insertAdjacentHTML("beforeend",`<section><h2>Pasar datos al CRM del equipo</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Sube el archivo de datos que te ha preparado Claude. Si una ficha ya existe, se sustituye por la del archivo; no se duplica nada.</p><div class="tools"><input type="file" id="imp-file" accept=".json,application/json"><button class="btn" type="button" id="btn-importar">Importar</button></div><p id="imp-msg" style="color:var(--muted);font-size:13px"></p></section>`)}
+};
+const _abrir=abrir;
+abrir=function(col,id){_abrir(col,id);if(esResp())return;
+  document.querySelectorAll('#frm [data-act="aprobarBorrar"],#frm [data-act="rechazarBorrar"]').forEach(b=>b.remove());
+  const fa=$("#fld-asesor");if(fa&&fa.tagName==="SELECT"){if(![...fa.options].some(o=>o.value===S.yo.nombre))fa.add(new Option(S.yo.nombre,S.yo.nombre));fa.value=S.yo.nombre;fa.disabled=true}};
+
+/* ---------- importar (solo responsable) ---------- */
+async function importar(){
+  const f=$("#imp-file").files[0],msg=$("#imp-msg");if(!f)return toast("Elige primero el archivo");
+  let J;try{J=JSON.parse(await f.text())}catch(_){return toast("El archivo no es válido")}
+  const trabajos=[];
+  for(const [col,docs] of Object.entries(J)){
+    if(col==="ajustes"||col==="zonas"){for(const [k,d] of Object.entries(docs))trabajos.push(["ajustes",{id:DOCS[col+"/"+k]||k,d}]);continue}
+    const t=TABLA[col];if(!t)continue;for(const [id,d] of Object.entries(docs))trabajos.push([t,fila(t,id,d)]);
+  }
+  const porTabla={};trabajos.forEach(([t,r])=>(porTabla[t]=porTabla[t]||[]).push(r));
+  let hechos=0;const total=trabajos.length;
+  try{for(const [t,rows] of Object.entries(porTabla)){const lote=t==="censo"?4:200;
+      for(let i=0;i<rows.length;i+=lote){const {error}=await sb.from(t).upsert(rows.slice(i,i+lote));if(error)throw fallo(error);hechos+=Math.min(lote,rows.length-i);msg.textContent=`Importando… ${hechos} de ${total}`}}
+    msg.textContent=`Hecho: ${total} registros importados.`;S.censo=null;toast("Datos importados")}
+  catch(e){msg.textContent=`Se ha parado en ${hechos} de ${total}: ${e.message}. Puedes volver a importar el mismo archivo sin duplicar nada.`}
+}
+
+/* ---------- acceso ---------- */
+function verLogin(texto){$("#login").hidden=false;$("#l-msg").textContent=texto||""}
+$("#l-enviar").addEventListener("click",async()=>{
+  const email=$("#l-email").value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(email))return verLogin("Escribe un email válido.");
+  $("#l-enviar").disabled=true;
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  $("#l-enviar").disabled=false;
+  verLogin(error?"No se ha podido enviar: "+error.message:"Te hemos enviado un enlace a "+email+". Ábrelo en este mismo dispositivo.");
+});
+$("#l-email").addEventListener("keydown",e=>{if(e.key==="Enter")$("#l-enviar").click()});
+$("#btn-salir").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
+$("#view").addEventListener("click",e=>{if(e.target.id==="btn-importar")importar()});
+
+let arrancado=false;
+async function arrancar(sesion){
+  if(arrancado)return;
+  const {data:yo,error}=await sb.from("perfiles").select("nombre,rol,zona").eq("id",sesion.user.id).maybeSingle();
+  if(error||!yo||yo.activo===false){verLogin("Tu email ("+sesion.user.email+") no está dado de alta en el CRM. Pídele a Stiwhar que te añada.");$("#l-paso1").hidden=true;
+    if(!$("#l-otro")){$("#l-msg").insertAdjacentHTML("afterend",'<button class="btn" type="button" id="l-otro">Entrar con otro email</button>');$("#l-otro").onclick=async()=>{await sb.auth.signOut();location.reload()}}return}
+  arrancado=true;$("#login").hidden=true;S.yo=yo;ajustarPorRol();
+  const db=dbSupabase;S.dbIntentado=true;S.db=db;
+  for(const col of ["contactos","encargos","operaciones","captaciones"]){
+    db.collection(col).limit(1000).onSnapshot(s=>{S[col]=s.docs.map(d=>{const o={id:d.id,...d.data()};if(ETAPA_ANTIGUA[o.etapa])o.etapa=ETAPA_ANTIGUA[o.etapa];return o});if(!$("#dlg").open)render()},()=>{});
+  }
+  db.doc("zonas/indice").onSnapshot(s=>{if(!s.exists)return;const d=s.data(),I={};for(const [c,v] of Object.entries(d.calles||{})){const P={};for(const t of String(v).split(",")){const m=t.match(/^(\d+[A-Z]?)([A-Z])$/);if(m)P[m[1]]=(d.codigos||{})[m[2]]||""}I[c]=P}S.zidx=I},()=>{});
+  db.doc("ajustes/general").onSnapshot(s=>{S.ajustes=s.exists?{...DEF_AJUSTES,...s.data()}:DEF_AJUSTES;render()},()=>{});
+  render();
+}
+(async()=>{
+  if(!sb){S.dbIntentado=true;return render()}
+  sb.auth.onAuthStateChange((ev,sesion)=>{if(sesion)arrancar(sesion)});
+  const {data:{session}}=await sb.auth.getSession();
+  if(session)arrancar(session);else verLogin("");
+})();
+$("#dlg").addEventListener("close",()=>render());
+</script>
