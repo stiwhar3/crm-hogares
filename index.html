@@ -682,7 +682,7 @@ function ajustarPorRol(){
 }
 const _render=render;
 render=function(){_render();if(!S.yo)return;
-  if(!esResp()){const b=$("#btn-ajustes");if(b)b.closest("section").remove()}
+  if(!esResp()){const b=$("#btn-ajustes");if(b)b.closest("section").remove();$("#btn-new").hidden=S.view==="operaciones"}
   else if(S.view==="equipo"&&!$("#accesos")){$("#view").insertAdjacentHTML("beforeend",`<section id="accesos"><h2>Accesos</h2><div class="list" id="acc-list"><div class="empty">Cargando…</div></div></section>`);
     sb.rpc("accesos").then(({data,error})=>{const L=$("#acc-list");if(!L)return;if(error){L.innerHTML=`<div class="empty">No se han podido cargar los accesos</div>`;return}
       const hace=t=>{if(!t)return"Nunca ha entrado";const m=Math.round((Date.now()-new Date(t))/60000);return m<1?"Ahora mismo":m<60?`hace ${m} min`:m<1440?`hace ${Math.round(m/60)} h`:`hace ${Math.round(m/1440)} d`};
@@ -690,7 +690,12 @@ render=function(){_render();if(!S.yo)return;
   if(esResp()&&S.view==="equipo"&&!$("#btn-importar")){$("#view").insertAdjacentHTML("beforeend",`<section><h2>Pasar datos al CRM del equipo</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Sube el archivo de datos que te ha preparado Claude. Si una ficha ya existe, se sustituye por la del archivo; no se duplica nada.</p><div class="tools"><input type="file" id="imp-file" accept=".json,application/json"><button class="btn" type="button" id="btn-importar">Importar</button></div><p id="imp-msg" style="color:var(--muted);font-size:13px"></p></section>`)}
 };
 const _abrir=abrir;
-abrir=function(col,id){_abrir(col,id);if(esResp())return;
+abrir=function(col,id){if(!esResp()&&col==="operaciones"&&!id){toast("Las operaciones las da de alta Stiwhar");return}
+  _abrir(col,id);if(esResp())return;
+  document.querySelectorAll('#frm [data-act="aOp"]').forEach(b=>b.remove());
+  if(col==="operaciones"){document.querySelectorAll("#frm input,#frm select,#frm textarea").forEach(e=>e.disabled=true);
+    const df=document.querySelector("#frm .df");if(df)df.innerHTML=`<span style="color:var(--muted);font-size:13px">Solo lectura: las operaciones las gestiona Stiwhar.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`;
+    const nn=$("#fld-nuevaNota");if(nn)nn.closest("label").remove();return}
   document.querySelectorAll('#frm [data-act="aprobarBorrar"],#frm [data-act="rechazarBorrar"]').forEach(b=>b.remove());
   const fa=$("#fld-asesor");if(fa&&fa.tagName==="SELECT"){if(![...fa.options].some(o=>o.value===S.yo.nombre))fa.add(new Option(S.yo.nombre,S.yo.nombre));fa.value=S.yo.nombre;fa.disabled=true}};
 
