@@ -1,2 +1,2 @@
-{"name":"CRM Hogares Fuenlabrada","short_name":"CRM Hogares","start_url":"./","scope":"./","display":"standalone","background_color":"#f7f6f2","theme_color":"#7d6a3c","lang":"es",
+{"name":"CRM Hogares Fuenlabrada","short_name":"CRM Hogares","start_url":"./","scope":"./","display":"standalone","background_color":"#333130","theme_color":"#333130","lang":"es",
 "icons":[{"src":"icono-192.png","sizes":"192x192","type":"image/png"},{"src":"icono-512.png","sizes":"512x512","type":"image/png"}]}
