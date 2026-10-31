@@ -1,0 +1,27 @@
+# Compila el APK de Android (sin firmar) y lo deja en la release «apk-sin-firmar».
+# La firma se hace fuera de GitHub, con la clave privada que no está en este repositorio.
+name: APK Android
+on:
+  push:
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - run: gradle -p android assembleRelease --no-daemon
+      - run: cp android/app/build/outputs/apk/release/app-release-unsigned.apk crm-hogares-sin-firmar.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: apk-sin-firmar, path: crm-hogares-sin-firmar.apk }
+      - name: Publicar en la release apk-sin-firmar
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          gh release view apk-sin-firmar >/dev/null 2>&1 || gh release create apk-sin-firmar --prerelease --title "APK sin firmar (uso interno)" --notes "Compilación automática. No instalar este archivo: hay que firmarlo antes." --target "$GITHUB_SHA"
+          gh release upload apk-sin-firmar crm-hogares-sin-firmar.apk --clobber
