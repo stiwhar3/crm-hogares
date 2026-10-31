@@ -96,6 +96,8 @@ details.bld summary::-webkit-details-marker{display:none}
 details.bld summary .t{font-weight:600} details.bld summary .m{font-size:13px;color:var(--muted)}
 details.bld[open] summary{background:var(--accent-soft)}
 details.bld .tbl-wrap{border:0;border-radius:0;border-top:1px solid var(--line)}
+.portal{display:grid;gap:6px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px}.portal .pi{display:flex;flex-wrap:wrap;gap:4px}.portal .po{color:var(--muted)}.portal .btn{justify-self:start}
+.pbar{display:flex;height:6px;background:var(--line);overflow:hidden;max-width:320px}.pbar i{display:block;height:100%}
 .kos{display:grid;gap:8px;padding:10px 14px}
 .ko{font-size:14px} .ko .s{font-size:13px;color:var(--muted);margin-top:2px}
 tr.viv{cursor:pointer} tr.viv:hover td{background:var(--accent-soft)} tr.viv.ed td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
@@ -198,7 +200,7 @@ const EST_OP = ["Reserva","Aceptada","Arras","Escriturada","Caída"];
 const DEF_AJUSTES = {asesores:[{nombre:"Carlos",zona:"ROSA"},{nombre:"Iván",zona:"AZUL"},{nombre:"Sergio",zona:"AMARILLA"},{nombre:"Mery",zona:"VERDE"},{nombre:"Mario",zona:""}],
   objetivoMes:40000,objetivoPeriodo:200000,periodoInicio:"2026-10-01",periodoFin:"2026-12-31",gastosMes:24000,diasRevisionPrecio:30};
 
-const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},lf:{zona:"",calle:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
+const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},portales:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},lf:{zona:"",calle:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
 const $ = s=>document.querySelector(s);
 const esc = v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur = n=>(Number(n)||0).toLocaleString("es-ES",{maximumFractionDigits:0})+" €";
@@ -372,6 +374,7 @@ async function cargarCenso(){
       if(o.resumen){z.resumen=o.resumen;z.koSinUbicar=o.koSinUbicar||[]} else {o.edificios.forEach((b,bi)=>b.u.forEach((u,ui)=>u._id=d.id+"."+bi+"."+ui));z.parts=(z.parts||[]).concat([[o.parte,o.edificios]]);}}
     for(const z of Object.values(C)){z.edificios=(z.parts||[]).sort((a,b)=>a[0]-b[0]).flatMap(p=>p[1]);delete z.parts}
     S.censo=C; if(!S.cf.zona) S.cf.zona=Object.keys(C).sort()[0]||"";
+    S.db.collection("portales").limit(5000).onSnapshot(sn=>{S.portales={};sn.docs.forEach(x=>S.portales[x.id]=x.data());if(S.view==="censo"&&!$("#dlg").open)render()},()=>{});
     S.db.collection("censoEdits").limit(1000).onSnapshot(sn=>{S.censoEd={};sn.docs.forEach(x=>S.censoEd[x.id]=x.data());if(S.view==="censo"&&!$("#dlg").open)render()},()=>{});
   }catch(e){toast("No se ha podido cargar el censo")}
   censoCargando=false; if(S.view==="censo"||S.view==="localizar") render();
@@ -425,7 +428,9 @@ function vCenso(){
   const fila=u0=>{const u=viv(u0);return `<tr class="viv${S.censoEd[u0._id]?" ed":""}" data-viv="${esc(u0._id)}" tabindex="0"><td>${esc([u.esc&&("Esc "+u.esc),u.planta,u.puerta].filter(Boolean).join(" · "))}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(u.prop||u.abre||"")}</td><td>${esc(u.tel||"")}</td><td style="text-align:left">${esc(u.ocu||"")}</td><td>${esc(u.ult||"")}</td><td style="text-align:left;white-space:normal;min-width:220px;color:var(--muted)">${esc((u.com||"").slice(0,180))}</td></tr>`};
   const koRow=k=>`<div class="ko"><span class="pill bad">KO${k.estado?" · "+esc(k.estado):""}</span> <b>${esc(k.dir)}</b>${k.prop?" · "+esc(k.prop):""}${k.tel?" · "+esc(k.tel):""}${k.inmo?" · "+esc(k.inmo):""}${k.precio?" · "+esc(k.precio):""}<div class="s">${esc((k.com||"").slice(0,300))}</div></div>`;
   const ed=b=>{const U=b.u.map(viv),nt=U.filter(u=>tel(u.tel)).length,nn=U.filter(u=>u.prop||u.abre).length;
-    return `<details class="bld"><summary><span class="t">${esc(b.via)} ${esc(b.num)}</span><span class="m">${b.u.length} viv. · ${nn} con nombre · ${nt} con teléfono${b.ko&&b.ko.length?` · <span class="pill bad">${b.ko.length} KO</span>`:""}</span></summary>
+    const RP=resumenPortal(b);
+    return `<details class="bld"><summary><span class="t">${esc(b.via)} ${esc(b.num)}</span><span class="m">${b.u.length} viv. · ${nn} con nombre · ${nt} con teléfono${b.ko&&b.ko.length?` · <span class="pill bad">${b.ko.length} KO</span>`:""}${RP.t.length?` · <span class="pill acc">${esc(RP.t[0])}</span>`:""}</span></summary>
+      <div class="portal"><div class="pi">${RP.t.map(x=>`<span class="pill">${esc(x)}</span>`).join(" ")||`<span style="color:var(--muted)">Sin datos del portal todavía.</span>`}</div><div class="po">${RP.txt}</div>${RP.O.n?`<div class="pbar" aria-hidden="true"><i style="width:${RP.O.p/RP.O.n*100}%;background:var(--ok)"></i><i style="width:${RP.O.a/RP.O.n*100}%;background:var(--warn)"></i><i style="width:${RP.O.v/RP.O.n*100}%;background:var(--muted)"></i></div>`:""}<button class="btn small" type="button" data-portal="${esc(portalId(b))}">Datos del portal</button></div>
       ${b.ko&&b.ko.length?`<div class="kos">${b.ko.map(koRow).join("")}</div>`:""}
       <div class="tbl-wrap"><table><thead><tr><th>Vivienda</th><th style="text-align:left">Propietario</th><th>Teléfono</th><th style="text-align:left">Ocupado por</th><th>Últ. contacto</th><th style="text-align:left">Comentarios</th></tr></thead><tbody>${b.u.map(fila).join("")}</tbody></table></div></details>`};
   return `<section>${tools}
@@ -505,7 +510,7 @@ function leerForm(){
 function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()
   .replace(/^\s*(C\/|CL\.?\s|CALLE\s|AVDA\.?\s|AVENIDA\s|AV\.?\s|PZA\.?\s|PZ\.?\s|PLAZA\s|PASEO\s)/,"").replace(/\bESC(ALERA)?\b/g,"").replace(/[^A-Z0-9]/g,"")}
 function etiqueta(col,k){const f=(FORMS[col]?.fields||[]).find(x=>x[0]===k);return f?f[1].replace(" *",""):k}
-function anterior(col,id){if(!id)return null;if(col==="censoEdits"){const r=buscarViv(id);return {...(r?r.u:{}),...(S.censoEd[id]||{})}}return S[col].find(x=>x.id===id)||null}
+function anterior(col,id){if(!id)return null;if(col==="portales")return {...(S.portales[id]||{})};if(col==="censoEdits"){const r=buscarViv(id);return {...(r?r.u:{}),...(S.censoEd[id]||{})}}return S[col].find(x=>x.id===id)||null}
 async function guardar(col,id,data,nota){
   if(!S.db){toast("Sin conexión: no se ha guardado");return null}
   const ahora=new Date().toISOString(),old=anterior(col,id);
@@ -643,6 +648,22 @@ function viviendaDeDir(dir){
 }
 function buscarViv(id){for(const [zn,Z] of Object.entries(S.censo||{}))for(const b of Z.edificios)for(const u of b.u)if(u._id===id)return {zona:zn,b,u};return null}
 const OCUPA=["","PROPIETARIO","INQUILINO","VACIO","FAMILIAR","OKUPA","NEGOCIO"];
+/* ---------- portales (para hacer zona / puerta fría) ---------- */
+FORMS.portales={titulo:"portal",fields:[["presidente","Presidente de la comunidad","text"],["presPiso","Piso del presidente","text"],["presTel","Teléfono del presidente","tel"],
+  ["portero","¿Tiene portero?","sel",()=>["","Sí","No"]],["porteroHorario","Horario del portero","text"],["limpieza","¿Tiene limpieza?","sel",()=>["","Sí","No"]],["limpiezaHorario","Días y horario de limpieza","text"],
+  ["notasPortal","Notas del portal (acceso, buzones, telefonillo…)","textarea",{full:1}]]};
+function ocupacion(U){let p=0,a=0,v=0;for(const u of U){const o=String(u.ocu||"").toUpperCase();if(/^PROP|FAMILIAR/.test(o))p++;else if(/INQUIL|ALQ/.test(o))a++;else if(/VAC/.test(o))v++}return {p,a,v,n:p+a+v,total:U.length}}
+const portalId=b=>b.u[0]&&b.u[0]._id?b.u[0]._id.replace(/\.\d+$/,""):"";
+function buscarPortal(pid){for(const [zona,Z] of Object.entries(S.censo||{}))for(const b of Z.edificios)if(portalId(b)===pid)return {b,zona};return null}
+function resumenPortal(b){const P=S.portales[portalId(b)]||{},O=ocupacion(b.u.map(u=>({...u,...(S.censoEd[u._id]||{})}))),pc=x=>Math.round(x/O.n*100)+" %";
+  const t=[];if(P.presidente)t.push("Presidente: "+P.presidente+(P.presPiso?" ("+P.presPiso+")":""));if(P.portero==="Sí")t.push("Portero"+(P.porteroHorario?" "+P.porteroHorario:""));else if(P.portero==="No")t.push("Sin portero");
+  if(P.limpieza==="Sí")t.push("Limpieza"+(P.limpiezaHorario?" "+P.limpiezaHorario:""));
+  return {t,O,txt:O.n?`Propietario ${pc(O.p)} · Alquilado ${pc(O.a)} · Vacío ${pc(O.v)} <span style="opacity:.75">(de ${O.n} con dato)</span>`:"Sin datos de ocupación"}}
+function abrirPortal(pid){const r=buscarPortal(pid);if(!r)return;const d=S.portales[pid]||{};cur={col:"portales",id:pid};const R=resumenPortal(r.b);
+  $("#frm").innerHTML=`<div class="dh">${esc(r.b.via)} ${esc(r.b.num)}<div style="font:500 13px var(--body);color:var(--muted)">Zona ${esc(r.zona.toLowerCase())} · ${r.b.u.length} viviendas · ${R.txt}</div></div>
+    <div class="db">${FORMS.portales.fields.map(f=>field(f,d[f[0]])).join("")}${bloqueHist(d,true)}</div>
+    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  $("#dlg").showModal()}
 FORMS.censoEdits={titulo:"vivienda",fields:[["prop","Propietario","text",{full:1}],["abre","Quién abre","text"],["tel","Teléfono","tel"],["ocu","Ocupado por","sel",()=>OCUPA],
   ["loc","Propietario localizado","sel",()=>["","SI","NO"]],["ult","Último contacto","text"],["tipo","Tipo de contacto","text"],["val","Valorada (fecha y precio)","text"],["com","Comentarios","textarea",{full:1}]]};
 function abrirViv(id){
@@ -658,7 +679,7 @@ function abrirViv(id){
 
 /* ---------- eventos ---------- */
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.view=b.dataset.v;S.f.asesor="";if(S.view==="contactos"){S.f.etapa="activos";S.f.paso=""}try{localStorage.setItem("crm-view",S.view)}catch(_){}render();window.scrollTo(0,0)});
-$("#view").addEventListener("click",e=>{const eg=e.target.closest("[data-etapa-go]");if(eg){S.view="contactos";S.f.asesor="";S.f.paso="";S.f.etapa=eg.dataset.etapaGo;render();window.scrollTo(0,0);return}const g=e.target.closest("[data-go]");if(g){S.view="contactos";S.f.asesor="";S.f.etapa="activos";S.f.paso=g.dataset.go;render();window.scrollTo(0,0);return}const ke=e.target.closest("[data-kest]");if(ke){S.kf.estado=ke.dataset.kest;render();return}const ch=e.target.closest("[data-etapa]");if(ch){S.f.etapa=ch.dataset.etapa;render();return}if(e.target.id==="btn-perm"){(async()=>{try{const pm=await window.claude.use("permissions");await pm.manage();S.permDb=await pm.state("db");S.soloLectura=null;render()}catch(_){toast("Abre el menú Permisos de la página (arriba a la derecha)")}})();return}const vv=e.target.closest("[data-viv]");if(vv)return abrirViv(vv.dataset.viv);const r=e.target.closest("[data-open]");if(r)return abrir(r.dataset.open,r.dataset.id);if(e.target.id==="btn-ajustes")abrirAjustes();if(e.target.id==="l-buscar")leerLoc();if(e.target.id==="l-limpiar"){S.lf={zona:"",calle:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""};render()}});
+$("#view").addEventListener("click",e=>{const eg=e.target.closest("[data-etapa-go]");if(eg){S.view="contactos";S.f.asesor="";S.f.paso="";S.f.etapa=eg.dataset.etapaGo;render();window.scrollTo(0,0);return}const g=e.target.closest("[data-go]");if(g){S.view="contactos";S.f.asesor="";S.f.etapa="activos";S.f.paso=g.dataset.go;render();window.scrollTo(0,0);return}const ke=e.target.closest("[data-kest]");if(ke){S.kf.estado=ke.dataset.kest;render();return}const ch=e.target.closest("[data-etapa]");if(ch){S.f.etapa=ch.dataset.etapa;render();return}if(e.target.id==="btn-perm"){(async()=>{try{const pm=await window.claude.use("permissions");await pm.manage();S.permDb=await pm.state("db");S.soloLectura=null;render()}catch(_){toast("Abre el menú Permisos de la página (arriba a la derecha)")}})();return}const pt=e.target.closest("[data-portal]");if(pt)return abrirPortal(pt.dataset.portal);const vv=e.target.closest("[data-viv]");if(vv)return abrirViv(vv.dataset.viv);const r=e.target.closest("[data-open]");if(r)return abrir(r.dataset.open,r.dataset.id);if(e.target.id==="btn-ajustes")abrirAjustes();if(e.target.id==="l-buscar")leerLoc();if(e.target.id==="l-limpiar"){S.lf={zona:"",calle:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""};render()}});
 function leerLoc(){for(const k of ["zona","calle","m2","dm2","anio","danio","tipo","planta","rc"]){const el=$("#l-"+k);if(el)S.lf[k]=el.value}render()}
 $("#view").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id&&e.target.id.startsWith("l-")){e.preventDefault();leerLoc()}});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id==="f-q"||id==="c-q"||id==="k-q"){if(id==="f-q")S.f.q=e.target.value;else if(id==="k-q")S.kf.q=e.target.value;else S.cf.q=e.target.value;clearTimeout(render.t);render.t=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)}});
@@ -670,10 +691,10 @@ render();
 /* ---------- base de datos: Supabase (cada asesor solo recibe lo suyo; lo filtra el servidor) ---------- */
 const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
-const TABLA={contactos:"contactos",captaciones:"captaciones",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",borrados:"borrados"};
+const TABLA={contactos:"contactos",captaciones:"captaciones",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados"};
 const DOCS={"ajustes/general":"general","zonas/indice":"zonas_indice"};
 const nuevoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
-function fila(t,id,d){const r={id,d};if(t==="censo")r.zona=d.zona;if(t==="censo_edits")r.zona=id.split("-")[0].toUpperCase();return r}
+function fila(t,id,d){const r={id,d};if(t==="censo")r.zona=d.zona;if(t==="censo_edits"||t==="portales")r.zona=id.split("-")[0].toUpperCase();return r}
 function fallo(error){const e=new Error(error.message||"error");e.code=error.code==="42501"?"sin_permiso":error.code;return e}
 async function leerTabla(t,filtro){let out=[];for(let from=0;;from+=500){let q=sb.from(t).select("id,d").range(from,from+499);if(filtro)q=filtro(q);const {data,error}=await q;if(error)throw fallo(error);out=out.concat(data);if(data.length<500)break}return out}
 const snapCol=rows=>({docs:rows.map(r=>({id:r.id,data:()=>r.d}))});
