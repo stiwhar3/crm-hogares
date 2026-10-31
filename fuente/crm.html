@@ -556,8 +556,10 @@ function hoyBloques(B,vacios){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const nom=S.yo&&S.yo.nombre?S.yo.nombre:"",h=new Date().getHours(),sal=h<14?"Buenos días":h<21?"Buenas tardes":"Buenas noches";
   const tot=vis.filter(b=>!b.info).reduce((t,b)=>t+b.n,0);
   const fecha=new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
-  return `<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
-  <div class="hoy-bloques">${vis.map(b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${b.nota?`<p class="nota">${b.nota}</p>`:""}${b.html}</div></details>`).join("")}</div>
+  const movil=window.matchMedia&&matchMedia("(max-width:700px)").matches,ag=movil?vis.find(b=>b.k==="agenda"):null;if(ag)vis.splice(vis.indexOf(ag),1);
+  const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${b.nota?`<p class="nota">${b.nota}</p>`:""}${b.html}</div></details>`;
+  return `${ag?bloque(ag):""}<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
+  <div class="hoy-bloques">${vis.map(bloque).join("")}</div>
   ${vacios.length?`<p class="aldia"><b>Al día:</b> ${vacios.join(" · ")}</p>`:""}`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-hoyb]");if(!t)return;const k=t.dataset.hoyb;S.hoyAbierto=S.hoyAbierto===k?null:k;render();const d=$("#hb-"+k);if(d)d.scrollIntoView({block:"nearest",behavior:"smooth"})});
 document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("hb"))return;const k=d.id.slice(3);
