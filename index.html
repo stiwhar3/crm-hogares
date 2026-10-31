@@ -96,6 +96,7 @@ details.bld summary::-webkit-details-marker{display:none}
 details.bld summary .t{font-weight:600} details.bld summary .m{font-size:13px;color:var(--muted)}
 details.bld[open] summary{background:var(--accent-soft)}
 details.bld .tbl-wrap{border:0;border-radius:0;border-top:1px solid var(--line)}
+.vivbox{border:1px solid var(--line);padding:10px 12px;display:grid;gap:6px;background:var(--card,transparent)}.vivbox .vb-h{font-weight:600;display:flex;gap:8px;align-items:center}.vivbox .vb-t{font-weight:600}.vivbox .vb-s{font-size:13px;color:var(--muted)}.vivbox .vb-c{font-size:13px;white-space:pre-wrap;max-height:90px;overflow:auto;color:var(--muted)}.vivbox .vb-b{display:flex;gap:8px;flex-wrap:wrap}.vb-res{display:grid;gap:4px;max-height:240px;overflow:auto}.vb-o{all:unset;cursor:pointer;padding:7px 9px;border:1px solid var(--line);font-size:14px}.vb-o:hover,.vb-o:focus{border-color:var(--accent)}.vb-o span{color:var(--muted);font-size:12px}
 .portal{display:grid;gap:6px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px}.portal .pi{display:flex;flex-wrap:wrap;gap:4px}.portal .po{color:var(--muted)}.portal .btn{justify-self:start}
 .pbar{display:flex;height:6px;background:var(--line);overflow:hidden;max-width:320px}.pbar i{display:block;height:100%}
 .kos{display:grid;gap:8px;padding:10px 14px}
@@ -254,7 +255,7 @@ function rowContacto(c){
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
     <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
     <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
-    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${!c.censoId&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
   </button>`;
 }
 function rowEncargo(e){
@@ -430,7 +431,7 @@ function vCenso(){
   let E=Z.edificios.filter(b=>(!cf.ko||(b.ko&&b.ko.length))&&(!q||(b.via+" "+b.num).toLowerCase().includes(q)||b.u.some(u0=>{const u=viv(u0);return [u.prop,u.abre,u.tel].join(" ").toLowerCase().includes(q)})));
   const total=E.length; E=E.slice(0,80);
   const tel=t=>/\d{6}/.test((t||"").replace(/\s/g,""));
-  const fila=u0=>{const u=viv(u0);return `<tr class="viv${S.censoEd[u0._id]?" ed":""}" data-viv="${esc(u0._id)}" tabindex="0"><td>${esc([u.esc&&("Esc "+u.esc),u.planta,u.puerta].filter(Boolean).join(" · "))}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(u.prop||u.abre||"")}</td><td>${esc(u.tel||"")}</td><td style="text-align:left">${esc(u.ocu||"")}</td><td>${esc(u.ult||"")}</td><td style="text-align:left;white-space:normal;min-width:220px;color:var(--muted)">${esc((u.com||"").slice(0,180))}</td></tr>`};
+  const fila=u0=>{const u=viv(u0);return `<tr class="viv${S.censoEd[u0._id]?" ed":""}" data-viv="${esc(u0._id)}" tabindex="0"><td>${esc([u.esc&&("Esc "+u.esc),u.planta,u.puerta].filter(Boolean).join(" · "))}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(u.prop||u.abre||"")}${(n=>n?` <span class="pill acc">Noticia · ${esc(n.etapa||"")}</span>`:"")(notiDe(u0._id))}</td><td>${esc(u.tel||"")}</td><td style="text-align:left">${esc(u.ocu||"")}</td><td>${esc(u.ult||"")}</td><td style="text-align:left;white-space:normal;min-width:220px;color:var(--muted)">${esc((u.com||"").slice(0,180))}</td></tr>`};
   const koRow=k=>`<div class="ko"><span class="pill bad">KO${k.estado?" · "+esc(k.estado):""}</span> <b>${esc(k.dir)}</b>${k.prop?" · "+esc(k.prop):""}${k.tel?" · "+esc(k.tel):""}${k.inmo?" · "+esc(k.inmo):""}${k.precio?" · "+esc(k.precio):""}<div class="s">${esc((k.com||"").slice(0,300))}</div></div>`;
   const ed=b=>{const U=b.u.map(viv),nt=U.filter(u=>tel(u.tel)).length,nn=U.filter(u=>u.prop||u.abre).length;
     const RP=resumenPortal(b);
@@ -497,10 +498,41 @@ function abrir(col,id){
   const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
   const extraEnc=col==="encargos"&&id?`<button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
-    <div class="db">${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}</div>`:""}${bloqueHist(d,!!id)}</div>
+    <div class="db">${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>':""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}</div>`:""}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">Solicitar borrado</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal(); pistaZona();
+  if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
 }
+async function pintarVivBox(){
+  const box=$("#vivbox");if(!box||!cur||cur.col!=="contactos")return;
+  if(!S.censo){box.innerHTML='<div class="vb-s">Cargando el censo…</div>';await cargarCenso();if(!$("#vivbox")||!S.censo)return}
+  const di=$("#fld-direccion"),id=cur.censoId,r=id&&buscarViv(id);
+  if(id){
+    di.readOnly=true;
+    if(!r){box.innerHTML=`<div class="vb-h">Ficha del censo <span class="pill ok">Enlazada</span></div><div class="vb-s">Enlazada con una vivienda del censo de otra zona.</div><div class="vb-b"><button class="btn small" type="button" data-act="vivCambiar">Cambiar vivienda</button></div>`;return}
+    const v={...r.u,...(S.censoEd[id]||{})};di.value=dirViv(r);pistaZona();
+    const otra=S.contactos.filter(c=>c.censoId===id&&c.id!==cur.id);
+    box.innerHTML=`<div class="vb-h">Ficha del censo <span class="pill ok">Enlazada</span></div>
+      <div class="vb-t">${esc(dirViv(r))} · zona ${esc(r.zona.toLowerCase())}</div>
+      <div class="vb-s">${[r.u.m2&&r.u.m2+" m²",r.u.anio&&"año "+r.u.anio,v.ocu,r.u.rc].filter(Boolean).map(esc).join(" · ")}</div>
+      ${v.prop||v.abre||v.tel?`<div class="vb-s">En el censo: ${esc([v.prop||v.abre,v.tel].filter(Boolean).join(" · "))}</div>`:""}
+      ${v.com?`<div class="vb-c">${esc(String(v.com).slice(0,500))}</div>`:""}
+      ${otra.length?`<div class="vb-s" style="color:var(--bad)">Ojo: esta vivienda tiene otra noticia (${otra.map(c=>esc(c.asesor||"sin asesor")).join(", ")}). Hay que unirlas.</div>`:""}
+      <div class="vb-b"><button class="btn small" type="button" data-act="vivVer">Ver en el censo</button><button class="btn small" type="button" data-act="vivCambiar">Cambiar vivienda</button></div>`;
+    return}
+  di.readOnly=!cur.manual;
+  const q=cur.vq??(di.value||"");
+  box.innerHTML=`<div class="vb-h">Ficha del censo ${cur.manual?'<span class="pill warn">Sin localizar</span>':'<span class="pill bad">Sin enlazar</span>'}</div>
+    <label class="full">Busca la vivienda (calle, número, piso)<input id="viv-q" type="search" autocomplete="off" value="${esc(q)}" placeholder="Ej.: Callao 13 2ºA"></label>
+    <div id="viv-res" class="vb-res"></div>
+    <label class="check"><input type="checkbox" id="viv-manual"${cur.manual?" checked":""}> Aún no está localizada: escribo la dirección a mano</label>`;
+  pintarVivRes();
+}
+function pintarVivRes(){const el=$("#viv-res"),qi=$("#viv-q");if(!el||!qi)return;const q=qi.value.trim();cur.vq=q;
+  if(q.length<3){el.innerHTML='<div class="vb-s">Escribe la calle y el número.</div>';return}
+  const R=candidatosViv(q,true),U=R.u.slice(0,40);
+  el.innerHTML=U.length?U.map(x=>{const v={...x.u,...(S.censoEd[x.u._id]||{})},n=notiDe(x.u._id);return `<button type="button" class="vb-o" data-vivsel="${esc(x.u._id)}"><b>${esc(dirViv(x))}</b> <span>${esc([v.prop||v.abre,v.ocu].filter(Boolean).join(" · "))}</span>${n&&n.id!==cur.id?` <span class="pill warn">ya es noticia</span>`:""}</button>`}).join("")+(R.u.length>40?`<div class="vb-s">Hay ${R.u.length}: añade piso y puerta para afinar.</div>`:"")
+   :`<div class="vb-s">${R.edificios?"Ese piso no aparece en ese portal del censo.":"No encuentro esa calle en el censo."} Si aún no sabes qué piso es, marca la casilla de abajo.</div>`}
 function fmtFH(iso){const d=new Date(iso);return d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}
 function bloqueHist(d,conHist){
   const H=[...((d&&d.historial)||[])].reverse();
@@ -535,15 +567,37 @@ $("#frm").addEventListener("submit",async ev=>{
   if(cur.col==="contactos"&&data.etapa!=="KO"&&data.etapa!=="Encargo"&&!data.proxFecha){toast("Pon fecha a la próxima acción");$("#fld-proxFecha").focus();return}
   if(CON_ZONA.includes(cur.col)){const z=zonaDe(data.direccion);if(z)data.zona=z}
   if(cur.col==="contactos"&&data.publicado&&!data.fechaPublicado)data.fechaPublicado=hoyISO();
+  if(cur.col==="contactos"){const err=reglasVivienda(data);if(err){toast(err);$("#viv-q")?.focus();return}
+    const otra=data.censoId&&S.contactos.find(c=>c.censoId===data.censoId&&c.id!==cur.id);if(otra&&!cur.id){$("#dlg").close();toast("Esa vivienda ya tiene noticia: te la abro");setTimeout(()=>abrir("contactos",otra.id),150);return}}
   const nota=($("#fld-nuevaNota")?.value||"").trim();
-  if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
+  if(!cur.id&&cur.col==="contactos"&&data.censoId){}else if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
     if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
-  if(await guardar(cur.col,cur.id,data,nota)){$("#dlg").close();toast("Guardado")}
+  if(await guardar(cur.col,cur.id,data,nota)){$("#dlg").close();toast("Guardado");if(cur.col==="contactos")sincronizarCenso(data)}
 });
-$("#frm").addEventListener("input",e=>{if(e.target.id==="fld-direccion")pistaZona()});
+$("#frm").addEventListener("input",e=>{if(e.target.id==="fld-direccion")pistaZona();if(e.target.id==="viv-q"){clearTimeout(pintarVivRes.t);pintarVivRes.t=setTimeout(pintarVivRes,200)}});
+$("#frm").addEventListener("change",e=>{if(e.target.id==="viv-manual"){cur.manual=e.target.checked;cur.vq=$("#viv-q")?.value;pintarVivBox();if(cur.manual)$("#fld-direccion").focus()}});
+function reglasVivienda(data){ /* devuelve texto de error o "" y completa data */
+  if(cur.censoId){data.censoId=cur.censoId;const r=buscarViv(cur.censoId);if(r){data.direccion=dirViv(r);data.zona=r.zona}return ""}
+  data.censoId="";
+  if(!S.censo)return "";
+  if(!cur.manual)return "Elige la vivienda en el censo o marca «Aún no está localizada».";
+  if(data.etapa!=="Desarrollo"&&data.etapa!=="KO"&&candidatosViv(data.direccion).u.length)return "Ya está localizada: elige su vivienda en el censo (o déjala en Desarrollo).";
+  return "";
+}
+async function sincronizarCenso(data){const cid=data.censoId,r=cid&&buscarViv(cid);if(!r)return;const v={...r.u,...(S.censoEd[cid]||{})},ch={};
+  if(data.nombre&&!(v.prop||v.abre))ch.prop=data.nombre;if(data.telefono&&!v.tel)ch.tel=data.telefono;if(!S.censoEd[cid]?.noticia)ch.noticia=true;
+  if(Object.keys(ch).length){const sl=S.soloLectura;await guardar("censoEdits",cid,ch,"Datos copiados desde su noticia.");S.soloLectura=sl}}
 $("#frm").addEventListener("click",async ev=>{
+  const vs=ev.target.closest("[data-vivsel]");
+  if(vs){const id=vs.dataset.vivsel,n=notiDe(id);
+    if(n&&n.id!==cur.id){if(!cur.id){$("#dlg").close();toast("Esa vivienda ya tiene noticia: te la abro");setTimeout(()=>abrir("contactos",n.id),150)}else toast("Esa vivienda ya es otra noticia ("+(n.asesor||"sin asesor")+"). Pide a Stiwhar que las una.");return}
+    const r=buscarViv(id),v={...r.u,...(S.censoEd[id]||{})};cur.censoId=id;cur.manual=false;
+    if(!$("#fld-nombre").value&&(v.prop||v.abre))$("#fld-nombre").value=v.prop||v.abre;if(!$("#fld-telefono").value&&v.tel)$("#fld-telefono").value=v.tel;
+    pintarVivBox();return}
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
   if(a==="cerrar") return $("#dlg").close();
+  if(a==="vivVer"){const id=cur.censoId;$("#dlg").close();setTimeout(()=>abrirViv(id),100);return}
+  if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>$("#viv-q")?.focus(),50);return}
   if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200)}},"Solicitud de borrado: "+m)){$("#dlg").close();toast("Solicitud de borrado enviada. Apruébala desde Hoy")}return}
   if(a==="aCenso"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué no era noticia");$("#fld-nuevaNota")?.focus();return}
@@ -571,7 +625,7 @@ $("#frm").addEventListener("click",async ev=>{
     const as=(S.ajustes.asesores.find(x=>x.zona===r.zona)||{}).nombre||"";
     const nid=await guardar("contactos",null,{direccion:dir,nombre:v.prop||v.abre,telefono:v.tel,asesor:as,zona:r.zona,etapa:"Desarrollo",origen:"",motivo:"",proxAccion:"",proxFecha:hoyISO(),necesitaSti:false,notaSti:"",notas:(v.com||"")+"\n(Desde el censo.)",censoId:id},nota);
     if(nid){S.view="contactos";S.f.etapa="Desarrollo";render();setTimeout(()=>abrir("contactos",nid),300)}return}
-  if(a==="aSeg"){const v=leerForm();v.etapa="Seguimiento";if(!v.proxFecha)v.proxFecha=hoyISO();const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,n||"Propietario localizado: pasa a Seguimiento.")){$("#dlg").close();toast("Pasada a Seguimiento")}return}
+  if(a==="aSeg"){const v=leerForm();v.etapa="Seguimiento";{const err=reglasVivienda(v);if(err){toast(err.startsWith("Ya está")?"Para pasar a Seguimiento, elige primero su vivienda en el censo.":err);$("#viv-q")?.focus();return}}if(!v.proxFecha)v.proxFecha=hoyISO();const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,n||"Propietario localizado: pasa a Seguimiento.")){$("#dlg").close();toast("Pasada a Seguimiento")}return}
   if(a==="vendida"){if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez";return}const v=leerForm();v.etapa="KO";v.vendida=hoyISO();v.vendidaVista=false;const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,"Se ha vendido"+(n?": "+n:"."))){$("#dlg").close();toast("Marcada como vendida. Le llega el aviso a Stiwhar")}return}
   if(a==="vistoVend"){if(await guardar("contactos",cur.id,{vendidaVista:true},"Stiwhar enterado de la venta.")){$("#dlg").close();toast("Aviso quitado")}return}
   if(a==="capLocalizar"){const v=leerForm();$("#dlg").close();const z=zonaDe(v.direccion);
@@ -640,17 +694,40 @@ function pistaZona(){
   if(z){sel.value=z;sel.disabled=true;sel.dataset.auto=1;h.textContent="Zona según el censo para esta dirección."}
   else{if(sel.dataset.auto){sel.value="";delete sel.dataset.auto}sel.disabled=false;h.textContent=di.value.trim()?(S.zidx?"Calle fuera del censo: elige la zona a mano.":""):""}
 }
-function viviendaDeDir(dir){
-  if(!S.censo||!dir) return null;
-  const a=zUp(dir).replace(ZTIPOS,""),m=a.match(/^(.*?[A-Z].*?)[\s,.ºª-]*(\d+)/); if(!m) return null;
-  const c=zCalle(m[1]),n=+m[2],rest=a.slice(m.index+m[0].length),pp=rest.match(/(\d+|BJ|BAJO)\s*[ºª°]?\s*-?\s*([A-Z]|\d+)\b/),z0=t=>String(t||"").toUpperCase().replace(/^0+(?=\d)/,"");
-  for(const Z of Object.values(S.censo)) for(const b of Z.edificios){
-    if(zCalle(b.via)!==c||parseInt(b.num)!==n) continue;
-    if(pp){const u=b.u.find(u=>z0(u.planta)===z0(pp[1])&&z0(u.puerta)===z0(pp[2]));if(u) return u._id}
-    if(b.u.length===1) return b.u[0]._id;
-  }
-  return null;
+function partesDir(dir){
+  let a=zUp(dir).replace(/\s+/g," ").trim().replace(ZTIPOS,"").replace(/^(URB(ANIZACION)?\.? )?PARQUE /,"");
+  const m=a.match(/^(.*?[A-Z].*?)[\s,.ºª°-]*(?:N[ºª°]\s*)?(\d+)(?:(BIS|[A-F])(?![A-Z0-9])|\s+(BIS)\b)?/); if(!m) return {c:zCalle(a)};
+  let rest=a.slice(m.index+m[0].length);
+  const o={c:zCalle(m[1]),n:+m[2]};if(m[3]||m[4])o.letra=m[3]||m[4];
+  const e=rest.match(/\b(?:ESC(?:ALERA)?|PORTAL|P|BLOQ(?:UE)?|BLQ|E)\.?\s*:?\s*(\d+|IZQ\w*|DCH\w*|DER\w*)\b/);
+  if(e){o.esc=/^IZQ/.test(e[1])?"I":/^(DCH|DER)/.test(e[1])?"D":String(+e[1]);rest=rest.slice(0,e.index)+" "+rest.slice(e.index+e[0].length)}
+  rest=rest.replace(/\b(PISO|PLT|PLANTA|PUERTA)\b:?/g," ");
+  const p=rest.match(/(?:^|[\s,.-])(BAJO|BJ|B|\d{1,2})\s*[ºª°]?\s*[-\s]?\s*([A-H]|\d{1,2})\b/)||rest.match(/(?:^|[\s,.-])(BAJO|BJ|B|\d{1,2})[ºª°]?([A-H])\b/);
+  if(p){o.planta=/^B/.test(p[1])?"0":String(+p[1]);o.puerta=/^\d+$/.test(p[2])?String(+p[2]):p[2]}
+  else{const p2=rest.match(/(?:^|[\s,.-])(BAJO|BJ|\d{1,2})\s*[ºª°]?\s*$/);if(p2)o.plantaSola=/^B/.test(p2[1])?"0":String(+p2[1])}
+  return o;
 }
+const zPP=t=>String(t??"").toUpperCase().trim().replace(/^0+(?=[0-9A-Z])/,"");
+const zPl=t=>{t=String(t??"").toUpperCase().trim();return /^(BJ|BAJO|B)$/.test(t)?"0":t.replace(/^0+(?=[0-9A-Z])/,"")};
+/* Viviendas del censo que encajan con una dirección escrita. buscar=true: modo buscador (calle por prefijo, sin exigir piso). */
+function candidatosViv(dir,buscar){
+  const C=S.censo||{},P=partesDir(dir);if(!P.c)return {P,u:[],edificios:0};
+  let B=[];const bOk=b=>P.n==null||parseInt(b.num)===P.n;
+  for(const [zn,Z] of Object.entries(C))for(const b of Z.edificios)if(zCalle(b.via)===P.c&&bOk(b))B.push([zn,b]);
+  if(!B.length&&P.c.length>=(buscar?3:5)){const ks=new Set();for(const Z of Object.values(C))for(const b of Z.edificios){const k=zCalle(b.via);if(buscar?k.includes(P.c):(k.includes(P.c)||P.c.includes(k)&&k.length>=5))ks.add(k)}
+    if(buscar||ks.size===1)for(const [zn,Z] of Object.entries(C))for(const b of Z.edificios)if(ks.has(zCalle(b.via))&&bOk(b))B.push([zn,b])}
+  if(P.n==null&&!buscar)return {P,u:[],edificios:B.length};
+  let U=B.flatMap(([zona,b])=>b.u.map(u=>({zona,b,u})));
+  if(P.letra||!buscar){const f=U.filter(x=>(x.u.letra||"")===(P.letra||""));if(f.length||P.letra)U=f}
+  if(P.planta!=null)U=U.filter(x=>zPl(x.u.planta)===P.planta&&zPP(x.u.puerta)===zPP(P.puerta));
+  if(buscar&&P.plantaSola!=null)U=U.filter(x=>zPl(x.u.planta)===P.plantaSola);
+  if(P.esc&&U.length>1){const f=U.filter(x=>zPP(x.u.esc)===P.esc);if(f.length)U=f}
+  if(buscar)U.sort((x,y)=>(x.b.via+x.b.num).localeCompare(y.b.via+y.b.num)||(+zPl(x.u.planta)||0)-(+zPl(y.u.planta)||0)||zPP(x.u.puerta).localeCompare(zPP(y.u.puerta)));
+  return {P,u:U,edificios:B.length};
+}
+function viviendaDeDir(dir){const r=candidatosViv(dir);return r.u.length===1?r.u[0].u._id:null}
+function dirViv(r){const u=r.u,pl=zPl(u.planta);return [r.b.via,r.b.num+(u.letra?" "+u.letra:""),u.esc&&!/^T$/.test(u.esc)&&("Esc "+u.esc),u.planta&&!/^OD$/.test(u.planta)&&(pl==="0"?"Bajo":pl+"º"),u.puerta&&!/^OS$/.test(u.puerta)&&zPP(u.puerta)].filter(Boolean).join(" ")}
+const notiDe=id=>id&&S.contactos.find(c=>c.censoId===id);
 function buscarViv(id){for(const [zn,Z] of Object.entries(S.censo||{}))for(const b of Z.edificios)for(const u of b.u)if(u._id===id)return {zona:zn,b,u};return null}
 const OCUPA=["","PROPIETARIO","INQUILINO","VACIO","FAMILIAR","OKUPA","NEGOCIO"];
 /* ---------- portales (para hacer zona / puerta fría) ---------- */
@@ -674,7 +751,7 @@ FORMS.censoEdits={titulo:"vivienda",fields:[["prop","Propietario","text",{full:1
 function abrirViv(id){
   const r=buscarViv(id); if(!r) return; const d={...r.u,...(S.censoEd[id]||{})}; cur={col:"censoEdits",id,viv:r};
   const dir=[r.b.via,r.b.num,r.u.esc&&("Esc "+r.u.esc),r.u.planta&&(r.u.planta+"º"),r.u.puerta].filter(Boolean).join(" ");
-  $("#frm").innerHTML=`<div class="dh">${esc(dir)}<div style="font:500 13px var(--body);color:var(--muted)">Zona ${esc(r.zona.toLowerCase())}${r.u.m2?" · "+esc(r.u.m2)+" m²":""}${r.u.anio?" · "+esc(r.u.anio):""}${r.u.rc?` · <span style="font-family:ui-monospace,monospace;user-select:all">${esc(r.u.rc)}</span>`:""}</div></div>
+  $("#frm").innerHTML=`<div class="dh">${esc(dir)}<div style="font:500 13px var(--body);color:var(--muted)">Zona ${esc(r.zona.toLowerCase())}${r.u.m2?" · "+esc(r.u.m2)+" m²":""}${r.u.anio?" · "+esc(r.u.anio):""}${r.u.rc?` · <span style="font-family:ui-monospace,monospace;user-select:all">${esc(r.u.rc)}</span>`:""}</div>${(n=>n?`<div style="margin-top:6px"><span class="pill acc">Es noticia de ${esc(n.asesor||"sin asesor")} · ${esc(n.etapa||"")}</span></div>`:"")(notiDe(id))}</div>
     <div class="db">${FORMS.censoEdits.fields.map(f=>field(f,f[0]==="ocu"&&d.ocu&&!OCUPA.includes(d.ocu)?d.ocu:d[f[0]])).join("")}
     <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="ctoHoy">+ Contacto hoy</button><button class="btn small" type="button" data-act="aNoticia">${(S.contactos.find(c=>c.censoId===id))?"Abrir su noticia":"Pasar a noticia"}</button></div>${bloqueHist(S.censoEd[id]||{},true)}</div>
     <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
