@@ -338,10 +338,11 @@ function pedirRanking(per){per=per||"semana";S.rankings=S.rankings||{};const T=p
   Promise.resolve().then(()=>window.rankingPeriodo(per)).then(({data,error})=>{if(error||!data)return;S.rankings[per]=data||[];if((S.view==="hoy"||S.view==="resultados")&&!$("#dlg").open)render()}).catch(()=>{})}
 function vRanking(per){per=per||"semana";pedirRanking(per);const R=(S.rankings||{})[per];if(!R||!R.length)return "";const M=metasPer(per),[et,desde]=PER_ET[per];
   const yo=R.find(r=>r.es_yo),resp=!S.yo||S.yo.rol==="responsable";
-  if(yo&&!resp){return `<section><h2>Tu ranking ${et} <span class="n">${yo.posicion}º de ${yo.total}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">${desde}. Ranking de actividad del equipo (no de facturación): solo ves tu puesto. Puntos: noticia nueva 3, gestión 1, contacto en el censo 1, valoración 10, encargo 25.</p>
-    <div class="kpis">${METAS_ET.map(([k,t])=>kpi(t,yo[k],`Meta ${et}: ${M[k]}`,M[k]?yo[k]/M[k]*100:0)).join("")}${kpi("Puntos",yo.puntos,`Vas ${yo.posicion}º de ${yo.total}`)}</div></section>`}
+  if(yo&&!resp){const ok=METAS_ET.filter(([k])=>yo[k]>=M[k]).length;
+    return `<section><h2>Tus objetivos ${et} <span class="n">${ok} de ${METAS_ET.length} cumplidos</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">${desde}. Tu actividad frente a tus metas.</p>
+    <div class="kpis">${METAS_ET.map(([k,t])=>kpi(t,yo[k],yo[k]>=M[k]?`Cumplido (meta ${M[k]})`:`Te falta${M[k]-yo[k]>1?"n":""} ${M[k]-yo[k]} para la meta de ${M[k]}`,M[k]?yo[k]/M[k]*100:0)).join("")}</div></section>`}
   if(!resp)return "";
-  return `<section><h2>Ranking ${et}</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">${desde}, sacado del registro de cambios. Cada asesor solo ve su puesto. Metas ${et} por asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}.</p>
+  return `<section><h2>Ranking ${et}</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">${desde}, sacado del registro de cambios. Los asesores no ven el ranking: solo si cumplen sus metas. Metas ${et} por asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}.</p>
    <div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Asesor</th><th>Puesto</th><th>Puntos</th>${METAS_ET.map(([k,t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>
    ${R.map(r=>`<tr><td style="text-align:left">${esc(r.nombre)} <span style="color:var(--muted)">${esc((r.zona||"").toLowerCase())}</span></td><td>${r.posicion}º</td><td><b>${r.puntos}</b></td>${METAS_ET.map(([k])=>`<td style="${r[k]>=M[k]?"color:var(--ok);font-weight:700":r[k]===0?"color:var(--bad)":""}">${r[k]}/${M[k]}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>`}
 
@@ -656,7 +657,7 @@ function vResultados(){
     ${(m=>METAS_ET.map(([k,t])=>`<tr><td style="text-align:left">${t}</td><td>${m.semana[k]}</td><td>${m.mes[k]}</td><td>${m.trimestre[k]}</td></tr>`).join(""))({semana:metasPer("semana"),mes:metasPer("mes"),trimestre:metasPer("trimestre")})}
     </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">La semana y el trimestre salen del objetivo mensual (×12/52 y ×3). Las metas de actividad se ponen por semana en Ajustes y se escalan al mes y al trimestre.</p></section>`:"";
   const rk=vRanking(per);
-  return fact+sel+(rk||`<section><h2>Ranking ${PER_ET[per][0]}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+obj;
+  return fact+sel+(rk||`<section><h2>${resp?"Ranking":"Tus objetivos"} ${PER_ET[per][0]}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+obj;
 }
 function selOpts(arr,val,todos){return (todos?`<option value="">${todos}</option>`:"")+arr.map(x=>`<option${x===val?" selected":""}>${esc(x)}</option>`).join("")}
 function vContactos(){
