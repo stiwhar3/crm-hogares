@@ -598,35 +598,65 @@ function imprimirTaratura(L){if(!L||!L.length)return;
 const PG_PART=/^(de|del|la|las|los|y|e|da|di|van|von)$/i,PG_NONAME=/^(vac[ií][oa]s?|no|alquilad[oa]s?|inquilin[oa]s?|nadie|cerrad[oa]|okupad[oa]|local)$/i;
 function pgPuerta(t){t=String(t||"").toUpperCase().replace(/\.$/,"");if(/^IZ/.test(t))return "IZ";if(/^(DCH|DER|DR)/.test(t))return "DR";if(/^CENT/.test(t))return "CN";return zPP(t)}
 function pgUnidad(U,esc,pl,pu){let C=U.filter(u=>zPl(u.planta)===pl&&zPP(u.puerta)===pgPuerta(pu));if(esc){const f=C.filter(u=>zPP(u.esc)===zPP(esc));if(f.length)C=f}return C.length===1?C[0]._id:""}
-function pgParse(txt,U){const out=[];
-  for(const raw of String(txt||"").split(/\r?\n/)){const l=raw.replace(/^[\s•\-*·]+/,"").trim();if(!l)continue;
-    const m=l.match(/^(?:(?:esc(?:alera)?|portal)\.?\s*([0-9a-z]+)\s*[,.\-]?\s*)?(bajo|bj|[áa]tico|at|\d{1,2})\s*[ºª°]?\s*[-\/]?\s*(izq(?:da|uierda)?\.?|dcha\.?|dch\.?|derecha|centro|[a-h]|\d{1,2})(?![a-záéíóúñ0-9])[\s,.:;\-]*(.*)$/i);
-    if(!m){if(out.length)out[out.length-1].com=(out[out.length-1].com+" "+l).trim();else out.push({id:"",piso:l,nombre:"",tel:"",com:"",err:true});continue}
-    const pl=/^b/i.test(m[2])?"0":/^[áa]t/i.test(m[2])?"AT":String(+m[2]);let rest=m[4]||"",tel="",nombre="",com="";
+const PG_MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const PG_ABR=[[/•/g," NC "],[/\bnsnv\b/gi,"No sabe ni vende"],[/\bnitp\b/gi,"No interesa tras puerta"],[/\bNC\b/g,"No contactado"],[/(^|\s)M(?=\s|[,.;:]|$)/g,"$1Mirilazo"]];
+function pgExpand(t){let x=" "+String(t||"")+" ";for(const [r,v] of PG_ABR)x=x.replace(r,v);x=x.replace(/\s+/g," ").trim();
+  return x.replace(/^(No contactado|Mirilazo|No sabe ni vende|No interesa tras puerta)\s+(?=[a-záéíóúñ])/,"$1, ")}
+const pgSinHablar=c=>/^(No contactado|Mirilazo)\b/.test(c||"");
+function pgFecha(l){let m=l.match(/(\d{1,2})\s*(?:de\s+)?([a-záéíóú]+)\s*(?:de\s+|del\s+)?(\d{4})/i),d=null;
+  if(m){const k=PG_MESES.findIndex(x=>zUp(x)===zUp(m[2])||zUp(x).slice(0,3)===zUp(m[2]).slice(0,3));if(k>=0)d=[+m[3],k+1,+m[1]]}
+  if(!d){m=l.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);if(m)d=[m[3].length===2?2000+ +m[3]:+m[3],+m[2],+m[1]]}
+  return d&&d[1]>=1&&d[1]<=12&&d[2]>=1&&d[2]<=31?`${d[0]}-${String(d[1]).padStart(2,"0")}-${String(d[2]).padStart(2,"0")}`:""}
+function pgHora(l){let m=l.match(/\b(\d{1,2})\s*[:.h]\s*(\d{2})\b/i)||l.match(/\b(?:a las|sobre las|hacia las)\s+(\d{1,2})\b/i)||l.match(/\b(\d{1,2})\s*h(?:oras)?\b/i);
+  if(!m)return "";let h=+m[1];const mi=m[2]?+m[2]:0;if(/tarde|noche|pm/i.test(l)&&h<12)h+=12;return h<24&&mi<60?String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0"):""}
+const PG_PISO=/^(?:(?:esc(?:alera)?|portal)\.?\s*([0-9a-z]+)\s*[,.\-]?\s*)?(bajo|bj|[áa]tico|at|\d{1,2})\s*[ºª°]?\s*[-\/]?\s*(izq(?:da|uierda)?\.?|dcha\.?|dch\.?|derecha|centro|[a-h]|\d{1,2})(?![a-záéíóúñ0-9:\/])[\s,.:;\-]*(.*)$/i;
+function pgParse(txt,U){const out=[],cab={fecha:"",hora:"",dir:"",nota:""};let enCab=true;
+  for(const raw of String(txt||"").split(/\r?\n/)){const l=raw.replace(/^[\s\-*·]+/,"").trim();if(!l)continue;
+    const f=pgFecha(l),h=pgHora(l);
+    if(enCab&&(f||h)&&!PG_PISO.test(l.replace(/^•\s*/,""))||enCab&&f){if(f&&!cab.fecha)cab.fecha=f;if(h&&!cab.hora)cab.hora=h;continue}
+    const lp=l.replace(/^•\s*/,"");const m=lp.match(PG_PISO);
+    if(!m){if(enCab||!out.length){const d=l.match(/^(.*?[a-záéíóúñ].*?)\s+(?:n[ºª°]?\s*)?(\d{1,4})\b[\s,.\-]*(.*)$/i);
+        if(d&&!cab.dir){cab.dir=(d[1]+" "+d[2]).trim();cab.nota=d[3].trim();if(!cab.hora)cab.hora=pgHora(d[3]);continue}
+        if(enCab){cab.nota=(cab.nota+" "+l).trim();continue}}
+      out[out.length-1].com=pgExpand(out[out.length-1].com+" "+l);continue}
+    enCab=false;
+    const pl=/^b/i.test(m[2])?"0":/^[áa]t/i.test(m[2])?"AT":String(+m[2]);let rest=(lp!==l?"• ":"")+(m[4]||""),tel="",nombre="",com="";
     const t=rest.match(/(?:\+?34[\s.]?)?([6789](?:[\s.]?\d){8})(?!\d)/);
     let antes=rest,despues="";if(t){tel=t[1].replace(/\D/g,"");antes=rest.slice(0,t.index);despues=rest.slice(t.index+t[0].length)}
     const tk=antes.trim().split(/\s+/).filter(Boolean),N=[];let i=0;
-    for(;i<tk.length;i++){const w=tk[i].replace(/[,:;.\-–]+$/,"");if(/^[A-ZÁÉÍÓÚÑÜ]/.test(w)&&!PG_NONAME.test(w))N.push(w);else if(N.length&&PG_PART.test(w)&&(j=>{while(tk[j]&&PG_PART.test(tk[j]))j++;return tk[j]&&/^[A-ZÁÉÍÓÚÑÜ]/.test(tk[j])})(i+1))N.push(w);else break;if(/[,:;\-–]$/.test(tk[i])){i++;break}}
-    nombre=N.join(" ");com=[tk.slice(i).join(" "),despues].join(" ").replace(/^[\s,.:;\-–]+/,"").replace(/\s+/g," ").trim();
+    for(;i<tk.length;i++){const w=tk[i].replace(/[,:;.\-–]+$/,"");if(/^[A-ZÁÉÍÓÚÑÜ][a-záéíóúñüA-ZÁÉÍÓÚÑÜ]/.test(w)&&!PG_NONAME.test(w)&&!/^(NC|NSNV|NITP)$/i.test(w))N.push(w);else if(N.length&&PG_PART.test(w)&&(j=>{while(tk[j]&&PG_PART.test(tk[j]))j++;return tk[j]&&/^[A-ZÁÉÍÓÚÑÜ]/.test(tk[j])})(i+1))N.push(w);else break;if(/[,:;\-–]$/.test(tk[i])){i++;break}}
+    nombre=N.join(" ");com=pgExpand([tk.slice(i).join(" "),despues].join(" ").replace(/^[\s,.:;\-–]+/,""));
     out.push({id:pgUnidad(U,m[1],pl,m[3]),piso:[m[1]?"Esc "+m[1]:"",pl==="0"?"Bajo":pl==="AT"?"Ático":pl+"º",pgPuerta(m[3])].filter(Boolean).join(" "),nombre,tel,com})}
-  return out}
+  return {F:out,cab}}
 const pgNorm=t=>zUp(t||"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
 function pgFila(x,i,U){const u=x.id?{...U.find(v=>v._id===x.id),...(S.censoEd[x.id]||{})}:null;
   const igual=u&&!x.tel&&!x.com&&x.nombre&&[u.prop,u.abre].some(n=>pgNorm(n)===pgNorm(x.nombre));
   return `<tr class="${x.id?"":"pg-ko"}${igual?" pg-igual":""}"><td><input type="checkbox" data-pg="ok" data-i="${i}"${(x.marcada!==undefined?x.marcada:x.id&&!igual)?" checked":""}></td>
    <td><select data-pg="id" data-i="${i}"><option value="">— elige vivienda —</option>${U.map(v=>`<option value="${esc(v._id)}"${v._id===x.id?" selected":""}>${esc(pisoTxt(v,new Set(U.map(w=>w.esc||"")).size>1)||"?")}</option>`).join("")}</select>${!x.id?`<div class="pg-m">Escrito: ${esc(x.piso)}</div>`:""}</td>
    <td><input data-pg="nombre" data-i="${i}" value="${esc(x.nombre)}">${u&&(u.prop||u.abre)?`<div class="pg-m">${igual?"Sin cambios":"Antes: "+esc(u.prop||u.abre)}</div>`:""}</td>
-   <td><input data-pg="tel" data-i="${i}" inputmode="tel" value="${esc(x.tel)}"></td><td><input data-pg="com" data-i="${i}" value="${esc(x.com)}"></td></tr>`}
+   <td><input data-pg="tel" data-i="${i}" inputmode="tel" value="${esc(x.tel)}"></td><td><input data-pg="com" data-i="${i}" value="${esc(x.com)}"><div class="pg-m">${pgSinHablar(x.com)?"No habló con nadie: queda en el historial, no cuenta como último contacto":x.com||x.nombre||x.tel?"Habló: cuenta como último contacto":""}</div></td></tr>`}
 function pgPintar(){const P=cur.pg,U=P.U;const el=$("#pg-prev");if(!el)return;
   el.innerHTML=P.F.length?`<div class="tbl-wrap"><table class="pg"><thead><tr><th></th><th style="text-align:left">Vivienda</th><th style="text-align:left">Nombre</th><th style="text-align:left">Teléfono</th><th style="text-align:left">Comentario</th></tr></thead><tbody>${P.F.map((x,i)=>pgFila(x,i,U)).join("")}</tbody></table></div>
    <p class="pg-m">Se guardan solo las filas marcadas. ${P.F.filter(x=>!x.id).length?"Las filas en rojo no se han reconocido: elige la vivienda a mano o déjalas sin marcar.":""}</p>`:""}
-function abrirPegar(zona,idx){const b=S.censo[zona].edificios[idx];if(!b)return;const U=ordenTaratura(b.u);cur={col:"pegar",pg:{zona,b,U,F:[]}};
-  $("#frm").innerHTML=`<div class="dh">Notas rápidas · ${esc(b.via)} ${esc(b.num)}<div style="font:500 13px var(--body);color:var(--muted)">Pega lo que tengas en las notas del móvil, una línea por vivienda empezando por el piso. O haz una foto a los buzones y se sacan los nombres solos.</div></div>
-   <div class="db"><label class="full">Notas<textarea id="pg-txt" rows="5" placeholder="4A Juan García 612345678 no quiere vender&#10;4B no contesta&#10;Bajo C María López, alquilado"></textarea></label>
-   <div class="full" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="pgRevisar">Revisar notas</button><label class="btn small" style="cursor:pointer">Foto del buzón<input type="file" id="pg-foto" accept="image/*" capture="environment" hidden></label><span id="pg-est" class="pg-m"></span></div>
-   <div class="full" id="pg-prev"></div></div>
+function abrirPegar(zona,idx){const b=zona!=null?S.censo[zona].edificios[idx]:null;cur={col:"pegar",pg:{zona:b?zona:null,b,U:b?ordenTaratura(b.u):[],F:[],nota:""}};
+  $("#frm").innerHTML=`<div class="dh">Notas rápidas${b?" · "+esc(b.via)+" "+esc(b.num):""}<div style="font:500 13px var(--body);color:var(--muted)">Pega las notas del móvil tal cual: la fecha y la hora de la vuelta, la dirección del portal y una línea por vivienda empezando por el piso. • o NC = no contactado, M = mirilazo, nsnv = no sabe ni vende, nitp = no interesa tras puerta. También puedes hacer una foto a los buzones.</div></div>
+   <div class="db"><label class="full">Notas<textarea id="pg-txt" rows="6" placeholder="23 de septiembre 2026 18:30&#10;Leganés 31 1B presidente&#10;4H no vende, le dejo tarjeta&#10;4G •&#10;4D nitp&#10;3H nsnv señora mayor&#10;1D M"></textarea></label>
+   <label>Fecha de la vuelta<input type="date" id="pg-fecha" value="${hoyISO()}"></label><label>Hora de la vuelta *<input type="time" id="pg-hora"></label>
+   <div class="full" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="pgRevisar">Revisar notas</button>${b?`<label class="btn small" style="cursor:pointer">Foto del buzón<input type="file" id="pg-foto" accept="image/*" capture="environment" hidden></label>`:""}<span id="pg-est" class="pg-m"></span></div>
+   <div class="full" id="pg-cab"></div><div class="full" id="pg-prev"></div></div>
    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal()}
+function pgRevisar(){const txt=$("#pg-txt").value;if(!txt.trim()){toast("Escribe o pega alguna línea");return}const P=cur.pg;
+  let r=pgParse(txt,P.U);
+  if(r.cab.dir){const f=portalDeFicha(r.cab.dir);
+    if(f&&(!P.b||f.b!==P.b)){if(P.b&&P.F.length){toast("Esas notas son de otro portal: guárdalas por separado");return}P.b=f.b;P.zona=f.zona;P.U=ordenTaratura(f.b.u);r=pgParse(txt,P.U)}
+    else if(!f&&!P.b){$("#pg-est").textContent=`No encuentro el portal «${r.cab.dir}» en el censo. Ábrelo en Censo y usa su botón «Notas rápidas».`;return}}
+  if(!P.b){$("#pg-est").textContent="Pon en una línea la calle y el número del portal (por ejemplo «Leganés 31»).";return}
+  if(r.cab.fecha)$("#pg-fecha").value=r.cab.fecha;if(r.cab.hora)$("#pg-hora").value=r.cab.hora;
+  if(r.cab.nota)P.nota=(P.nota?P.nota+" ":"")+r.cab.nota;
+  $("#pg-cab").innerHTML=`<p class="pg-m" style="font-size:14px"><b>${esc(P.b.via)} ${esc(P.b.num)}</b> · zona ${esc((P.zona||"").toLowerCase())}</p><label>Nota del portal (se guarda en los datos del portal)<input id="pg-np" value="${esc(P.nota)}"></label>`;
+  $("#pg-est").textContent=$("#pg-hora").value?"":"Falta la hora de la vuelta: ponla arriba antes de guardar.";
+  pgAnadir(r.F);$("#pg-txt").value=""}
 function pgLeerFilas(){document.querySelectorAll("#pg-prev [data-pg]").forEach(e=>{const x=cur.pg.F[+e.dataset.i];if(!x)return;if(e.dataset.pg==="ok")x.marcada=e.checked;else x[e.dataset.pg]=e.value})}
 function pgAnadir(F){pgLeerFilas();const P=cur.pg;P.F.forEach(x=>{if(x.marcada===undefined)x.marcada=!!x.id});P.F.push(...F);pgPintar()}
 async function pgFoto(file){const est=$("#pg-est");if(!file)return;if(!window.leerBuzon){toast("La lectura de fotos no está disponible sin conexión");return}
@@ -640,10 +670,16 @@ async function pgFoto(file){const est=$("#pg-est");if(!file)return;if(!window.le
     pgAnadir(F);est.textContent=`${B.length} buzones leídos, ${nuevos} con información nueva.`}
   catch(e){console.error("leerBuzon",e);est.textContent="No se ha podido leer la foto: "+(e.message||e)}}
 async function guardarPegado(){pgLeerFilas();const P=cur.pg,F=P.F.filter(x=>x.id&&(x.marcada===undefined?true:x.marcada)&&(x.nombre||x.tel||x.com));
-  if(!F.length){toast("No hay filas marcadas con vivienda");return}
-  const hoy=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});let n=0;
-  for(const x of F){const d={ult:hoy};if(x.nombre)d.prop=x.nombre.trim();if(x.tel)d.tel=x.tel.replace(/\s/g,"");if(await guardar("censoEdits",x.id,d,x.com||""))n++;else break}
-  $("#dlg").close();toast(`Guardadas ${n} de ${F.length} viviendas`);render()}
+  const fe=$("#pg-fecha").value,ho=$("#pg-hora").value,np=($("#pg-np")?.value||"").trim();
+  if(!F.length&&!np){toast("No hay filas marcadas con vivienda");return}
+  if(!fe||!ho){toast("Pon la fecha y la hora de la vuelta al bloque");$(ho?"#pg-fecha":"#pg-hora").focus();return}
+  const [y,mo,d]=fe.split("-"),fTxt=`${d}/${mo}/${y}`,cuando=`Vuelta del ${fTxt} a las ${ho}`;let n=0;
+  for(const x of F){const dd={};if(!pgSinHablar(x.com))dd.ult=fTxt;if(x.nombre)dd.prop=x.nombre.trim();if(x.tel)dd.tel=x.tel.replace(/\s/g,"");
+    if(await guardar("censoEdits",x.id,dd,`${cuando}: ${x.com||(x.nombre?"nombre "+x.nombre:"")}`))n++;else break}
+  if(np&&P.b){const pid=portalId(P.b),old=S.portales[pid]||{},dp={notasPortal:[old.notasPortal,`[${fTxt} ${ho}] ${np}`].filter(Boolean).join("\n")};
+    const pm=np.match(/\b(\d{1,2}\s*º?\s*[a-h])\s+presidente\b|\bpresidente\s+(?:en\s+)?(\d{1,2}\s*º?\s*[a-h])\b/i);if(pm&&!old.presPiso)dp.presPiso=(pm[1]||pm[2]).replace(/\s|º/g,"").toUpperCase();
+    await guardar("portales",pid,dp,cuando)}
+  $("#dlg").close();toast(`Guardadas ${n} viviendas${np?" y la nota del portal":""}`);render()}
 $("#frm").addEventListener("change",e=>{if(e.target.id==="pg-foto"){pgFoto(e.target.files[0]);e.target.value=""}});
 
 /* ---------- «Vendido en tu portal»: avisar a los vecinos ---------- */
@@ -1001,7 +1037,7 @@ function vCenso(){
   const tools=`<div class="tools"><select id="c-zona">${zonas.map(z=>`<option value="${z}"${z===cf.zona?" selected":""}>Zona ${z.charAt(0)+z.slice(1).toLowerCase()}${(S.ajustes.asesores.find(a=>a.zona===z)||{}).nombre?" · "+S.ajustes.asesores.find(a=>a.zona===z).nombre:""}</option>`).join("")}</select>
     <input type="search" id="c-q" placeholder="Buscar calle, número o propietario…" value="${esc(cf.q)}">
     <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="c-ko"${cf.ko?" checked":""}> Solo con KO</label>
-    <button class="btn small${cf.mapa?" primary":""}" type="button" id="c-mapa">${cf.mapa?"Ver lista":"Ver mapa y ruta"}</button>${!cf.mapa?`<button class="btn small" type="button" id="c-tara">Imprimir taraturas</button>`:""}</div>`;
+    <button class="btn small${cf.mapa?" primary":""}" type="button" id="c-mapa">${cf.mapa?"Ver lista":"Ver mapa y ruta"}</button>${!cf.mapa?`<button class="btn small" type="button" id="c-pegar">Pegar notas</button><button class="btn small" type="button" id="c-tara">Imprimir taraturas</button>`:""}</div>`;
   if(cf.mapa&&Z) return tools+vMapa(cf.zona);
   if(!Z) return tools+`<div class="empty">No hay censo de esta zona.</div>`;
   const viv=u=>({...u,...(S.censoEd[u._id]||{})});
@@ -1333,7 +1369,7 @@ $("#frm").addEventListener("click",async ev=>{
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
   if(a==="cerrar") return $("#dlg").close();
   if(await accionFicha(a,b))return;
-  if(a==="pgRevisar"){const F=pgParse($("#pg-txt").value,cur.pg.U);if(!F.length){toast("Escribe o pega alguna línea");return}pgAnadir(F);$("#pg-txt").value="";return}
+  if(a==="pgRevisar"){pgRevisar();return}
   if(a==="vivVer"){const id=cur.censoId;$("#dlg").close();setTimeout(()=>abrirViv(id),100);return}
   if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>$("#viv-q")?.focus(),50);return}
   if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
@@ -1584,6 +1620,7 @@ document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf
   const cq=e.target.closest("[data-cq]");if(cq){S.cf.mapa=false;S.cf.q=cq.dataset.cq;render();window.scrollTo(0,0);return}
   const rp=e.target.closest("[data-resper]");if(rp){S.resPer=rp.dataset.resper;render();return}
   const pm=e.target.closest("[data-portalmapa]");if(pm){abrirPortal(pm.dataset.portalmapa);return}
+  if(e.target.id==="c-pegar"){abrirPegar(null);return}
   const pgb=e.target.closest("[data-pegar]");if(pgb){abrirPegar(S.cf.zona,+pgb.dataset.pegar);return}
   const tr=e.target.closest("[data-tara]");if(tr){const Z=S.censo&&S.censo[S.cf.zona],b=Z&&Z.edificios[+tr.dataset.tara];if(b)imprimirTaratura([{zona:S.cf.zona,b}]);return}
   if(e.target.id==="c-tara"){const L=S.cf.lista||[];if(!L.length){toast("No hay portales que imprimir");return}
