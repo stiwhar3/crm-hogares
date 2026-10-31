@@ -5,7 +5,7 @@ android {
     compileSdk 34
     defaultConfig {
         applicationId 'com.hogaresfuenlabrada.crm'
-        minSdk 21
+        minSdk 24
         targetSdk 34
         // Subir versionCode en cada APK nuevo para que se instale encima del anterior.
         versionCode 1
