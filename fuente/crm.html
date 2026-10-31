@@ -1,0 +1,1136 @@
+<title>CRM Hogares Fuenlabrada</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: barra de pestañas fija arriba, una columna de listas operativas; "Hoy" primero porque el CRM existe para que nada se quede sin próximo paso. */
+:root{
+  --bg:#f5f7f6; --surface:#ffffff; --fg:#17211f; --muted:#5d6b68; --line:#dfe5e3;
+  --accent:#0d6b62; --accent-soft:#e1f0ed; --on-accent:#ffffff;
+  --ok:#2f7d3a; --ok-soft:#e5f3e6; --warn:#a86200; --warn-soft:#fbefd9; --bad:#b3261e; --bad-soft:#fbe4e2;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101615; --surface:#18201f; --fg:#e4ecea; --muted:#9aaba7; --line:#2a3533;
+  --accent:#4fc2b4; --accent-soft:#173532; --on-accent:#08201d;
+  --ok:#7fcf88; --ok-soft:#1c3320; --warn:#f0b65a; --warn-soft:#3a2c12; --bad:#ff8a80; --bad-soft:#3d1c1a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101615; --surface:#18201f; --fg:#e4ecea; --muted:#9aaba7; --line:#2a3533;
+  --accent:#4fc2b4; --accent-soft:#173532; --on-accent:#08201d;
+  --ok:#7fcf88; --ok-soft:#1c3320; --warn:#f0b65a; --warn-soft:#3a2c12; --bad:#ff8a80; --bad-soft:#3d1c1a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px 4px;flex-wrap:wrap}
+h1{font-family:var(--display);font-size:20px;margin:0;letter-spacing:-.01em}
+h1 small{font-family:var(--body);font-weight:500;color:var(--muted);font-size:13px;margin-left:6px}
+nav{display:flex;gap:4px;overflow-x:auto;padding-block:6px 8px}
+nav button{border:0;background:none;color:var(--muted);font:600 14px var(--body);padding:8px 12px;border-radius:8px;cursor:pointer;white-space:nowrap}
+nav button[aria-current="true"]{background:var(--accent-soft);color:var(--accent)}
+nav .count{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:18px;text-align:center}
+main{padding-block:20px 60px;display:grid;gap:24px}
+h2{font-family:var(--display);font-size:17px;margin:0 0 10px;text-wrap:balance}
+h2 .n{color:var(--muted);font-family:var(--body);font-weight:500;font-size:14px}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 14px var(--body);padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.small{padding:4px 10px;font-size:13px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpi .l{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.kpi .v{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .s{font-size:13px;color:var(--muted)}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:11px 14px;border-top:1px solid var(--line);cursor:pointer;text-align:left;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;color:inherit;font:inherit}
+.row:first-child{border-top:0}
+.row:hover{background:var(--accent-soft)}
+.row .t{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.row .m{grid-column:1/-1;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.row .r{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.empty{padding:18px 14px;color:var(--muted);font-size:14px}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:10px;background:var(--line);color:var(--fg);white-space:nowrap}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+.zone{display:inline-flex;align-items:center;gap:5px}
+.zone::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--z,#999);border:1px solid rgba(0,0,0,.15)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.tools input,.tools select{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);min-width:0}
+.tools input[type=search]{flex:1 1 200px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px}
+#view section{min-width:0;max-width:100%}
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:9px 12px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-top:0}
+th:first-child,td:first-child{text-align:left}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:12px 14px;font-size:14px}
+.modal{position:fixed;inset:0;z-index:30;background:rgba(10,20,18,.45);display:flex;align-items:center;justify-content:center;padding:calc(12px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.modal[hidden]{display:none!important}
+.modal form{display:flex;flex-direction:column;width:min(640px,100%);max-height:100%;background:var(--surface);color:var(--fg);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.dh{padding:16px 18px 8px;font-family:var(--display);font-size:18px;font-weight:700}
+.db{padding:8px 18px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.db label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted);min-width:0}
+.db label.full{grid-column:1/-1}
+.db label.check{flex-direction:row;align-items:center;gap:8px;color:var(--fg)}
+.db input,.db select,.db textarea{font:inherit;font-size:15px;font-weight:400;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+.db textarea{min-height:90px;resize:vertical}
+.db label.check input{width:auto}
+.df{display:flex;justify-content:space-between;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.df .right{display:flex;gap:8px;margin-left:auto}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 13px var(--body);padding:6px 12px;border-radius:16px;cursor:pointer}
+.chip span{color:var(--muted);font-weight:500;margin-left:2px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip[aria-pressed="true"] span{color:var(--on-accent)}
+details.desp>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;list-style:none}
+details.desp>summary::-webkit-details-marker{display:none}
+details.desp>summary h2{margin:0}
+details.desp>summary .flecha{color:var(--muted);font-size:18px;transition:transform .15s}
+details.desp[open]>summary .flecha{transform:rotate(180deg)}
+details.desp[open]>summary{margin-bottom:8px}
+table.pg td{vertical-align:top}table.pg input:not([type=checkbox]),table.pg select{width:100%;min-width:90px;font:inherit;padding:5px 6px;border:1px solid var(--line);border-radius:6px}
+tr.pg-ko td{background:#fbeaea}tr.pg-igual{opacity:.55}.pg-m{font-size:12px;color:var(--muted);margin-top:2px}
+details.bld{border-top:1px solid var(--line)} details.bld:first-child{border-top:0}
+details.bld summary{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;padding:11px 14px;cursor:pointer;list-style:none}
+details.bld summary::-webkit-details-marker{display:none}
+details.bld summary .t{font-weight:600} details.bld summary .m{font-size:13px;color:var(--muted)}
+details.bld[open] summary{background:var(--accent-soft)}
+details.bld .nb{border:0;border-top:1px solid var(--line);border-radius:0}
+details.bld .tbl-wrap{border:0;border-radius:0;border-top:1px solid var(--line)}
+.pager{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}.pager label{display:flex;gap:6px;align-items:center}.pager select{width:auto;padding:4px 8px}
+.vivbox{border:1px solid var(--line);padding:10px 12px;display:grid;gap:6px;background:var(--card,transparent)}.vivbox .vb-h{font-weight:600;display:flex;gap:8px;align-items:center}.vivbox .vb-t{font-weight:600}.vivbox .vb-s{font-size:13px;color:var(--muted)}.vivbox .vb-c{font-size:13px;white-space:pre-wrap;max-height:90px;overflow:auto;color:var(--muted)}.vivbox .vb-b{display:flex;gap:8px;flex-wrap:wrap}.vb-res{display:grid;gap:4px;max-height:240px;overflow:auto}.vb-o{all:unset;cursor:pointer;padding:7px 9px;border:1px solid var(--line);font-size:14px}.vb-o:hover,.vb-o:focus{border-color:var(--accent)}.vb-o span{color:var(--muted);font-size:12px}
+.portal{display:grid;gap:6px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px}.portal .pi{display:flex;flex-wrap:wrap;gap:4px}.portal .po{color:var(--muted)}.portal .btn{justify-self:start}
+.pbar{display:flex;height:6px;background:var(--line);overflow:hidden;max-width:320px}.pbar i{display:block;height:100%}
+.kos{display:grid;gap:8px;padding:10px 14px}
+.ko{font-size:14px} .ko .s{font-size:13px;color:var(--muted);margin-top:2px}
+tr.viv{cursor:pointer} tr.viv:hover td{background:var(--accent-soft)} tr.viv.ed td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.hist{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
+.hist .hl{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.he{font-size:14px;line-height:1.4;border-left:2px solid var(--line);padding-left:10px}
+.he .hf{display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.he .hn{white-space:pre-wrap} .he .hc{font-size:13px;color:var(--muted)} .he s{opacity:.75}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;font-weight:600;z-index:20}
+@media (prefers-reduced-motion:no-preference){.row{transition:background .12s}}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>Hogares Fuenlabrada <small>CRM</small></h1>
+      <button class="btn primary small" id="btn-new" type="button">+ Nuevo</button>
+    </div>
+    <nav id="tabs" aria-label="Secciones">
+      <button data-v="hoy" type="button">Hoy</button>
+      <button data-v="resultados" type="button">Resultados</button>
+      <button data-v="contactos" type="button">Noticias</button>
+      <button data-v="captaciones" type="button">Captaciones</button>
+      <button data-v="encargos" type="button">Encargos</button>
+      <button data-v="operaciones" type="button">Operaciones</button>
+      <button data-v="censo" type="button">Censo</button>
+      <button data-v="localizar" type="button">Localizar</button>
+      <button data-v="equipo" type="button">Equipo</button>
+    </nav>
+  </div>
+</header>
+<main class="wrap" id="view"></main>
+<div id="dlg" class="modal" role="dialog" aria-modal="true" hidden><form id="frm" novalidate></form></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* Ventana propia en vez de <dialog>: en algunas vistas de la app showModal() no abre nada. */
+(function(){const d=document.getElementById("dlg");d.open=false;
+  d.showModal=function(){d.hidden=false;d.open=true;document.body.style.overflow="hidden";setTimeout(()=>{const f=d.querySelector("input,select,textarea");if(f&&window.innerWidth>700)f.focus()},30)};
+  d.close=function(){if(!d.open)return;d.hidden=true;d.open=false;document.body.style.overflow="";d.dispatchEvent(new Event("close"))};
+  d.addEventListener("click",e=>{if(e.target===d)d.close()});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&d.open)d.close()});})();
+const ZONAS = {VERDE:"#3a9a4a",AZUL:"#2f6fd0",AMARILLA:"#e3b300",ROJA:"#cf3b30",ROSA:"#e57ab0",NARANJA:"#ee8a2a",MORADA:"#7d4fc4",MARRON:"#8a5a35",BLANCA:"#f2f2f2"};
+const ETAPAS = ["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo","KO"];
+const ETAPA_ANTIGUA = {"Noticia":"Desarrollo","En seguimiento":"Seguimiento"};
+const ORIGENES = ["Lead central (con contacto)","Consulta de valor (solo dirección)","Otra oficina Hogares","Puerta fría / buzoneo","Llamada a oficina","Particular que vende solo","Con otra agencia","Base de datos antigua","Recomendación","Otro"];
+const MOTIVOS = ["","Herencia","Divorcio","Extinción de condominio","Cambio de vivienda","Inversor","Vacío","Alquilado","Otro"];
+const EST_ENC = ["Activo","Reservado","Vendido","Retirado","Devuelto"];
+const EST_OP = ["Reserva","Aceptada","Arras","Escriturada","Caída"];
+const DEF_AJUSTES = {asesores:[{nombre:"Carlos",zona:"ROSA"},{nombre:"Iván",zona:"AZUL"},{nombre:"Sergio",zona:"AMARILLA"},{nombre:"Mery",zona:"VERDE"},{nombre:"Mario",zona:""}],
+  objetivoMes:40000,objetivoPeriodo:200000,periodoInicio:"2026-10-01",periodoFin:"2026-12-31",gastosMes:24000,diasRevisionPrecio:30};
+
+const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},portales:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},pag:{},hoyMas:{},lf:{zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
+const $ = s=>document.querySelector(s);
+const esc = v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur = n=>(Number(n)||0).toLocaleString("es-ES",{maximumFractionDigits:0})+" €";
+const hoyISO = ()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const dias = (a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+const fmtF = s=>s?new Date(s+"T12:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"";
+const zona = z=>z?`<span class="zone" style="--z:${ZONAS[z]||"#999"}">${esc(z.charAt(0)+z.slice(1).toLowerCase())}</span>`:"";
+const personas = ()=>[...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","OFICINA"];
+/* ---------- Mapa del censo y ruta de puerta fría ---------- */
+function cargarLeaflet(){return cargarLeaflet.p||(cargarLeaflet.p=new Promise((ok,ko)=>{const l=document.createElement("link");l.rel="stylesheet";l.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";document.head.appendChild(l);
+  const sc=document.createElement("script");sc.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";sc.onload=ok;sc.onerror=ko;document.head.appendChild(sc)}))}
+function portalesMapa(zona){const Z=(S.censo||{})[zona],G=S.geo||{},hoy=Date.now(),out=[];if(!Z)return out;
+  for(const b of Z.edificios){const pc=(b.u.find(u=>u.rc&&u.rc.length>=14)||{}).rc;const g=pc&&G[pc.slice(0,14)];if(!g)continue;
+    const U=b.u.map(u=>({...u,...(S.censoEd[u._id]||{})}));let ult=null;
+    for(const u of U){const f=fechaTxt(u.ult);if(f&&(!ult||f>ult))ult=f;const e=S.censoEd[u._id];if(e&&e.actualizado){const d=new Date(e.actualizado);if(!ult||d>ult)ult=d}}
+    const not=b.u.some(u=>notiDe(u._id)),ko=b.ko&&b.ko.length,dd=ult?Math.round((hoy-ult)/864e5):null,tel=U.filter(u=>/\d{9}/.test(String(u.tel||"").replace(/\s/g,""))).length;
+    const est=not?"noticia":ko?"ko":dd!=null&&dd<=90?"tocado":"sin";
+    out.push({pid:portalId(b),b,lat:g[0],lon:g[1],est,dd,tel,n:b.u.length})}
+  return out}
+const COL_MAPA={noticia:"#ac9465",ko:"#b3261e",tocado:"#2f7d3a",sin:"#8a8784"};
+function rutaHoy(P,n){const L=P.filter(p=>p.est==="sin").sort((a,b)=>b.n-a.n);if(!L.length)return [];const r=[L.shift()];
+  while(r.length<n&&L.length){const c=r[r.length-1];let bi=0,bd=1e9;L.forEach((p,i)=>{const d=(p.lat-c.lat)**2+((p.lon-c.lon)*0.76)**2;if(d<bd){bd=d;bi=i}});r.push(L.splice(bi,1)[0])}return r}
+const ll=p=>p.lat.toFixed(6)+","+p.lon.toFixed(6);
+function vMapa(zona){const P=portalesMapa(zona),cnt=k=>P.filter(p=>p.est===k).length,R=rutaHoy(P,10);S.ruta=R;
+  if(!S.geo)return `<div class="empty">Cargando las coordenadas de los portales…</div>`;
+  const url=R.length>1?"https://www.google.com/maps/dir/?api=1&travelmode=walking&origin="+ll(R[0])+"&destination="+ll(R[R.length-1])+(R.length>2?"&waypoints="+R.slice(1,-1).map(ll).join("|"):""):"";
+  return `<section><div class="tools" style="font-size:13px;gap:14px">${[["sin","Sin tocar en 90 días"],["tocado","Contactado en 90 días"],["noticia","Con noticia"],["ko","Con KO"]].map(([k,t])=>`<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${COL_MAPA[k]}"></span> ${t} (${cnt(k)})</span>`).join("")}</div>
+  <div id="mapa" style="height:480px;border:1px solid var(--line);margin-top:8px"></div>
+  <p style="margin:6px 0 0;color:var(--muted);font-size:12px">${P.length} portales con coordenadas del catastro. Toca un portal para ver sus datos.</p></section>
+  <section><h2>Ruta de puerta fría de hoy <span class="n">${R.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Portales sin tocar en 90 días, empezando por el más grande y siguiendo por el más cercano.</p>
+  ${R.length?`<div class="list">${R.map((p,i)=>`<button class="row" type="button" data-cq="${esc(p.b.via+" "+p.b.num)}"><span class="t">${i+1}. ${esc(titulo(viaLarga(p.b.via)))} ${esc(p.b.num)}</span><span class="r">${p.n} viv.</span><span class="m"><span>${p.tel} con teléfono</span><span>${p.dd==null?"Nunca contactado":"Último contacto hace "+p.dd+" días"}</span></span></button>`).join("")}</div>
+  ${url?`<div class="tools" style="margin-top:8px"><a class="btn primary small" href="${url}" target="_blank" rel="noopener">Abrir la ruta en Google Maps (a pie)</a></div>`:""}`:`<div class="empty">Todos los portales con coordenadas se han tocado en los últimos 90 días.</div>`}</section>`}
+async function pintarMapa(zona){try{await cargarLeaflet()}catch(e){$("#mapa").innerHTML=`<div class="empty">No se ha podido cargar el mapa.</div>`;return}
+  const el=$("#mapa");if(!el||el._hecho)return;el._hecho=1;const P=portalesMapa(zona);if(!P.length)return;
+  const m=L.map(el);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(m);
+  const v=S.mapaVista&&S.mapaVista.zona===zona?S.mapaVista:null;
+  if(v)m.setView(v.c,v.z);else m.fitBounds(L.latLngBounds(P.map(p=>[p.lat,p.lon])),{padding:[20,20]});
+  m.on("moveend",()=>{S.mapaVista={zona,c:m.getCenter(),z:m.getZoom()}});
+  const enRuta=new Set((S.ruta||[]).map(p=>p.pid));
+  for(const p of P)L.circleMarker([p.lat,p.lon],{radius:enRuta.has(p.pid)?9:6,color:enRuta.has(p.pid)?"#333130":COL_MAPA[p.est],weight:enRuta.has(p.pid)?3:1,fillColor:COL_MAPA[p.est],fillOpacity:.85}).addTo(m)
+    .bindPopup(`<b>${esc(titulo(viaLarga(p.b.via)))} ${esc(p.b.num)}</b><br>${p.n} viviendas · ${p.tel} con teléfono<br>${p.dd==null?"Nunca contactado":"Último contacto hace "+p.dd+" días"}<br><button class="btn small" type="button" data-cq="${esc(p.b.via+" "+p.b.num)}" style="margin-top:6px">Ver viviendas</button> <button class="btn small" type="button" data-portalmapa="${esc(p.pid)}" style="margin-top:6px">Datos del portal</button>`)}
+
+/* ---------- Informe de mercado de la calle ---------- */
+async function cargarMercado(){if(S.mercado&&Date.now()-S.mercado.t<10*6e4)return S.mercado.L;let L=[];
+  try{if(S.db){const sn=await S.db.collection("mercado").get();L=sn.docs.map(x=>({id:x.id,...x.data()}))}}catch(e){}
+  S.mercado={t:Date.now(),L};return L}
+const mediana=a=>{const b=a.filter(x=>x>0).sort((x,y)=>x-y);if(!b.length)return null;const m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2};
+const eur0=n=>n==null?"—":String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,".")+" €";
+const titulo=t=>String(t||"").toLowerCase().replace(/(^|[\s\/(-])([a-záéíóúñü])/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (De|Del|La|Las|Los|El|Y)(?= )/g,m=>m.toLowerCase());
+async function informeMercado(dir,censoId,zonaFicha){
+  const r=censoId&&buscarViv(censoId),u=r?{...r.u,...(S.censoEd[censoId]||{})}:{},via=r?r.b.via:"",num=r?r.b.num:"";
+  const zona=(r&&r.zona)||zonaFicha||zonaDe(dir)||"",P=partesDir(dir||""),calleK=via?zCalle(via):P.c;
+  const M=(await cargarMercado()).filter(m=>+m.precio>0);
+  const mismaCalle=m=>calleK&&m.calle&&zCalle(m.calle)===calleK;
+  let Z=M.filter(m=>(zona&&m.zona===zona)||mismaCalle(m));
+  if(Z.length<5){const barrios=new Set(Z.map(m=>m.barrio).filter(Boolean));Z=M.filter(m=>(zona&&m.zona===zona)||mismaCalle(m)||barrios.has(m.barrio))}
+  const hoy=hoyISO(),d90=dias2(hoy,-90);
+  const act=Z.filter(m=>!m.fechaBaja),baj=Z.filter(m=>m.fechaBaja&&m.fechaBaja>=d90);
+  const em=m=>+m.m2>0?m.precio/m.m2:null;
+  const st=L=>({n:L.length,precio:mediana(L.map(m=>+m.precio)),eurm2:mediana(L.map(em)),dias:mediana(L.filter(m=>m.fechaAlta&&m.fechaBaja).map(m=>dias(m.fechaAlta,m.fechaBaja)))});
+  const SA=st(act),SB=st(baj),calle=act.filter(mismaCalle);
+  const enc=S.encargos.filter(e=>(e.zona||zonaDe(e.direccion))===zona&&zona);
+  const ops=S.operaciones.filter(o=>zona&&zonaDe(o.inmueble)===zona&&o.fechaAceptacion&&o.fechaAceptacion>=dias2(hoy,-365)&&o.estado!=="Caída");
+  const comp=[...act,...baj].map(em).filter(Boolean),m2=+u.m2||0,emed=mediana(comp);
+  const est=m2&&comp.length>=5?[Math.round(emed*m2*0.93/1000)*1000,Math.round(emed*m2*1.07/1000)*1000]:null;
+  const dirTxt=r?`${titulo(viaLarga(via))} ${num} ${[u.esc&&!/^T$/.test(u.esc)?"Esc "+u.esc:"",u.planta&&!/^OD$/.test(u.planta)?u.planta+"º":"",u.puerta&&!/^OS$/.test(u.puerta)?u.puerta:""].filter(Boolean).join(" ")}`:(dir||"");
+  const zonaTxt=zona?"zona "+zona.toLowerCase():"su zona",tel=S.ajustes.telefonoOficina;
+  const fila=m=>`<tr><td>${esc(m.calle?titulo(viaLarga(m.calle))+(m.numero?" "+m.numero:""):m.barrio||"")}</td><td>${esc(m.planta||"")}</td><td>${m.m2?esc(m.m2)+" m²":""}</td><td>${eur0(+m.precio)}</td><td>${em(m)?eur0(em(m))+"/m²":""}</td></tr>`;
+  const logo=new URL("logo-casa.png",location.href).href,f=new Date().toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"});
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Informe de mercado · ${esc(dirTxt)}</title><${"style"}>
+    @page{size:A4;margin:18mm}body{font:11pt/1.5 Arial,sans-serif;color:#333130;max-width:180mm;margin:0 auto}
+    .cab{display:flex;gap:12px;align-items:center;border-bottom:2px solid #ac9465;padding-bottom:10px;margin-bottom:18px}.cab img{height:34px}
+    h1{font:600 20pt Georgia,serif;margin:0 0 4px}h2{font:600 13pt Georgia,serif;color:#8a7346;margin:20px 0 8px}.s{color:#706e6a}
+    .k{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.k div{border:1px solid #e4e1dd;padding:10px}.k b{display:block;font-size:16pt}
+    table{width:100%;border-collapse:collapse;font-size:10pt}td,th{border-bottom:1px solid #e4e1dd;padding:5px;text-align:left}
+    .est{background:#f3eee4;padding:12px 14px;border-left:3px solid #ac9465}.pie{margin-top:24px;font-size:9pt;color:#706e6a}
+    @media screen{body{padding:16px}}<\/style><\/head><body>
+    <div class="cab"><img src="${logo}" alt=""><div><b>HOGARES GROUP</b> · Fuenlabrada</div></div>
+    <h1>Informe de mercado</h1><div class="s">${esc(dirTxt)} · ${esc(zonaTxt)} · ${f}</div>
+    ${m2?`<p>Su vivienda: <b>${m2} m²</b>${u.anio?` · edificio de ${esc(u.anio)}`:""} (datos del catastro).</p>`:""}
+    <h2>A la venta ahora en ${esc(zonaTxt)}</h2>
+    ${SA.n?`<div class="k"><div>Viviendas en venta<b>${SA.n}</b></div><div>Precio mediano<b>${eur0(SA.precio)}</b></div><div>Precio mediano por m²<b>${eur0(SA.eurm2)}</b></div></div>`:`<p class="s">Todavía no tenemos anuncios registrados en esta zona.</p>`}
+    ${baj.length?`<h2>Retiradas o vendidas en los últimos 90 días</h2><div class="k"><div>Viviendas<b>${SB.n}</b></div><div>Precio mediano por m²<b>${eur0(SB.eurm2)}</b></div><div>Tiempo mediano publicadas<b>${SB.dias!=null?Math.round(SB.dias)+" días":"—"}</b></div></div>`:""}
+    ${calle.length?`<h2>En su calle</h2><table><tr><th>Dirección</th><th>Planta</th><th>Superficie</th><th>Precio</th><th>€/m²</th></tr>${calle.slice(0,12).map(fila).join("")}</table>`:""}
+    ${(n=>n||ops.length?`<h2>Hogares en ${esc(zonaTxt)}</h2><p>${n} viviendas a la venta con nosotros ahora y ${ops.length} vendidas en el último año.</p>`:"")(enc.filter(e=>e.estado==="Activo"||e.estado==="Reservado").length)}
+    ${est?`<h2>Valor orientativo</h2><div class="est">Con ${comp.length} viviendas comparables de su zona, una vivienda de ${m2} m² estaría entre <b>${eur0(est[0])}</b> y <b>${eur0(est[1])}</b>. Es una referencia: el precio real depende del estado, la planta, la orientación y las reformas. Le hacemos una valoración detallada gratis y sin compromiso.</div>`:""}
+    <p class="pie">Fuentes: anuncios de idealista registrados por Hogares Group Fuenlabrada y operaciones propias. ${esc(S.yo&&S.yo.nombre||"")}${tel?" · Tel. "+esc(tel):""}</p>
+    <script>window.onload=()=>setTimeout(()=>print(),400)<\/script></body></html>`;
+  const w=window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})),"_blank");if(!w)toast("Permite las ventanas emergentes para ver el informe")}
+
+/* ---------- Clientes antiguos: reseñas, aniversarios y referidos ---------- */
+function clientesAntiguos(){const hoy=hoyISO(),out=[];
+  for(const o of S.operaciones){if(o.estado==="Caída")continue;const base=o.fechaEscritura||o.fechaCobro||(o.estado==="Escriturada"?o.fechaAceptacion:"");if(!base)continue;
+    const dd=dias(base,hoy);
+    if(dd>=15&&!o.resenaPedida)out.push({o,orden:0,txt:"Pedir reseña de Google",cls:"warn",det:`Vendida hace ${dd} días`});
+    const y=+base.slice(0,4),ny=+hoy.slice(0,4);for(const yy of [ny,ny+1]){const an=yy+base.slice(4),n=yy-y,falta=dias(hoy,an);
+      if(n>=1&&falta>=0&&falta<=14&&!(o.ultimaFelicitacion&&o.ultimaFelicitacion>=dias2(an,-30))){out.push({o,orden:1,txt:`Aniversario: ${n} año${n>1?"s":""}`,cls:"acc",det:falta?`el ${fmtF(an)} (en ${falta} días)`:"hoy"});break}}}
+  return out.sort((a,b)=>a.orden-b.orden)}
+const dias2=(f,n)=>{const d=new Date(f+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+function rowCliente(x){const o=x.o,c=[o.vendedor&&("Vendedor: "+o.vendedor+(o.telVendedor?" "+o.telVendedor:"")),o.comprador&&("Comprador: "+o.comprador+(o.telComprador?" "+o.telComprador:""))].filter(Boolean);
+  return `<button class="row" type="button" data-open="operaciones" data-id="${esc(o.id)}"><span class="t">${esc(o.inmueble||"")}</span><span class="r"><span class="pill ${x.cls}">${esc(x.txt)}</span></span><span class="m"><span>${esc(o.asesor||"")}</span><span>${esc(x.det)}</span>${c.length?c.map(t=>`<span>${esc(t)}</span>`).join(""):"<span>Falta el teléfono del cliente</span>"}</span></button>`}
+function vClientesAntiguos(){const L=clientesAntiguos();if(!L.length)return "";const ref=S.contactos.filter(c=>c.origen==="Recomendación"&&(c.creado||"").slice(0,4)===hoyISO().slice(0,4)).length;
+  return `<section><h2>Clientes antiguos <span class="n">${L.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Pide la reseña a los 15 días de la venta y felicita cada aniversario de la compra preguntando si conocen a alguien que venda. Noticias por recomendación este año: ${ref}.</p>${hoyLista("clientes",L,rowCliente,"")}</section>`}
+
+/* ---------- Ranking semanal y metas ---------- */
+const DEF_METAS={noticias:5,gestiones:40,censo:30,valoraciones:2,captaciones:1};
+const METAS_ET=[["noticias","Noticias nuevas"],["gestiones","Gestiones en noticias"],["censo","Contactos en el censo"],["valoraciones","Valoraciones"],["captaciones","Encargos"]];
+const PER_ET={semana:["de la semana","Desde el lunes"],mes:["del mes","Desde el día 1"],trimestre:["del trimestre","Desde el inicio del trimestre"]};
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function rangoPer(per){const h=new Date();h.setHours(0,0,0,0);let a,b;
+  if(per==="semana"){a=new Date(h);a.setDate(h.getDate()-((h.getDay()+6)%7));b=new Date(a);b.setDate(a.getDate()+6)}
+  else if(per==="trimestre"){const q=Math.floor(h.getMonth()/3)*3;a=new Date(h.getFullYear(),q,1);b=new Date(h.getFullYear(),q+3,0)}
+  else{a=new Date(h.getFullYear(),h.getMonth(),1);b=new Date(h.getFullYear(),h.getMonth()+1,0)}
+  return [iso(a),iso(b),Math.round((b-a)/864e5)+1]}
+function metasPer(per){const M={...DEF_METAS,...(S.ajustes.metas||{})},f=rangoPer(per)[2]/7,o={};for(const k in M)o[k]=M[k]?Math.max(1,Math.round(M[k]*f)):0;return o}
+function pedirRanking(per){per=per||"semana";S.rankings=S.rankings||{};const T=pedirRanking.t=pedirRanking.t||{};
+  if(typeof window.rankingPeriodo!=="function"||T[per]&&Date.now()-T[per]<5*6e4)return;T[per]=Date.now();
+  Promise.resolve().then(()=>window.rankingPeriodo(per)).then(({data,error})=>{if(error||!data)return;S.rankings[per]=data||[];if((S.view==="hoy"||S.view==="resultados")&&!$("#dlg").open)render()}).catch(()=>{})}
+function vRanking(per){per=per||"semana";pedirRanking(per);const R=(S.rankings||{})[per];if(!R||!R.length)return "";const M=metasPer(per),[et,desde]=PER_ET[per];
+  const yo=R.find(r=>r.es_yo),resp=!S.yo||S.yo.rol==="responsable";
+  if(yo&&!resp){const ok=METAS_ET.filter(([k])=>yo[k]>=M[k]).length;
+    return `<section><h2>Tus objetivos ${et} <span class="n">${ok} de ${METAS_ET.length} cumplidos</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">${desde}. Tu actividad frente a tus metas.</p>
+    <div class="kpis">${METAS_ET.map(([k,t])=>kpi(t,yo[k],yo[k]>=M[k]?`Cumplido (meta ${M[k]})`:`Te falta${M[k]-yo[k]>1?"n":""} ${M[k]-yo[k]} para la meta de ${M[k]}`,M[k]?yo[k]/M[k]*100:0)).join("")}</div></section>`}
+  if(!resp)return "";
+  return `<section><h2>Ranking ${et}</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">${desde}, sacado del registro de cambios. Los asesores no ven el ranking: solo si cumplen sus metas. Metas ${et} por asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}.</p>
+   <div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Asesor</th><th>Puesto</th><th>Puntos</th>${METAS_ET.map(([k,t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>
+   ${R.map(r=>`<tr><td style="text-align:left">${esc(r.nombre)} <span style="color:var(--muted)">${esc((r.zona||"").toLowerCase())}</span></td><td>${r.posicion}º</td><td><b>${r.puntos}</b></td>${METAS_ET.map(([k])=>`<td style="${r[k]>=M[k]?"color:var(--ok);font-weight:700":r[k]===0?"color:var(--bad)":""}">${r[k]}/${M[k]}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>`}
+
+/* ---------- «A quién llamar hoy»: probabilidad de vender ---------- */
+function fechaTxt(t){let best=null;for(const m of String(t||"").matchAll(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/g)){let y=+m[3];if(y<100)y+=2000;const d=new Date(y,+m[2]-1,+m[1]);if(!isNaN(d)&&d<=new Date()&&(!best||d>best))best=d}return best}
+function puntuarViv(u){let p=0;const M=[],ocu=String(u.ocu||"").toUpperCase(),com=String(u.com||"");
+  if(/VAC/.test(ocu)){p+=30;M.push("Vacía")}else if(/INQUIL|ALQ/.test(ocu)){p+=25;M.push("Alquilada (inversor)")}else if(/FAMILIAR/.test(ocu)){p+=10;M.push("Vive un familiar")}
+  if(u.val){p+=25;M.push("Ya se valoró")}
+  const em=[...com.matchAll(/\((19\d{2})\)/g)].map(m=>+m[1]);
+  if(em.length){const y=Math.min(...em);if(y<=1950){p+=20;M.push("Mayores de 75")}else if(y<=1958){p+=10;M.push("Mayores de 67")}}
+  const f=fechaTxt(u.ult)||fechaTxt(com),dd=f?Math.round((Date.now()-f)/864e5):null;
+  if(dd==null){p+=15;M.push("Nunca contactada")}else if(dd>180){p+=10;M.push("Sin contacto hace "+Math.round(dd/30)+" meses")}else if(dd<30){p-=40;M.push("Contactada hace "+dd+" días")}
+  if(+u.anio&&+u.anio<1975){p+=5}
+  if(/no (quiere|vende|va a vender)|no le (vuelva|llame)|\bko\b|borr(e|ar) su/i.test(com)){p-=50;M.push("Dijo que no")}
+  return {p,M}}
+function aQuienLlamar(zona){const Z=(S.censo||{})[zona];if(!Z)return [];const out=[];
+  for(const b of Z.edificios)for(const u0 of b.u){if(notiDe(u0._id))continue;const u={...u0,...(S.censoEd[u0._id]||{})};
+    if(!/\d{9}/.test(String(u.tel||"").replace(/\s/g,"")))continue;const r=puntuarViv(u);if(r.p>=20)out.push({id:u0._id,b,u,...r})}
+  return out.sort((a,b)=>b.p-a.p)}
+function rowLlamar(x){return `<button class="row" type="button" data-viv="${esc(x.id)}"><span class="t">${esc(viaLarga(x.b.via))} ${esc(x.b.num)} ${esc([x.u.esc&&!/^T$/.test(x.u.esc)?"Esc "+x.u.esc:"",x.u.planta,x.u.puerta].filter(Boolean).join(" "))}</span><span class="r"><span class="pill acc">${x.p} pts</span></span><span class="m"><span>${esc(x.u.prop||x.u.abre||"Sin nombre")}</span><span>${esc(x.u.tel||"")}</span>${x.M.map(t=>`<span class="pill">${esc(t)}</span>`).join("")}</span></button>`}
+function miZonaLlamar(){const yo=S.yo;if(!yo||yo.rol==="responsable")return "";const z=yo.zona||(S.ajustes.asesores.find(a=>a.nombre===yo.nombre)||{}).zona;return z||""}
+function vLlamarHoy(){const z=miZonaLlamar();if(!z||!S.censo)return "";const L=aQuienLlamar(z);
+  return `<section><h2>A quién llamar hoy <span class="n">${L.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Viviendas de tu zona con teléfono y más probabilidad de vender (vacías, alquiladas, ya valoradas, mayores, sin contacto reciente). Al llamar, apunta el contacto en la vivienda y baja de la lista.</p>${hoyLista("llamar",L,rowLlamar,"No hay viviendas con teléfono pendientes de llamar.")}</section>`}
+
+document.addEventListener("toggle",e=>{if(e.target&&e.target.id==="d-llamar")S.llamarAbierto=e.target.open},true);
+
+/* ---------- Noticias por portal y taratura ---------- */
+const notiActiva=c=>c&&c.etapa!=="KO"&&!c.vendida;
+function notiPorPortal(){
+  const k=notiPorPortal;if(k.c===S.contactos&&k.z===S.censo&&k.m)return k.m;
+  const idx=new Map(),porDir=new Map(),m=new Map();
+  for(const Z of Object.values(S.censo||{}))for(const b of Z.edificios){for(const u of b.u)idx.set(u._id,b);const kd=zCalle(b.via)+"|"+parseInt(b.num);if(!porDir.has(kd))porDir.set(kd,b)}
+  for(const c of S.contactos){if(!notiActiva(c))continue;let b=c.censoId&&idx.get(c.censoId);
+    if(!b){const P=partesDir(c.direccion||"");if(P.c&&P.n!=null)b=porDir.get(P.c+"|"+P.n)}
+    if(b){if(!m.has(b))m.set(b,[]);m.get(b).push(c)}}
+  k.c=S.contactos;k.z=S.censo;k.m=m;return m}
+const notiDePortal=b=>notiPorPortal().get(b)||[];
+const plOrden=t=>{const p=zPl(t);if(p==="AT")return 99;if(p==="OD"||p==="")return -2;const n=parseInt(p);return isNaN(n)?-1:n};
+const natCmp=(a,b)=>String(a||"").localeCompare(String(b||""),"es",{numeric:true});
+function ordenTaratura(U){return [...U].sort((x,y)=>natCmp(zPP(x.esc),zPP(y.esc))||plOrden(y.planta)-plOrden(x.planta)||natCmp(zPP(x.puerta),zPP(y.puerta)))}
+function ultimoComentario(u){const H=(u.historial||[]).filter(h=>h.n);const n=H.length?H[H.length-1].n:(u.com||"");return String(n).replace(/\s+/g," ").trim()}
+function pisoTxt(u,conEsc){const pl=zPl(u.planta);const p=/^OD$/.test(u.planta||"")?"Local / otros":pl==="0"?"Bajo":pl==="AT"?"Ático":pl?pl+"º":"";
+  return [conEsc&&u.esc&&!/^T$/.test(u.esc)?"Esc "+u.esc:"",p,u.puerta&&!/^OS$/.test(u.puerta)?zPP(u.puerta):""].filter(Boolean).join(" ")}
+function imprimirTaratura(L){if(!L||!L.length)return;
+  const hoy=new Date().toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}),logo=new URL("logo-casa.png",location.href).href;
+  const hoja=({zona,b})=>{const U=ordenTaratura(b.u.map(u=>({...u,...(S.censoEd[u._id]||{}),_id:u._id})));const escs=new Set(U.map(u=>u.esc||""));const N=notiDePortal(b);
+    const as=(S.ajustes.asesores||[]).find(a=>a.zona===zona);
+    return `<section class="h"><div class="cab"><img src="${logo}" alt=""><div class="tt"><b>${esc(viaLarga(b.via))} ${esc(b.num)}</b><span>Zona ${esc(zona.charAt(0)+zona.slice(1).toLowerCase())}${as&&as.nombre?" · "+esc(as.nombre):""} · ${b.u.length} viviendas · ${hoy}</span></div></div>
+    ${N.length?`<p class="nt">Noticias activas: ${N.map(c=>esc((c.direccion||"").replace(/^.*?\d+\s*,?\s*/,"")||c.direccion)+" ("+esc(c.etapa||"")+(c.asesor?", "+esc(c.asesor):"")+")").join(" · ")}</p>`:""}
+    <table><thead><tr><th class="p">Piso</th><th class="n">Nombre</th><th class="t">Teléfono</th><th class="c">Último comentario</th><th class="a">Notas</th></tr></thead><tbody>
+    ${U.map(u=>{const c=ultimoComentario(u),f=u.ult||"";return `<tr><td class="p">${esc(pisoTxt(u,escs.size>1))}</td><td class="n">${esc(u.prop||u.abre||"")}${notiDe(u._id)&&notiActiva(notiDe(u._id))?' <i>noticia</i>':""}</td><td class="t">${esc(u.tel||"")}</td><td class="c">${f?`<b>${esc(f)}</b> `:""}${esc(c.length>140?c.slice(0,137)+"…":c)}</td><td class="a"></td></tr>`}).join("")}
+    </tbody></table></section>`};
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Taratura ${esc(L.length===1?L[0].b.via+" "+L[0].b.num:L.length+" portales")}</title><${"style"}>
+    @page{size:A4;margin:12mm 10mm}body{font:9.5pt/1.3 Arial,sans-serif;color:#333130;margin:0}
+    .h{page-break-after:always}.h:last-child{page-break-after:auto}
+    .cab{display:flex;gap:10px;align-items:center;border-bottom:2px solid #ac9465;padding-bottom:6px;margin-bottom:6px}.cab img{height:26px}
+    .tt b{font-size:13pt;display:block}.tt span{color:#6b6762;font-size:9pt}.nt{margin:4px 0 6px;font-size:9pt;color:#7a5b16}
+    table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #bdb6aa;padding:3px 5px;vertical-align:top;text-align:left;overflow-wrap:anywhere}
+    th{background:#f1ece2;font-size:8.5pt}tr{page-break-inside:avoid}td{height:11mm}
+    .p{width:13%;font-weight:bold}.n{width:20%}.t{width:13%;white-space:nowrap}.c{width:24%;font-size:8.5pt;color:#555}.a{width:30%}
+    td i{font-style:normal;font-size:7.5pt;background:#f1ece2;padding:0 3px;border-radius:3px}
+    @media screen{body{background:#eee}.h{background:#fff;padding:12mm;margin:10px auto;max-width:190mm;box-shadow:0 1px 4px #0002}}<\/style><\/head>
+    <body>${L.map(hoja).join("")}<script>window.onload=()=>setTimeout(()=>print(),400)<\/script></body></html>`;
+  const w=window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})),"_blank");if(!w)toast("Permite las ventanas emergentes para imprimir")}
+
+/* ---------- Notas rápidas del portal (texto pegado o foto del buzón) ---------- */
+const PG_PART=/^(de|del|la|las|los|y|e|da|di|van|von)$/i,PG_NONAME=/^(vac[ií][oa]s?|no|alquilad[oa]s?|inquilin[oa]s?|nadie|cerrad[oa]|okupad[oa]|local)$/i;
+function pgPuerta(t){t=String(t||"").toUpperCase().replace(/\.$/,"");if(/^IZ/.test(t))return "IZ";if(/^(DCH|DER|DR)/.test(t))return "DR";if(/^CENT/.test(t))return "CN";return zPP(t)}
+function pgUnidad(U,esc,pl,pu){let C=U.filter(u=>zPl(u.planta)===pl&&zPP(u.puerta)===pgPuerta(pu));if(esc){const f=C.filter(u=>zPP(u.esc)===zPP(esc));if(f.length)C=f}return C.length===1?C[0]._id:""}
+function pgParse(txt,U){const out=[];
+  for(const raw of String(txt||"").split(/\r?\n/)){const l=raw.replace(/^[\s•\-*·]+/,"").trim();if(!l)continue;
+    const m=l.match(/^(?:(?:esc(?:alera)?|portal)\.?\s*([0-9a-z]+)\s*[,.\-]?\s*)?(bajo|bj|[áa]tico|at|\d{1,2})\s*[ºª°]?\s*[-\/]?\s*(izq(?:da|uierda)?\.?|dcha\.?|dch\.?|derecha|centro|[a-h]|\d{1,2})(?![a-záéíóúñ0-9])[\s,.:;\-]*(.*)$/i);
+    if(!m){if(out.length)out[out.length-1].com=(out[out.length-1].com+" "+l).trim();else out.push({id:"",piso:l,nombre:"",tel:"",com:"",err:true});continue}
+    const pl=/^b/i.test(m[2])?"0":/^[áa]t/i.test(m[2])?"AT":String(+m[2]);let rest=m[4]||"",tel="",nombre="",com="";
+    const t=rest.match(/(?:\+?34[\s.]?)?([6789](?:[\s.]?\d){8})(?!\d)/);
+    let antes=rest,despues="";if(t){tel=t[1].replace(/\D/g,"");antes=rest.slice(0,t.index);despues=rest.slice(t.index+t[0].length)}
+    const tk=antes.trim().split(/\s+/).filter(Boolean),N=[];let i=0;
+    for(;i<tk.length;i++){const w=tk[i].replace(/[,:;.\-–]+$/,"");if(/^[A-ZÁÉÍÓÚÑÜ]/.test(w)&&!PG_NONAME.test(w))N.push(w);else if(N.length&&PG_PART.test(w)&&(j=>{while(tk[j]&&PG_PART.test(tk[j]))j++;return tk[j]&&/^[A-ZÁÉÍÓÚÑÜ]/.test(tk[j])})(i+1))N.push(w);else break;if(/[,:;\-–]$/.test(tk[i])){i++;break}}
+    nombre=N.join(" ");com=[tk.slice(i).join(" "),despues].join(" ").replace(/^[\s,.:;\-–]+/,"").replace(/\s+/g," ").trim();
+    out.push({id:pgUnidad(U,m[1],pl,m[3]),piso:[m[1]?"Esc "+m[1]:"",pl==="0"?"Bajo":pl==="AT"?"Ático":pl+"º",pgPuerta(m[3])].filter(Boolean).join(" "),nombre,tel,com})}
+  return out}
+const pgNorm=t=>zUp(t||"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
+function pgFila(x,i,U){const u=x.id?{...U.find(v=>v._id===x.id),...(S.censoEd[x.id]||{})}:null;
+  const igual=u&&!x.tel&&!x.com&&x.nombre&&[u.prop,u.abre].some(n=>pgNorm(n)===pgNorm(x.nombre));
+  return `<tr class="${x.id?"":"pg-ko"}${igual?" pg-igual":""}"><td><input type="checkbox" data-pg="ok" data-i="${i}"${(x.marcada!==undefined?x.marcada:x.id&&!igual)?" checked":""}></td>
+   <td><select data-pg="id" data-i="${i}"><option value="">— elige vivienda —</option>${U.map(v=>`<option value="${esc(v._id)}"${v._id===x.id?" selected":""}>${esc(pisoTxt(v,new Set(U.map(w=>w.esc||"")).size>1)||"?")}</option>`).join("")}</select>${!x.id?`<div class="pg-m">Escrito: ${esc(x.piso)}</div>`:""}</td>
+   <td><input data-pg="nombre" data-i="${i}" value="${esc(x.nombre)}">${u&&(u.prop||u.abre)?`<div class="pg-m">${igual?"Sin cambios":"Antes: "+esc(u.prop||u.abre)}</div>`:""}</td>
+   <td><input data-pg="tel" data-i="${i}" inputmode="tel" value="${esc(x.tel)}"></td><td><input data-pg="com" data-i="${i}" value="${esc(x.com)}"></td></tr>`}
+function pgPintar(){const P=cur.pg,U=P.U;const el=$("#pg-prev");if(!el)return;
+  el.innerHTML=P.F.length?`<div class="tbl-wrap"><table class="pg"><thead><tr><th></th><th style="text-align:left">Vivienda</th><th style="text-align:left">Nombre</th><th style="text-align:left">Teléfono</th><th style="text-align:left">Comentario</th></tr></thead><tbody>${P.F.map((x,i)=>pgFila(x,i,U)).join("")}</tbody></table></div>
+   <p class="pg-m">Se guardan solo las filas marcadas. ${P.F.filter(x=>!x.id).length?"Las filas en rojo no se han reconocido: elige la vivienda a mano o déjalas sin marcar.":""}</p>`:""}
+function abrirPegar(zona,idx){const b=S.censo[zona].edificios[idx];if(!b)return;const U=ordenTaratura(b.u);cur={col:"pegar",pg:{zona,b,U,F:[]}};
+  $("#frm").innerHTML=`<div class="dh">Notas rápidas · ${esc(b.via)} ${esc(b.num)}<div style="font:500 13px var(--body);color:var(--muted)">Pega lo que tengas en las notas del móvil, una línea por vivienda empezando por el piso. O haz una foto a los buzones y se sacan los nombres solos.</div></div>
+   <div class="db"><label class="full">Notas<textarea id="pg-txt" rows="5" placeholder="4A Juan García 612345678 no quiere vender&#10;4B no contesta&#10;Bajo C María López, alquilado"></textarea></label>
+   <div class="full" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="pgRevisar">Revisar notas</button><label class="btn small" style="cursor:pointer">Foto del buzón<input type="file" id="pg-foto" accept="image/*" capture="environment" hidden></label><span id="pg-est" class="pg-m"></span></div>
+   <div class="full" id="pg-prev"></div></div>
+   <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  $("#dlg").showModal()}
+function pgLeerFilas(){document.querySelectorAll("#pg-prev [data-pg]").forEach(e=>{const x=cur.pg.F[+e.dataset.i];if(!x)return;if(e.dataset.pg==="ok")x.marcada=e.checked;else x[e.dataset.pg]=e.value})}
+function pgAnadir(F){pgLeerFilas();const P=cur.pg;P.F.forEach(x=>{if(x.marcada===undefined)x.marcada=!!x.id});P.F.push(...F);pgPintar()}
+async function pgFoto(file){const est=$("#pg-est");if(!file)return;if(!window.leerBuzon){toast("La lectura de fotos no está disponible sin conexión");return}
+  est.textContent="Leyendo la foto…";
+  try{const img=await createImageBitmap(file),k=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    const b64=c.toDataURL("image/jpeg",0.8).split(",")[1];const r=await window.leerBuzon(b64);
+    if(r.error)throw new Error(r.error.message||r.error);const B=(r.data&&r.data.buzones)||[];
+    if(!B.length){est.textContent="No he encontrado nombres en la foto.";return}
+    const F=B.map(x=>{const pl=/^b/i.test(x.planta||"")?"0":/^[áa]t/i.test(x.planta||"")?"AT":String(+x.planta||x.planta||"");return {id:pgUnidad(cur.pg.U,x.escalera,pl,x.puerta),piso:[x.escalera?"Esc "+x.escalera:"",x.planta,x.puerta].filter(Boolean).join(" "),nombre:x.nombres||"",tel:"",com:""}});
+    const nuevos=F.filter(x=>{const u=x.id&&{...cur.pg.U.find(v=>v._id===x.id),...(S.censoEd[x.id]||{})};return !u||![u.prop,u.abre].some(n=>pgNorm(n)===pgNorm(x.nombre))}).length;
+    pgAnadir(F);est.textContent=`${B.length} buzones leídos, ${nuevos} con información nueva.`}
+  catch(e){console.error("leerBuzon",e);est.textContent="No se ha podido leer la foto: "+(e.message||e)}}
+async function guardarPegado(){pgLeerFilas();const P=cur.pg,F=P.F.filter(x=>x.id&&(x.marcada===undefined?true:x.marcada)&&(x.nombre||x.tel||x.com));
+  if(!F.length){toast("No hay filas marcadas con vivienda");return}
+  const hoy=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});let n=0;
+  for(const x of F){const d={ult:hoy};if(x.nombre)d.prop=x.nombre.trim();if(x.tel)d.tel=x.tel.replace(/\s/g,"");if(await guardar("censoEdits",x.id,d,x.com||""))n++;else break}
+  $("#dlg").close();toast(`Guardadas ${n} de ${F.length} viviendas`);render()}
+$("#frm").addEventListener("change",e=>{if(e.target.id==="pg-foto"){pgFoto(e.target.files[0]);e.target.value=""}});
+
+/* ---------- «Vendido en tu portal»: avisar a los vecinos ---------- */
+function portalDeFicha(dir,d){
+  const ids=[d&&d.censoId,(()=>{const c=d&&d.contactoId&&S.contactos.find(x=>x.id===d.contactoId);return c&&c.censoId})(),
+    (()=>{const e=d&&d.encargoId&&S.encargos.find(x=>x.id===d.encargoId);const c=e&&e.contactoId&&S.contactos.find(x=>x.id===e.contactoId);return c&&c.censoId})()].filter(Boolean);
+  for(const id of ids){const r=buscarViv(id);if(r)return {zona:r.zona,b:r.b,uid:id}}
+  const P=partesDir(dir||"");if(!P.c||P.n==null)return null;
+  for(const [zona,Z] of Object.entries(S.censo||{}))for(const b of Z.edificios)if(zCalle(b.via)===P.c&&parseInt(b.num)===P.n)return {zona,b,uid:null};
+  return null}
+function vecinosDe(r,rango){const n=parseInt(r.b.num),out=[];
+  for(const [zona,Z] of Object.entries(S.censo||{}))for(const b of Z.edificios){const m=parseInt(b.num);
+    if(zCalle(b.via)!==zCalle(r.b.via)||isNaN(m)||m%2!==n%2||Math.abs(m-n)>rango)continue;
+    for(const u0 of b.u){if(u0._id===r.uid)continue;const u={...u0,...(S.censoEd[u0._id]||{})};out.push({zona,b,u,id:u0._id,mismo:b===r.b})}}
+  return out.sort((x,y)=>(y.mismo-x.mismo)||(parseInt(x.b.num)-parseInt(y.b.num)))}
+const telOk=t=>{const x=String(t||"").replace(/[^\d]/g,"");return /^[67]\d{8}$/.test(x)?x:(/^34[67]\d{8}$/.test(x)?x.slice(2):"")};
+const TIPOVIA={CL:"calle",C:"calle",AV:"avenida",AVDA:"avenida",PZ:"plaza",PZA:"plaza",PL:"plaza",PS:"paseo",CM:"camino",RD:"ronda",TR:"travesía",GT:"glorieta",UR:"urbanización",CR:"carretera",PJ:"pasaje"};
+const viaLarga=v=>{const m=String(v||"").trim().match(/^([A-Z]{1,4})\.?\s+(.*)$/);return m&&TIPOVIA[m[1]]?TIPOVIA[m[1]].toUpperCase()+" "+m[2]:String(v||"")};
+const calleBonita=v=>{const t=viaLarga(v).toLowerCase().replace(/(^|[\s\/(-])([a-záéíóúñü])/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (De|Del|La|Las|Los|El|Y)(?= )/g,m=>m.toLowerCase());return /^(calle|avenida|plaza|paseo|camino|ronda|travesía|glorieta|urbanización|carretera|pasaje)\b/i.test(t)?t.charAt(0).toLowerCase()+t.slice(1):"la calle "+t};
+function textoAviso(tipo,via,asesor){const tel=S.ajustes.telefonoOficina;
+  return tipo==="vendido"
+   ?`Hola, somos Hogares Group Fuenlabrada. Acabamos de vender una vivienda en ${via}, muy cerca de su casa, y nos han quedado compradores buscando en la zona. Si usted o algún conocido está pensando en vender, le hacemos una valoración gratuita y sin compromiso. ${asesor?asesor+", ":""}Hogares Group Fuenlabrada${tel?" · "+tel:""}.`
+   :`Hola, somos Hogares Group Fuenlabrada. Acabamos de poner a la venta una vivienda en ${via}, muy cerca de su casa. Si conoce a alguien interesado en vivir en su calle, o si usted está pensando en vender, le hacemos una valoración gratuita y sin compromiso. ${asesor?asesor+", ":""}Hogares Group Fuenlabrada${tel?" · "+tel:""}.`}
+function abrirAvisoPortal(tipo,dir,d){
+  if(!S.censo){toast("El censo aún no se ha cargado");return}
+  const r=portalDeFicha(dir,d);if(!r){toast("No encuentro ese portal en el censo de tu zona. Revisa la dirección.");return}
+  const asesor=d.asesor&&d.asesor!=="OFICINA"?d.asesor:(S.yo&&S.yo.nombre)||"";
+  const rango=cur&&cur.aviso&&cur.aviso.rango!=null?cur.aviso.rango:4;
+  const V=vecinosDe(r,rango),via=`${r.b.via} ${r.b.num}`,tlf=V.filter(x=>telOk(x.u.tel));
+  cur={col:"aviso",aviso:{tipo,dir,d,r,V,via,asesor,rango}};
+  const msg=textoAviso(tipo,calleBonita(r.b.via),asesor);
+  const portales=[...new Set(V.map(x=>x.b.num))];
+  $("#frm").innerHTML=`<div class="dh">Avisar a los vecinos · ${tipo==="vendido"?"vendido":"en venta"}<div style="font:500 13px var(--body);color:var(--muted)">${esc(via)} y portales cercanos de la misma acera (nº ${esc(portales.join(", "))}) · ${V.length} viviendas · ${tlf.length} con móvil</div></div>
+   <div class="db"><div class="full" style="grid-column:1/-1">
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:10px">Portales alrededor <select id="aviso-rango">${[[0,"Solo este portal"],[2,"± 1 portal"],[4,"± 2 portales"],[8,"± 4 portales"]].map(([k,t])=>`<option value="${k}"${k===rango?" selected":""}>${t}</option>`).join("")}</select></label>
+    <p style="margin:0 0 8px;font-size:14px">Mensaje (no dice qué piso es, para proteger al propietario):</p>
+    <div style="background:var(--accent-soft);padding:10px 12px;font-size:14px;margin-bottom:12px">${esc(msg)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn primary small" type="button" data-act="avisoImprimir">Imprimir ${V.length} cartas para buzonear</button><button class="btn small" type="button" data-act="avisoApuntar">Apuntar en el censo que se avisó hoy</button></div>
+    ${tlf.length?`<h3 style="font-size:15px;margin:6px 0">WhatsApp a los que tienen móvil (${tlf.length})</h3><div class="list">${tlf.map(x=>`<a class="row" target="_blank" rel="noopener" href="https://wa.me/34${telOk(x.u.tel)}?text=${encodeURIComponent(msg)}"><span class="t">${esc(x.u.prop||x.u.abre||"Vecino")}</span><span class="m"><span>${esc(x.b.via+" "+x.b.num+" "+[x.u.planta,x.u.puerta].filter(Boolean).join(" "))}</span><span>${esc(x.u.tel)}</span></span></a>`).join("")}</div>`:`<p style="color:var(--muted);font-size:14px">Ningún vecino de estos portales tiene móvil apuntado en el censo.</p>`}
+   </div></div>
+   <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div></div>`;
+  $("#dlg").showModal();
+  $("#aviso-rango").addEventListener("change",e=>{cur.aviso.rango=+e.target.value;const A=cur.aviso;abrirAvisoPortal(A.tipo,A.dir,A.d)});
+}
+function imprimirCartas(A){if(!A)return;const tel=S.ajustes.telefonoOficina,hoy=new Date().toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"});
+  const logo=new URL("logo-casa.png",location.href).href;
+  const cuerpo=A.tipo==="vendido"
+   ?`<p>Nos alegra contarle que <b>acabamos de vender una vivienda en su calle</b>, muy cerca de su casa.</p><p>Durante la venta nos han llamado muchas familias que quieren vivir en esta zona y que todavía no han encontrado casa. Si usted, o alguien que conozca, está pensando en vender, nos encantaría ayudarle.</p>`
+   :`<p>Le escribimos porque <b>acabamos de poner a la venta una vivienda en su calle</b>, muy cerca de su casa.</p><p>Si conoce a alguien a quien le gustaría vivir en su barrio, estaremos encantados de enseñársela. Y si usted está pensando en vender, conocemos bien lo que se está pagando en su calle.</p>`;
+  const carta=x=>`<section class="c"><div class="cab"><img src="${logo}" alt=""><div><b>HOGARES GROUP</b><br>Fuenlabrada</div></div>
+    <p class="dest">Al propietario/a de la vivienda<br><b>${esc(viaLarga(x.b.via))} ${esc(x.b.num)}${[x.u.esc&&!/^T$/.test(x.u.esc)?"Esc "+x.u.esc:"",x.u.planta&&!/^OD$/.test(x.u.planta)?x.u.planta+"º":"",x.u.puerta&&!/^OS$/.test(x.u.puerta)?x.u.puerta:""].filter(Boolean).map(t=>" "+esc(t)).join("")}</b><br>Fuenlabrada</p>
+    <p class="f">Fuenlabrada, ${hoy}</p><p>Estimado/a vecino/a:</p>${cuerpo}
+    <p>Le ofrecemos una <b>valoración gratuita y sin compromiso</b> de su vivienda, con datos reales de las ventas en su zona.</p>
+    <p>Un saludo,</p><p class="firma"><b>${esc(A.asesor||"Equipo Hogares")}</b><br>Hogares Group Fuenlabrada${tel?"<br>Tel. "+esc(tel):""}</p></section>`;
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Cartas ${esc(A.via)}</title><${"style"}>
+    @page{size:A4;margin:22mm 20mm}body{font:12pt/1.55 Georgia,serif;color:#333130;margin:0}
+    .c{page-break-after:always;max-width:170mm;margin:0 auto}.c:last-child{page-break-after:auto}
+    .cab{display:flex;gap:12px;align-items:center;border-bottom:2px solid #ac9465;padding-bottom:10px;margin-bottom:26px;font:11pt/1.3 Arial,sans-serif;letter-spacing:.04em}
+    .cab img{height:34px}.dest{margin:0 0 26px 55%;font-size:11pt}.f{text-align:right;font-size:11pt}.firma{margin-top:22px}
+    @media screen{body{background:#eee}.c{background:#fff;padding:20mm;margin:10px auto;box-shadow:0 1px 4px #0002}}<\/style><\/head>
+    <body>${A.V.map(carta).join("")}<script>window.onload=()=>setTimeout(()=>print(),400)<\/script></body></html>`;
+  const w=window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})),"_blank");if(!w)toast("Permite las ventanas emergentes para imprimir")}
+async function apuntarAviso(A){if(!A)return;const hoy=fmtF(hoyISO()),t=A.tipo==="vendido"?"Carta: vendido en la calle":"Carta: en venta en la calle";let n=0;
+  for(const x of A.V){const ok=await guardar("censoEdits",x.id,{ult:hoy,tipo:t},t+" ("+A.via+")");if(ok)n++}
+  toast(n?`Apuntado en ${n} viviendas del censo`:"No se ha podido apuntar en el censo")}
+
+/* ---------- Google Calendar ---------- */
+const gcalD=f=>String(f||"").replace(/-/g,"");
+const gcalSig=f=>{const d=new Date(f+"T12:00:00");d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,"")};
+function gcalNuevo(titulo,fecha,detalle,lugar){
+  const u=new URLSearchParams({action:"TEMPLATE",text:titulo,dates:gcalD(fecha)+"/"+gcalSig(fecha),details:detalle||"",location:lugar?lugar+", Fuenlabrada":"",ctz:"Europe/Madrid"});
+  if(S.ajustes.calendarioId)u.set("src",S.ajustes.calendarioId);
+  window.open("https://calendar.google.com/calendar/render?"+u.toString(),"_blank","noopener");
+}
+function vAgenda(){
+  const id=S.ajustes.calendarioId; if(!id) return "";
+  const q=new URLSearchParams({src:id,ctz:"Europe/Madrid",mode:"AGENDA",showTitle:"0",showPrint:"0",showTabs:"1",showCalendars:"0",showTz:"0",hl:"es"});
+  return `<section class="agenda"><h2>Agenda de la oficina</h2>
+    <iframe title="Google Calendar de la oficina" src="https://calendar.google.com/calendar/embed?${q}" loading="lazy" style="width:100%;height:420px;border:1px solid var(--line);background:#fff"></iframe>
+    <div class="tools" style="margin-top:8px"><a class="btn small" href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(id)}" target="_blank" rel="noopener">Abrir en Google Calendar</a>
+    <span style="color:var(--muted);font-size:12px">Si no ves las citas, entra en Google con la cuenta que tiene el calendario compartido.</span></div></section>`;
+}
+function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2200)}
+
+/* ---------- reglas de negocio ---------- */
+function urgPub(c){
+  if(!c.publicado||c.etapa!=="Desarrollo") return null;
+  const lim=c.publicado==="Particular"?1:2,d0=new Date((c.fechaPublicado||hoyISO())+"T12:00");d0.setDate(d0.getDate()+lim);
+  const lv=d0.toISOString().slice(0,10),d=dias(hoyISO(),lv);
+  return {limite:lv,d,cls:d<=0?"bad":"warn",txt:d<0?`Publicada sin localizar: venció hace ${-d} d`:d===0?"Publicada: localizar HOY":`Publicada: localizar antes del ${fmtF(lv)}`};
+}
+const urgentes=()=>S.contactos.filter(urgPub).sort((a,b)=>urgPub(a).limite.localeCompare(urgPub(b).limite));
+function proxEstado(c){
+  if(c.etapa==="KO"||c.etapa==="Encargo") return null;
+  if(!c.proxFecha) return {cls:"bad",txt:"Sin próximo paso"};
+  const d=dias(hoyISO(),c.proxFecha);
+  if(d<0) return {cls:"bad",txt:`Vencido hace ${-d} d`};
+  if(d===0) return {cls:"warn",txt:"Hoy"};
+  return {cls:"",txt:fmtF(c.proxFecha)};
+}
+function alertaEncargo(e){
+  const out=[]; if(e.estado!=="Activo") return out;
+  const base=[e.fechaCaptacion,e.ultimaRevisionPrecio].filter(Boolean).sort().pop();
+  if(base){const d=dias(base,hoyISO()); if(d>=S.ajustes.diasRevisionPrecio) out.push({cls:"bad",txt:`Revisar precio (${d} d)`});}
+  if(e.exclusiva==="Sí"&&e.finExclusiva){const d=dias(hoyISO(),e.finExclusiva); if(d<0) out.push({cls:"warn",txt:"Exclusiva vencida: confirmar renovación"}); else if(d<=10) out.push({cls:"warn",txt:`Exclusiva vence en ${d} d`});}
+  if(e.exclusiva!=="Sí") out.push({cls:"warn",txt:"Sin exclusiva"});
+  return out;
+}
+const enRango=(f,a,b)=>f&&f>=a&&f<=b;
+const facturada=o=>o.fechaAceptacion&&o.estado!=="Caída";
+function sumFact(a,b,quien){return S.operaciones.filter(o=>facturada(o)&&enRango(o.fechaAceptacion,a,b)&&(!quien||o.asesor===quien)).reduce((s,o)=>s+(+o.honorarios||0),0)}
+function sumCobr(a,b){return S.operaciones.filter(o=>o.estado!=="Caída"&&enRango(o.fechaCobro,a,b)).reduce((s,o)=>s+(+o.honorarios||0),0)}
+function mesActual(){const h=hoyISO();return [h.slice(0,8)+"01",h.slice(0,8)+"31"]}
+const contactosPendientes=()=>S.contactos.filter(c=>{const p=proxEstado(c);return p&&c.proxFecha&&(p.cls==="bad"||p.cls==="warn")});
+const sinPaso=()=>S.contactos.filter(c=>{const p=proxEstado(c);return p&&!c.proxFecha});
+
+/* ---------- vistas ---------- */
+function rowContacto(c){
+  const p=proxEstado(c);
+  return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
+    <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
+    <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${!c.censoId&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
+  </button>`;
+}
+function rowEncargo(e){
+  const al=alertaEncargo(e); const dm=e.fechaCaptacion&&e.estado==="Activo"?dias(e.fechaCaptacion,hoyISO())+" días":"";
+  return `<button class="row" type="button" data-open="encargos" data-id="${esc(e.id)}">
+    <span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span>
+    <span class="m">${zona(e.zona)}<span>${esc(e.asesor||"")}</span><span class="pill ${e.estado==="Activo"?"acc":e.estado==="Reservado"?"ok":""}">${esc(e.estado)}</span>${dm?`<span>${dm} en mercado</span>`:""}${al.map(a=>`<span class="pill ${a.cls}">${esc(a.txt)}</span>`).join("")}${e.riesgo?`<span class="pill bad">${esc(e.riesgo)}</span>`:""}</span>
+  </button>`;
+}
+function rowOp(o){
+  const est=o.fechaCobro?"Cobrada":o.estado;
+  return `<button class="row" type="button" data-open="operaciones" data-id="${esc(o.id)}">
+    <span class="t">${esc(o.inmueble)}</span><span class="r">${eur(o.honorarios)}</span>
+    <span class="m"><span>${esc(o.asesor||"")}</span><span class="pill ${est==="Cobrada"?"ok":est==="Caída"?"bad":est==="Reserva"?"warn":"acc"}">${esc(est)}</span>${o.fechaAceptacion?`<span>Facturado ${fmtF(o.fechaAceptacion)}</span>`:"<span>Sin aceptar</span>"}${o.fechaCobro?`<span>Cobrado ${fmtF(o.fechaCobro)}</span>`:""}<span>${esc(o.ladoCobrado||"")}</span></span>
+  </button>`;
+}
+const TAMS=[30,50,100,200];
+function paginar(key,arr){const P=S.pag[key]||(S.pag[key]={n:30,p:0});const tot=arr.length,pags=Math.max(1,Math.ceil(tot/P.n)),f0=arr[0]||{},sig=tot+"|"+(f0.id||f0.via||(f0.u&&f0.u._id)||f0.dir||"");if(P.sig!==sig){P.sig=sig;P.p=0}if(P.p>=pags)P.p=pags-1;if(P.p<0)P.p=0;
+  const a=P.p*P.n,items=arr.slice(a,a+P.n);
+  const ctrl=tot<=TAMS[0]?"":`<div class="pager" data-pager="${key}"><span>${a+1}–${Math.min(a+P.n,tot)} de ${tot}</span><button class="btn small" type="button" data-pagp="${key}" data-d="-1"${P.p?"":" disabled"}>‹ Anterior</button><button class="btn small" type="button" data-pagp="${key}" data-d="1"${P.p<pags-1?"":" disabled"}>Siguiente ›</button><label>Filas <select data-pagn="${key}">${TAMS.map(n=>`<option${n===P.n?" selected":""}>${n}</option>`).join("")}</select></label></div>`;
+  return {items,ctrl}}
+function hoyLista(key,arr,fn,vacio){const mas=S.hoyMas[key],v=mas?arr:arr.slice(0,5);
+  return listOr(v.map(fn),vacio)+(arr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="${key}">${mas?"Ver menos":`Ver ${arr.length-5} más`}</button></div>`:"")}
+const listOr=(rows,vacio)=>`<div class="list">${rows.length?rows.join(""):`<div class="empty">${vacio}</div>`}</div>`;
+function kpi(l,v,s,pct){return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:""}${pct!=null?`<div class="bar"><i style="width:${Math.min(100,Math.max(0,pct))}%"></i></div>`:""}</div>`}
+
+function vHoy(){
+  const A=S.ajustes,[m0,m1]=mesActual(),fm=sumFact(m0,m1),fp=sumFact(A.periodoInicio,A.periodoFin);
+  const eq=A.gastosMes/0.7;
+  const pend=contactosPendientes().sort((a,b)=>(a.proxFecha||"").localeCompare(b.proxFecha||""));
+  const sti=S.contactos.filter(c=>c.necesitaSti&&c.etapa!=="KO");
+  const encAl=S.encargos.filter(e=>alertaEncargo(e).some(a=>a.cls==="bad"||a.txt.startsWith("Exclusiva")));
+  const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
+  const TIT={contactos:"Noticia",encargos:"Encargo",operaciones:"Operación",captaciones:"Captación"};
+  const urg=urgentes(),vend=S.contactos.filter(c=>c.vendida&&!c.vendidaVista);
+  const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
+  const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro);
+  return `
+  ${vAgenda()}
+  ${vLlamarHoy()}
+  ${urg.length?`<section><h2>Urgente: publicadas sin localizar <span class="n">${urg.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">En Desarrollo y a la venta. Hay que localizar al propietario y pasarlas a Seguimiento: 2 días si está con agencia o portal, 1 día si vende un particular.</p>${hoyLista("urg",urg,rowContacto,"")}</section>`:""}
+  ${vend.length?`<section><h2>Avisos: se han vendido <span class="n">${vend.length}</span></h2>${hoyLista("vend",vend,rowContacto,"")}</section>`:""}
+  ${solBorr.length?`<section><h2>Solicitudes de borrado <span class="n">${solBorr.length}</span></h2><div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}</section>`:""}
+  <div class="grid2">
+    <section><h2>Próximos pasos vencidos o de hoy <span class="n">${pend.length}</span></h2>${hoyLista("pend",pend,rowContacto,"Nada vencido. Todos los propietarios tienen su próximo paso en fecha.")}
+      <div class="tools" style="margin-top:10px">${sinPaso().length?`<button class="btn small" type="button" data-go="sinpaso">${sinPaso().length} propietarios sin próximo paso</button>`:""}</div></section>
+    <section><h2>Esperan a Stiwhar <span class="n">${sti.length}</span></h2>${hoyLista("sti",sti,rowContacto,"Ningún asesor ha marcado nada para ti.")}</section>
+    <section><h2>Encargos que piden atención <span class="n">${encAl.length}</span></h2>${hoyLista("encAl",encAl,rowEncargo,"Todos los encargos activos tienen precio revisado y exclusiva en vigor.")}</section>
+    ${vClientesAntiguos()}
+    <section><h2>Reservas en negociación <span class="n">${reservas.length}</span></h2>${hoyLista("res",reservas,rowOp,"No hay reservas abiertas.")}</section>
+  </div>`;
+}
+function vResultados(){
+  const A=S.ajustes,per=S.resPer||"semana",resp=!S.yo||S.yo.rol==="responsable",eq=A.gastosMes/0.7;
+  const P={semana:rangoPer("semana"),mes:rangoPer("mes"),trimestre:rangoPer("trimestre")};
+  const F={semana:sumFact(P.semana[0],P.semana[1]),mes:sumFact(P.mes[0],P.mes[1]),trimestre:sumFact(P.trimestre[0],P.trimestre[1])},fp=sumFact(A.periodoInicio,A.periodoFin);
+  const O={semana:Math.round(A.objetivoMes*12/52),mes:+A.objetivoMes||0,trimestre:(+A.objetivoMes||0)*3};
+  const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro),act=S.encargos.filter(e=>e.estado==="Activo");
+  const M={...DEF_METAS,...(A.metas||{})},pc=(a,b)=>b?Math.round(a/b*100)+" %":"—",fr=([a,b])=>fmtF(a)+" – "+fmtF(b);
+  const sel=`<div class="tools">${["semana","mes","trimestre"].map(k=>`<button class="btn small${k===per?" primary":""}" type="button" data-resper="${k}">${k.charAt(0).toUpperCase()+k.slice(1)}</button>`).join("")}</div>`;
+  const fact=resp?`<section><h2>Facturado</h2><div class="kpis">
+    ${kpi("Esta semana",eur(F.semana),`Objetivo ${eur(O.semana)} (${fr(P.semana)})`,O.semana?F.semana/O.semana*100:0)}
+    ${kpi("Este mes",eur(F.mes),`Objetivo ${eur(O.mes)} · equilibrio ${eur(eq)}`,O.mes?F.mes/O.mes*100:0)}
+    ${kpi("Este trimestre",eur(F.trimestre),`Objetivo ${eur(O.trimestre)} (${fr(P.trimestre)})`,O.trimestre?F.trimestre/O.trimestre*100:0)}
+    ${kpi("Periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,A.objetivoPeriodo?fp/A.objetivoPeriodo*100:0)}
+    ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
+    ${kpi("Encargos activos",act.length,`${act.filter(e=>e.exclusiva==="Sí").length} en exclusiva`)}</div></section>`
+   :`<section class="kpis">${kpi("Encargos activos",act.length,`${act.filter(e=>e.exclusiva==="Sí").length} en exclusiva`)}</section>`;
+  const fila=(t,m,l)=>`<tr><td style="text-align:left">${t}</td><td>${eur(m)}</td><td>${eur(l)}</td><td>${pc(l,m)}</td></tr>`;
+  const obj=resp?`<section><h2>Objetivos</h2><div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Objetivo de facturación</th><th>Meta</th><th>Llevamos</th><th>Cumplido</th></tr></thead><tbody>
+    ${fila(`Semana (${fr(P.semana)})`,O.semana,F.semana)}${fila("Mes",O.mes,F.mes)}${fila("Punto de equilibrio del mes",eq,F.mes)}${fila(`Trimestre (${fr(P.trimestre)})`,O.trimestre,F.trimestre)}${fila(`Periodo (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,A.objetivoPeriodo,fp)}
+    </tbody></table></div>
+    <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th style="text-align:left">Metas de actividad por asesor</th><th>Semana</th><th>Mes</th><th>Trimestre</th></tr></thead><tbody>
+    ${(m=>METAS_ET.map(([k,t])=>`<tr><td style="text-align:left">${t}</td><td>${m.semana[k]}</td><td>${m.mes[k]}</td><td>${m.trimestre[k]}</td></tr>`).join(""))({semana:metasPer("semana"),mes:metasPer("mes"),trimestre:metasPer("trimestre")})}
+    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">La semana y el trimestre salen del objetivo mensual (×12/52 y ×3). Las metas de actividad se ponen por semana en Ajustes y se escalan al mes y al trimestre.</p></section>`:"";
+  const rk=vRanking(per);
+  return fact+sel+(rk||`<section><h2>${resp?"Ranking":"Tus objetivos"} ${PER_ET[per][0]}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+obj;
+}
+function selOpts(arr,val,todos){return (todos?`<option value="">${todos}</option>`:"")+arr.map(x=>`<option${x===val?" selected":""}>${esc(x)}</option>`).join("")}
+function vContactos(){
+  const f=S.f,q=f.q.toLowerCase();
+  const pasoOk=c=>{const p=proxEstado(c);return !f.paso||(f.paso==="vencidos"?!!(p&&c.proxFecha&&p.cls):!!(p&&!c.proxFecha))};
+  const base=S.contactos.filter(c=>(!f.asesor||(f.asesor==="__none"?!c.asesor:c.asesor===f.asesor))&&pasoOk(c)&&(!q||[c.direccion,c.nombre,c.telefono,c.notas,c.proxAccion].join(" ").toLowerCase().includes(q)));
+  const enCurso=c=>c.etapa!=="KO"&&c.etapa!=="Encargo";
+  let L=base.filter(c=>f.etapa==="activos"?enCurso(c):f.etapa==="__urg"?!!urgPub(c):c.etapa===f.etapa);
+  L.sort((a,b)=>(a.proxFecha||"0").localeCompare(b.proxFecha||"0"));
+  const chips=[["activos","Todas en curso",base.filter(enCurso).length],...["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo"].map(e=>[e,e==="Valorada"?"Valoradas":e==="Paralizado"?"Paralizados":e,base.filter(c=>c.etapa===e).length]),["__urg","Publicadas sin localizar",base.filter(urgPub).length]];
+  return `<section><div class="chips" role="tablist">${chips.map(([v,l,n])=>`<button type="button" class="chip" data-etapa="${esc(v)}" aria-pressed="${f.etapa===v}">${esc(l)} <span>${n}</span></button>`).join("")}</div>
+  <div class="tools">
+    <input type="search" id="f-q" placeholder="Buscar dirección, nombre, teléfono, nota…" value="${esc(f.q)}">
+    <select id="f-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}<option value="__none"${f.asesor==="__none"?" selected":""}>Sin asesor</option></select>
+    <select id="f-paso"><option value="">Cualquier próximo paso</option><option value="vencidos"${f.paso==="vencidos"?" selected":""}>Vencidos u hoy</option><option value="sinpaso"${f.paso==="sinpaso"?" selected":""}>Sin próximo paso</option></select>
+  </div>
+  <h2>Noticias <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowContacto),S.contactos.length?"Ninguna noticia coincide con el filtro.":"Aún no hay noticias. Pulsa «+ Nuevo» para añadir la primera.")+pg.ctrl)(paginar("noticias",L))}</section>`;
+}
+const EST_CAP=["Pendiente","Encontrada","Pasada a noticia","Descartada"];
+function rowCap(k){
+  return `<button class="row" type="button" data-open="captaciones" data-id="${esc(k.id)}">
+    <span class="t">${esc(k.direccion)}${k.propietario?` · <span style="font-weight:500">${esc(k.propietario)}</span>`:""}</span><span class="r">${k.valVenta?eur(k.valVenta):""}</span>
+    <span class="m">${zona(k.zona)}<span>${esc(k.asesor||"Sin asesor")}</span><span class="pill ${k.estado==="Pendiente"?"warn":k.estado==="Encontrada"?"acc":k.estado==="Pasada a noticia"?"ok":""}">${esc(k.estado||"")}</span>${[k.tipo,k.m2,k.relacion].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${k.venderEn&&/vender/i.test(k.venderEn)?`<span class="pill ${/urgent/i.test(k.venderEn)?"bad":""}">${esc(k.venderEn)}</span>`:""}${k.fecha?`<span>Valorada ${fmtF(k.fecha)}</span>`:""}</span>
+  </button>`;
+}
+function vCaptaciones(){
+  const f=S.kf,q=f.q.toLowerCase();
+  const base=S.captaciones.filter(k=>(!f.zona||k.zona===f.zona)&&(!f.asesor||k.asesor===f.asesor)&&(!q||[k.direccion,k.propietario,k.telefono,k.encontrado,k.pisosPosibles,k.comentario].join(" ").toLowerCase().includes(q)));
+  const L=base.filter(k=>!f.estado||k.estado===f.estado).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const zonas=[...new Set(S.captaciones.map(k=>k.zona).filter(Boolean))].sort();
+  const chips=[...EST_CAP.map(e=>[e,e==="Pendiente"?"Pendientes de encontrar":e==="Encontrada"?"Encontradas":e==="Descartada"?"Descartadas":e]),["","Todas"]];
+  return `<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-kest="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(k=>!v||k.estado===v).length}</span></button>`).join("")}</div>
+  <div class="tools">
+    <input type="search" id="k-q" placeholder="Buscar dirección, propietario, pisos posibles…" value="${esc(f.q)}">
+    <select id="k-zona">${selOpts(zonas,f.zona,"Todas las zonas")}</select>
+    <select id="k-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}</select>
+  </div>
+  <p class="hint" style="color:var(--muted);font-size:13px;margin:0 0 8px">Valoraciones online del mapa de captaciones. Encuentra la vivienda, apunta qué piso es y pásala a noticia.</p>
+  <h2>Captaciones <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowCap),S.captaciones.length?"Ninguna captación coincide con el filtro.":"Aún no hay captaciones.")+pg.ctrl)(paginar("captaciones",L))}</section>`;
+}
+function vEncargos(){
+  const f=S.f; const L=S.encargos.filter(e=>(!f.asesor||e.asesor===f.asesor)&&(!f.estado||e.estado===f.estado)).sort((a,b)=>(b.fechaCaptacion||"").localeCompare(a.fechaCaptacion||""));
+  return `<section><div class="tools">
+    <select id="f-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}</select>
+    <select id="f-estado">${selOpts(EST_ENC,f.estado,"Todos los estados")}</select></div>
+  <h2>Encargos <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowEncargo),"No hay encargos con este filtro.")+pg.ctrl)(paginar("encargos",L))}</section>`;
+}
+/* Cartera = encargos activos y reservados + operaciones en curso sin aceptar, sin contar dos veces el mismo inmueble */
+function cartera(){const k=t=>claveDir(t).slice(0,14),opsV=S.operaciones.filter(o=>o.estado!=="Caída"),out=[],usadas=new Set();
+  for(const e of S.encargos){if(e.estado!=="Activo"&&e.estado!=="Reservado")continue;
+    const m=o=>(o.encId&&o.encId===e.id)||(k(o.inmueble)&&k(o.inmueble)===k(e.direccion)),o=opsV.find(o=>m(o)&&!facturada(o))||(e.estado==="Reservado"&&opsV.find(m));
+    if(o){usadas.add(o.id);if(facturada(o))continue;out.push({t:"op",asesor:o.asesor,h:+o.honorarios||0});continue}
+    out.push({t:"enc",asesor:e.asesor,h:+e.honorarioPrevisto||0})}
+  for(const o of opsV)if(!usadas.has(o.id)&&!facturada(o))out.push({t:"op",asesor:o.asesor,h:+o.honorarios||0});
+  return out}
+function vOps(){
+  const A=S.ajustes,L=[...S.operaciones].sort((a,b)=>(b.fechaAceptacion||"9").localeCompare(a.fechaAceptacion||"9"));
+  const y=hoyISO().slice(0,4),fa=sumFact(y+"-01-01",y+"-12-31"),ca=sumCobr(y+"-01-01",y+"-12-31");
+  const resp=!S.yo||S.yo.rol==="responsable",fp=sumFact(A.periodoInicio,A.periodoFin);
+  const pos=cartera(),posT=pos.reduce((s,o)=>s+o.h,0);
+  const ases=S.ajustes.asesores.map(a=>a.nombre),porAs=f=>ases.map(p=>[p,f(p)]).filter(([,v])=>v).map(([p,v])=>`${esc(p)} ${eur(v*0.15)}`).join(" · ");
+  const per=`${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)}`;
+  return `<section class="kpis">${kpi("Facturado "+y,eur(fa),"Por fecha de aceptación")}${kpi("Cobrado "+y,eur(ca),"Por fecha de cobro")}
+    ${resp?kpi("Mi comisión (15 %)",eur(fp*0.15),`Del periodo ${per}, sobre ${eur(fp)} facturados`)+kpi("Comisión de los asesores (15 %)",eur(ases.reduce((t,p)=>t+sumFact(A.periodoInicio,A.periodoFin,p),0)*0.15),porAs(p=>sumFact(A.periodoInicio,A.periodoFin,p))||"Sin operaciones facturadas en el periodo")
+      :kpi("Mi comisión (15 %)",eur(fp*0.15),`Del periodo ${per}, sobre ${eur(fp)} facturados`)}
+    ${kpi("Posible por facturar",eur(posT),`Cartera: ${pos.filter(x=>x.t==="enc").length} encargos y ${pos.filter(x=>x.t==="op").length} operaciones sin aceptar`)}
+    ${kpi(resp?"Posible comisión (mi 15 %)":"Posible comisión (15 %)",eur(posT*0.15),resp?(porAs(p=>pos.filter(o=>o.asesor===p).reduce((s,o)=>s+o.h,0))?"Asesores: "+porAs(p=>pos.filter(o=>o.asesor===p).reduce((s,o)=>s+o.h,0)):"Si se aceptan todas"):"Si se aceptan todas")}</section>
+  <section><h2>Operaciones <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowOp),"No hay operaciones.")+pg.ctrl)(paginar("operaciones",L))}</section>`;
+}
+function vEquipo(){
+  const A=S.ajustes,[m0,m1]=mesActual(),h=hoyISO();
+  const rows=personas().map(p=>{
+    const c=S.contactos.filter(x=>x.asesor===p);
+    const val=c.filter(x=>enRango(x.fechaValoracion,m0,m1)).length;
+    const cap=S.encargos.filter(e=>e.asesor===p&&enRango(e.fechaCaptacion,m0,m1)).length;
+    const act=S.encargos.filter(e=>e.asesor===p&&e.estado==="Activo").length;
+    const venc=c.filter(x=>{const s=proxEstado(x);return s&&s.cls==="bad"}).length;
+    const z=(A.asesores.find(a=>a.nombre===p)||{}).zona;
+    return `<tr><td>${esc(p)} ${zona(z)}</td><td>${eur(sumFact(m0,m1,p))}</td><td>${eur(sumFact(A.periodoInicio,A.periodoFin,p))}</td><td>${val}</td><td>${cap}</td><td>${act}</td><td>${venc?`<span class="pill bad">${venc}</span>`:"0"}</td></tr>`;
+  }).join("");
+  return `<section><h2>Equipo este mes</h2><div class="tbl-wrap"><table><thead><tr><th>Asesor</th><th>Facturado mes</th><th>Facturado periodo</th><th>Valoraciones</th><th>Captaciones</th><th>Cartera activa</th><th>Vencidos</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <p class="s" style="color:var(--muted);font-size:13px">Valoraciones cuentan por la fecha de valoración del propietario; captaciones por la fecha de captación del encargo. Objetivo de octubre: 2 valoraciones por asesor.</p></section>
+  <section><h2>Ajustes</h2><button class="btn" type="button" id="btn-ajustes">Editar objetivos y asesores</button></section>`;
+}
+/* ---------- censo (solo lectura, importado de los Excel de zona) ---------- */
+let censoCargando=false;
+async function cargarCenso(){
+  if(censoCargando) return; censoCargando=true;
+  try{const s=await S.db.collection("censo").limit(200).get(); const C={};
+    for(const d of s.docs){const o=JSON.parse(JSON.stringify(d.data())),z=C[o.zona]||(C[o.zona]={edificios:[],resumen:null,koSinUbicar:[]});
+      if(o.resumen){z.resumen=o.resumen;z.koSinUbicar=o.koSinUbicar||[]} else {o.edificios.forEach((b,bi)=>b.u.forEach((u,ui)=>u._id=d.id+"."+bi+"."+ui));z.parts=(z.parts||[]).concat([[o.parte,o.edificios]]);}}
+    for(const z of Object.values(C)){z.edificios=(z.parts||[]).sort((a,b)=>a[0]-b[0]).flatMap(p=>p[1]);delete z.parts}
+    S.censo=C; if(!S.cf.zona) S.cf.zona=Object.keys(C).sort()[0]||"";
+    S.db.collection("portales").limit(5000).onSnapshot(sn=>{S.portales={};sn.docs.forEach(x=>S.portales[x.id]=x.data());if(S.view==="censo"&&!$("#dlg").open)render()},()=>{});
+    S.db.collection("censoEdits").limit(1000).onSnapshot(sn=>{S.censoEd={};sn.docs.forEach(x=>S.censoEd[x.id]=x.data());if(S.view==="censo"&&!$("#dlg").open)render()},()=>{});
+  }catch(e){toast("No se ha podido cargar el censo")}
+  censoCargando=false; if(S.view==="censo"||S.view==="localizar") render();
+}
+const pct=(a,b)=>b?Math.round(a/b*100)+" %":"–";
+let pgL;function vLocalizar(){
+  if(!S.censo) return `<div class="empty">${S.db?"Cargando el censo…":"El censo se carga al abrir la página en claude.ai."}</div>`;
+  const f=S.lf,zonas=Object.keys(S.censo).sort(),inp=(id,v,ph,t="text",w="")=>`<input id="${id}" type="${t}"${t==="number"?' inputmode="numeric"':""} placeholder="${ph}" value="${esc(v)}"${w?` style="max-width:${w}"`:""}>`;
+  const tools=`<div class="tools">
+    <select id="l-zona"><option value="">Todas las zonas</option>${zonas.map(z=>`<option value="${z}"${z===f.zona?" selected":""}>Zona ${z.charAt(0)+z.slice(1).toLowerCase()}</option>`).join("")}</select>
+    ${inp("l-calle",f.calle,"Calle (opcional)")}${inp("l-num",f.num||"","Número","text","90px")}
+    <select id="l-tipo"><option value="">Pisos y chalets</option><option value="piso"${f.tipo==="piso"?" selected":""}>Solo pisos</option><option value="chalet"${f.tipo==="chalet"?" selected":""}>Solo chalets / unifamiliares</option></select></div>
+  <div class="tools">${inp("l-m2",f.m2,"m²","number","90px")}<span style="align-self:center">±</span>${inp("l-dm2",f.dm2,"margen","number","70px")}
+    ${inp("l-anio",f.anio,"Año constr.","number","110px")}<span style="align-self:center">±</span>${inp("l-danio",f.danio,"margen","number","70px")}
+    ${inp("l-planta",f.planta,"Planta","text","80px")}${inp("l-rc",f.rc,"Ref. catastral","text","190px")}
+    <button class="btn primary small" type="button" id="l-buscar">Buscar</button>${Object.entries(f).some(([k,v])=>v&&!["dm2","danio"].includes(k))?`<button class="btn small" type="button" id="l-limpiar">Limpiar</button>`:""}</div>`;
+  const m2=parseFloat(f.m2),dm=parseFloat(f.dm2)||0,an=parseInt(f.anio),da=parseInt(f.danio)||0,pc=f.calle.trim()?partesDir(f.calle):null,calle=pc?pc.c:"",nm=String(f.num||"").trim()?parseInt(f.num):(pc&&pc.n!=null?pc.n:NaN),nl=(String(f.num||"").match(/[A-Z]+$/i)||[""])[0].toUpperCase(),rc=f.rc.replace(/\s/g,"").toUpperCase(),pl=f.planta.trim().toUpperCase().replace(/^0+(?=\d)/,"").replace(/[ºª°]/g,"");
+  if(!(m2||an||calle||rc||pl||nm)) return `<section>${tools}<p style="color:var(--muted);font-size:14px">Pon los datos del anuncio o de la valoración (m², año, calle, planta…) y te saco las viviendas del censo que encajan, con su referencia catastral.</p></section>`;
+  const R=[];
+  for(const [zn,Z] of Object.entries(S.censo)){ if(f.zona&&zn!==f.zona) continue;
+    for(const b of Z.edificios){ if(calle&&!zCalle(b.via).includes(calle)) continue; if(nm&&parseInt(b.num)!==nm) continue;
+      for(const u0 of b.u){if(nl&&(u0.letra||"").toUpperCase()!==nl)continue;const u={...u0,...(S.censoEd[u0._id]||{})},um=parseFloat(u.m2),ua=parseInt(u.anio),ch=u.esc==="T"||u.planta==="OD";
+        if(f.tipo==="piso"&&ch||f.tipo==="chalet"&&!ch) continue;
+        if(m2&&!(um&&Math.abs(um-m2)<=dm)) continue;
+        if(an&&!(ua&&Math.abs(ua-an)<=da)) continue;
+        if(pl&&String(u.planta||"").toUpperCase().replace(/^0+(?=\d)/,"")!==pl) continue;
+        if(rc&&!String(u.rc||"").toUpperCase().includes(rc)) continue;
+        R.push({zn,b,u,id:u0._id,d:(m2?Math.abs(um-m2):0)*10+(an?Math.abs(ua-an):0)})}}}
+  R.sort((a,b)=>a.d-b.d||a.b.via.localeCompare(b.b.via)||parseInt(a.b.num)-parseInt(b.b.num));
+  const tel=t=>/\d{6}/.test((t||"").replace(/\s/g,""));
+  const fila=({zn,b,u,id})=>`<tr class="viv" data-viv="${esc(id)}" tabindex="0"><td style="text-align:left;white-space:normal;min-width:170px"><b>${esc(b.via)} ${esc(b.num)}${u.letra?" "+esc(u.letra):""}</b><div style="font-size:12px;color:var(--muted)">${esc([u.esc&&u.esc!=="T"&&("Esc "+u.esc),u.planta&&u.planta!=="OD"&&(u.planta+"º"),u.puerta&&u.puerta!=="OS"&&u.puerta].filter(Boolean).join(" ")||(u.esc==="T"?"Unifamiliar":""))}</div></td>
+    <td>${zona(zn)}</td><td>${esc(u.m2||"")}</td><td>${esc(u.anio||"")}</td><td style="font-family:ui-monospace,monospace;font-size:12px;user-select:all">${esc(u.rc||"")}</td>
+    <td style="text-align:left;white-space:normal;min-width:140px">${esc(u.prop||u.abre||"")}${tel(u.tel)?` <span class="pill ok">tel</span>`:""}${b.ko&&b.ko.length?` <span class="pill bad">KO en portal</span>`:""}</td></tr>`;
+  return `<section>${tools}<h2>Viviendas que encajan <span class="n">${R.length}</span></h2>
+  ${R.length?`<div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Dirección</th><th>Zona</th><th>m²</th><th>Año</th><th>Ref. catastral</th><th style="text-align:left">Propietario</th></tr></thead><tbody>${(pgL=paginar("localizar",R)).items.map(fila).join("")}</tbody></table></div>${pgL.ctrl}`:`<div class="empty">Ninguna vivienda encaja. Prueba a ampliar el margen de m² o de año.</div>`}
+  <p style="color:var(--muted);font-size:13px">Ordenadas de más a menos parecida. Toca una para abrir su ficha del censo.</p></section>`;
+}
+function vCenso(){
+  if(!S.censo) return `<div class="empty">${S.db?"Cargando el censo…":"El censo se carga al abrir la página en claude.ai."}</div>`;
+  const cf=S.cf,Z=S.censo[cf.zona]; const zonas=Object.keys(S.censo).sort();
+  const tools=`<div class="tools"><select id="c-zona">${zonas.map(z=>`<option value="${z}"${z===cf.zona?" selected":""}>Zona ${z.charAt(0)+z.slice(1).toLowerCase()}${(S.ajustes.asesores.find(a=>a.zona===z)||{}).nombre?" · "+S.ajustes.asesores.find(a=>a.zona===z).nombre:""}</option>`).join("")}</select>
+    <input type="search" id="c-q" placeholder="Buscar calle, número o propietario…" value="${esc(cf.q)}">
+    <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="c-ko"${cf.ko?" checked":""}> Solo con KO</label>
+    <button class="btn small${cf.mapa?" primary":""}" type="button" id="c-mapa">${cf.mapa?"Ver lista":"Ver mapa y ruta"}</button>${!cf.mapa?`<button class="btn small" type="button" id="c-tara">Imprimir taraturas</button>`:""}</div>`;
+  if(cf.mapa&&Z) return tools+vMapa(cf.zona);
+  if(!Z) return tools+`<div class="empty">No hay censo de esta zona.</div>`;
+  const viv=u=>({...u,...(S.censoEd[u._id]||{})});
+  const R=Z.resumen||{};
+  const q=cf.q.toLowerCase().trim();
+  let E=Z.edificios.filter(b=>(!cf.ko||(b.ko&&b.ko.length))&&(!q||(b.via+" "+b.num).toLowerCase().includes(q)||b.u.some(u0=>{const u=viv(u0);return [u.prop,u.abre,u.tel].join(" ").toLowerCase().includes(q)})));
+  const total=E.length,Etodos=E; const pgC=paginar("censo",E); E=pgC.items;
+  const NB=q?Etodos.flatMap(b=>notiDePortal(b)):[];
+  S.cf.lista=Etodos.map(b=>({zona:cf.zona,b}));
+  const tel=t=>/\d{6}/.test((t||"").replace(/\s/g,""));
+  const fila=u0=>{const u=viv(u0);return `<tr class="viv${S.censoEd[u0._id]?" ed":""}" data-viv="${esc(u0._id)}" tabindex="0"><td>${esc([u.esc&&("Esc "+u.esc),u.planta,u.puerta].filter(Boolean).join(" · "))}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(u.prop||u.abre||"")}${(n=>n?` <span class="pill acc">Noticia · ${esc(n.etapa||"")}</span>`:"")(notiDe(u0._id))}</td><td>${esc(u.tel||"")}</td><td style="text-align:left">${esc(u.ocu||"")}</td><td>${esc(u.ult||"")}</td><td style="text-align:left;white-space:normal;min-width:220px;color:var(--muted)">${esc((u.com||"").slice(0,180))}</td></tr>`};
+  const koRow=k=>`<div class="ko"><span class="pill bad">KO${k.estado?" · "+esc(k.estado):""}</span> <b>${esc(k.dir)}</b>${k.prop?" · "+esc(k.prop):""}${k.tel?" · "+esc(k.tel):""}${k.inmo?" · "+esc(k.inmo):""}${k.precio?" · "+esc(k.precio):""}<div class="s">${esc((k.com||"").slice(0,300))}</div></div>`;
+  const ed=b=>{const U=b.u.map(viv),nt=U.filter(u=>tel(u.tel)).length,nn=U.filter(u=>u.prop||u.abre).length;
+    const RP=resumenPortal(b);
+    return `<details class="bld"><summary><span class="t">${esc(b.via)} ${esc(b.num)}</span><span class="m">${b.u.length} viv. · ${nn} con nombre · ${nt} con teléfono${b.ko&&b.ko.length?` · <span class="pill bad">${b.ko.length} KO</span>`:""}${RP.t.length?` · <span class="pill acc">${esc(RP.t[0])}</span>`:""}${(n=>n?` · <span class="pill ok">${n} noticia${n>1?"s":""}</span>`:"")(notiDePortal(b).length)}</span></summary>
+      ${(N=>N.length?`<div class="list nb">${N.map(rowContacto).join("")}</div>`:"")(notiDePortal(b))}
+      <div style="padding:8px 14px 0"><button class="btn small" type="button" data-tara="${Z.edificios.indexOf(b)}">Imprimir taratura</button> <button class="btn small" type="button" data-pegar="${Z.edificios.indexOf(b)}">Notas rápidas / foto buzón</button></div>
+      <div class="portal"><div class="pi">${RP.t.map(x=>`<span class="pill">${esc(x)}</span>`).join(" ")||`<span style="color:var(--muted)">Sin datos del portal todavía.</span>`}</div><div class="po">${RP.txt}</div>${RP.O.n?`<div class="pbar" aria-hidden="true"><i style="width:${RP.O.p/RP.O.n*100}%;background:var(--ok)"></i><i style="width:${RP.O.a/RP.O.n*100}%;background:var(--warn)"></i><i style="width:${RP.O.v/RP.O.n*100}%;background:var(--muted)"></i></div>`:""}<button class="btn small" type="button" data-portal="${esc(portalId(b))}">Datos del portal</button></div>
+      ${b.ko&&b.ko.length?`<div class="kos">${b.ko.map(koRow).join("")}</div>`:""}
+      <div class="tbl-wrap"><table><thead><tr><th>Vivienda</th><th style="text-align:left">Propietario</th><th>Teléfono</th><th style="text-align:left">Ocupado por</th><th>Últ. contacto</th><th style="text-align:left">Comentarios</th></tr></thead><tbody>${ordenTaratura(b.u).map(fila).join("")}</tbody></table></div></details>`};
+  return `<section>${tools}
+  <div class="kpis">${kpi("Viviendas",(R.viviendas||0).toLocaleString("es-ES"),`${R.edificios||0} portales`)}${kpi("Con nombre",pct(R.conNombre,R.viviendas),`${(R.conNombre||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conNombre/R.viviendas*100:0)}${kpi("Con teléfono",pct(R.conTel,R.viviendas),`${(R.conTel||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conTel/R.viviendas*100:0)}${kpi("KO",R.ko||0,`${R.koUbicados||0} ubicados en su portal`)}</div></section>
+  ${!q&&!cf.ko?(L=>`<section><details class="desp" id="d-llamar"${S.llamarAbierto?" open":""}><summary><h2>A quién llamar hoy <span class="n">${L.length}</span></h2><span class="flecha" aria-hidden="true">▾</span></summary><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Con teléfono y más probabilidad de vender: vacías, alquiladas, ya valoradas, mayores y sin contacto reciente. Las que ya son noticia no salen.</p>${hoyLista("llamarC",L,rowLlamar,"No hay viviendas con teléfono pendientes de llamar en esta zona.")}</details></section>`)(aQuienLlamar(cf.zona)):""}
+  <p style="margin:0;color:var(--muted);font-size:13px">Toca una vivienda para añadir contacto, teléfono o notas, o para pasarla a noticia.</p>${q?`<section><h2>Noticias en estos portales <span class="n">${NB.length}</span></h2>${NB.length?`<div class="list">${NB.slice(0,50).map(rowContacto).join("")}</div>`:`<div class="empty">No hay noticias activas en los portales que coinciden.</div>`}</section>`:""}<section><h2>Portales <span class="n">${total}</span></h2>${pgC.ctrl}<div class="list">${E.length?E.map(ed).join(""):`<div class="empty">Ningún portal coincide.</div>`}</div>${pgC.ctrl}</section>
+  ${cf.ko&&Z.koSinUbicar.length?`<section><h2>KO sin portal en el censo <span class="n">${Z.koSinUbicar.length}</span></h2><div class="list kos">${Z.koSinUbicar.map(koRow).join("")}</div></section>`:""}`;
+}
+function render(){
+  document.querySelectorAll("#tabs button").forEach(b=>{b.setAttribute("aria-current",b.dataset.v===S.view);
+    if(b.dataset.v==="hoy"){const n=contactosPendientes().length;b.innerHTML="Hoy"+(n?`<span class="count">${n}</span>`:"")}});
+  const ban=!S.db?`<div class="banner">${S.dbIntentado?"Esta vista no tiene acceso a la base de datos, así que no se puede guardar ni cargar nada. Ábrela en el navegador en claude.ai con tu sesión iniciada.":"Conectando con la base de datos…"}</div>`
+    :S.permDb==="denied"?`<div class="banner">Has bloqueado el permiso de guardar datos en esta página. <button class="btn small" type="button" id="btn-perm">Activar permiso</button></div>`
+    :S.soloLectura?`<div class="banner">No se ha podido guardar (${esc(S.soloLectura)}). Puede que esta vista sea solo de lectura. <button class="btn small" type="button" id="btn-perm">Revisar permisos</button></div>`:"";
+  setTimeout(()=>{if(S.view==="censo"&&S.cf.mapa&&$("#mapa"))pintarMapa(S.cf.zona)},0);
+  $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo}[S.view])();
+  if((S.view==="censo"||S.view==="localizar")&&!S.censo&&S.db) cargarCenso();
+}
+
+/* ---------- formularios ---------- */
+const FORMS={
+  contactos:{titulo:"propietario",fields:[
+    ["direccion","Dirección del inmueble *","text",{full:1,req:1}],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
+    ["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
+    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["motivo","Situación","sel",()=>MOTIVOS],
+    ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],
+    ["fechaValoracion","Fecha de valoración","date"],["precioValorado","Precio valorado (€)","number"],["precioPropietario","Precio que pide el propietario (€)","number"],
+    ["necesitaSti","Necesita a Stiwhar","check"],["notaSti","Qué necesita de Stiwhar","text",{full:1}],
+    ["notas","Notas generales","textarea",{full:1}]]},
+  encargos:{titulo:"encargo",fields:[
+    ["direccion","Dirección *","text",{full:1,req:1}],["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
+    ["fechaCaptacion","Fecha de captación","date"],["precio","Precio (€)","number"],["exclusiva","Exclusiva","sel",()=>["Sí","No"]],["finExclusiva","Fin de la exclusiva","date"],
+    ["honorarioPrevisto","Honorario previsto vendedor (€)","number"],["estado","Estado","sel",()=>EST_ENC],["ultimaRevisionPrecio","Última revisión de precio","date"],
+    ["riesgo","Riesgo o bloqueo","text",{full:1}],["notas","Notas (visitas, informes al vendedor…)","textarea",{full:1}]]},
+  operaciones:{titulo:"operación",fields:[
+    ["inmueble","Inmueble *","text",{full:1,req:1}],["asesor","Asesor","sel",()=>personas()],["tipo","Tipo","sel",()=>["Venta","Alquiler"]],
+    ["ladoCobrado","Lado cobrado","sel",()=>["Ambos","Vendedor","Comprador"]],["precio","Precio (€)","number"],["honorarios","Honorarios sin IVA (€)","number"],
+    ["estado","Estado","sel",()=>EST_OP],["fechaAceptacion","Fecha de aceptación (facturado)","date"],["fechaCobro","Fecha de cobro","date"],["fechaEscritura","Fecha de escritura","date"],
+    ["vendedor","Vendedor (nombre)","text"],["telVendedor","Teléfono del vendedor","tel"],["comprador","Comprador (nombre)","text"],["telComprador","Teléfono del comprador","tel"],
+    ["resenaPedida","Reseña de Google pedida el","date"],["ultimaFelicitacion","Último aniversario felicitado","date"],["notas","Notas","textarea",{full:1}]]}
+};
+FORMS.captaciones={titulo:"captación",fields:[
+    ["direccion","Dirección *","text",{full:1,req:1}],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],["asesor","Asesor","sel",()=>personas()],
+    ["estado","Estado","sel",()=>EST_CAP],["origen","Origen / trayectoria","text"],["tipo","Tipología","text"],["m2","Superficie","text"],
+    ["valVenta","Valoración venta (€)","number"],["valAlquiler","Valoración alquiler","text"],["relacion","Relación","text"],["venderEn","Vender en","text"],
+    ["fecha","Fecha de la valoración","date"],["propietario","Propietario","text"],["telefono","Teléfono","tel"],
+    ["pisosPosibles","Pisos posibles","textarea",{full:1}],["encontrado","Encontrado (qué piso es, quién)","textarea",{full:1}],["comentario","Comentarios","textarea",{full:1}]]};
+const DEFAULTS={captaciones:()=>({estado:"Pendiente",fecha:hoyISO()}),contactos:()=>({etapa:"Desarrollo",proxFecha:hoyISO()}),encargos:()=>({estado:"Activo",exclusiva:"Sí",fechaCaptacion:hoyISO()}),operaciones:()=>({estado:"Reserva",tipo:"Venta",ladoCobrado:"Ambos"})};
+let cur=null;
+function field([k,l,t,opt],v){
+  const o=typeof opt==="object"?opt:{}; const cls=o.full?"full":t==="check"?"check":"";
+  if(t==="check") return `<label class="check"><input type="checkbox" id="fld-${k}" name="${k}"${v?" checked":""}> ${l}</label>`;
+  let inp;
+  if(t==="sel") inp=`<select id="fld-${k}" name="${k}">${selOpts(opt(),v??"")}</select>`;
+  else if(t==="textarea") inp=`<textarea id="fld-${k}" name="${k}">${esc(v)}</textarea>`;
+  else inp=`<input id="fld-${k}" name="${k}" type="${t}"${t==="number"?' step="any" inputmode="decimal"':""} value="${esc(v)}"${o.req?" required":""}>`;
+  return `<label class="${cls}">${l}${inp}</label>`;
+}
+function abrir(col,id){
+  const F=FORMS[col]; const d=id?S[col].find(x=>x.id===id):DEFAULTS[col]();
+  if(!d) return; cur={col,id};
+  const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button><button class="btn small" type="button" data-act="informe">Informe de mercado</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
+  const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
+  const extraEnc=col==="encargos"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
+  const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button><button class="btn small" type="button" data-act="resenaHoy">Reseña pedida hoy</button><button class="btn small" type="button" data-act="felicitadoHoy">Aniversario felicitado hoy</button>`:"";
+  $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
+    <div class="db">${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>':""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${bloqueHist(d,!!id)}</div>
+    <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">Solicitar borrado</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  $("#dlg").showModal(); pistaZona();
+  if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
+}
+async function pintarVivBox(){
+  const box=$("#vivbox");if(!box||!cur||cur.col!=="contactos")return;
+  if(!S.censo){box.innerHTML='<div class="vb-s">Cargando el censo…</div>';await cargarCenso();if(!$("#vivbox")||!S.censo)return}
+  const di=$("#fld-direccion"),id=cur.censoId,r=id&&buscarViv(id);
+  if(id){
+    di.readOnly=true;
+    if(!r){box.innerHTML=`<div class="vb-h">Ficha del censo <span class="pill ok">Enlazada</span></div><div class="vb-s">Enlazada con una vivienda del censo de otra zona.</div><div class="vb-b"><button class="btn small" type="button" data-act="vivCambiar">Cambiar vivienda</button></div>`;return}
+    const v={...r.u,...(S.censoEd[id]||{})};di.value=dirViv(r);pistaZona();
+    const otra=S.contactos.filter(c=>c.censoId===id&&c.id!==cur.id);
+    box.innerHTML=`<div class="vb-h">Ficha del censo <span class="pill ok">Enlazada</span></div>
+      <div class="vb-t">${esc(dirViv(r))} · zona ${esc(r.zona.toLowerCase())}</div>
+      <div class="vb-s">${[r.u.m2&&r.u.m2+" m²",r.u.anio&&"año "+r.u.anio,v.ocu,r.u.rc].filter(Boolean).map(esc).join(" · ")}</div>
+      ${v.prop||v.abre||v.tel?`<div class="vb-s">En el censo: ${esc([v.prop||v.abre,v.tel].filter(Boolean).join(" · "))}</div>`:""}
+      ${v.com?`<div class="vb-c">${esc(String(v.com).slice(0,500))}</div>`:""}
+      ${otra.length?`<div class="vb-s" style="color:var(--bad)">Ojo: esta vivienda tiene otra noticia (${otra.map(c=>esc(c.asesor||"sin asesor")).join(", ")}). Hay que unirlas.</div>`:""}
+      <div class="vb-b"><button class="btn small" type="button" data-act="vivVer">Ver en el censo</button><button class="btn small" type="button" data-act="vivCambiar">Cambiar vivienda</button></div>`;
+    return}
+  di.readOnly=!cur.manual;
+  const q=cur.vq??(di.value||"");
+  box.innerHTML=`<div class="vb-h">Ficha del censo ${cur.manual?'<span class="pill warn">Sin localizar</span>':'<span class="pill bad">Sin enlazar</span>'}</div>
+    <label class="full">Busca la vivienda (calle, número, piso)<input id="viv-q" type="search" autocomplete="off" value="${esc(q)}" placeholder="Ej.: Callao 13 2ºA"></label>
+    <div id="viv-res" class="vb-res"></div>
+    <label class="check"><input type="checkbox" id="viv-manual"${cur.manual?" checked":""}> Aún no está localizada: escribo la dirección a mano</label>`;
+  pintarVivRes();
+}
+function pintarVivRes(){const el=$("#viv-res"),qi=$("#viv-q");if(!el||!qi)return;const q=qi.value.trim();cur.vq=q;
+  if(q.length<3){el.innerHTML='<div class="vb-s">Escribe la calle y el número.</div>';return}
+  const R=candidatosViv(q,true),U=R.u.slice(0,40);
+  el.innerHTML=U.length?U.map(x=>{const v={...x.u,...(S.censoEd[x.u._id]||{})},n=notiDe(x.u._id);return `<button type="button" class="vb-o" data-vivsel="${esc(x.u._id)}"><b>${esc(dirViv(x))}</b> <span>${esc([v.prop||v.abre,v.ocu].filter(Boolean).join(" · "))}</span>${n&&n.id!==cur.id?` <span class="pill warn">ya es noticia</span>`:""}</button>`}).join("")+(R.u.length>40?`<div class="vb-s">Hay ${R.u.length}: añade piso y puerta para afinar.</div>`:"")
+   :`<div class="vb-s">${R.edificios?"Ese piso no aparece en ese portal del censo.":"No encuentro esa calle en el censo."} Si aún no sabes qué piso es, marca la casilla de abajo.</div>`}
+function fmtFH(iso){const d=new Date(iso);return d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}
+function bloqueHist(d,conHist){
+  const H=[...((d&&d.historial)||[])].reverse();
+  return `<label class="full">Nueva nota (se guarda con fecha en el historial)<textarea id="fld-nuevaNota" placeholder="Qué ha pasado hoy…"></textarea></label>
+  ${conHist?`<div class="full hist"><div class="hl">Historial</div>${H.length?H.map(h=>`<div class="he"><span class="hf">${fmtFH(h.f)}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join(""):`<div class="he" style="color:var(--muted)">Aún no hay cambios guardados desde el CRM.</div>`}</div>`:""}`;
+}
+function leerForm(){
+  const F=FORMS[cur.col],o={};
+  for(const [k,,t] of F.fields){const el=$("#fld-"+k); if(t==="check") o[k]=el.checked; else if(t==="number") o[k]=el.value===""?null:Number(el.value); else o[k]=el.value.trim();}
+  return o;
+}
+function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()
+  .replace(/^\s*(C\/|CL\.?\s|CALLE\s|AVDA\.?\s|AVENIDA\s|AV\.?\s|PZA\.?\s|PZ\.?\s|PLAZA\s|PASEO\s)/,"").replace(/\bESC(ALERA)?\b/g,"").replace(/[^A-Z0-9]/g,"")}
+function etiqueta(col,k){const f=(FORMS[col]?.fields||[]).find(x=>x[0]===k);return f?f[1].replace(" *",""):k}
+function anterior(col,id){if(!id)return null;if(col==="portales")return {...(S.portales[id]||{})};if(col==="censoEdits"){const r=buscarViv(id);return {...(r?r.u:{}),...(S.censoEd[id]||{})}}return S[col].find(x=>x.id===id)||null}
+async function guardar(col,id,data,nota){
+  if(!S.db){toast("No se puede guardar fuera de claude.ai");return null}
+  const ahora=new Date().toISOString(),old=anterior(col,id);
+  const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","borrarSolicitado","vendidaVista"].includes(k)&&String(old[k]??"")!==String(data[k]??"")&&!(old[k]==null&&data[k]===false))
+    .map(k=>({campo:etiqueta(col,k),antes:String(old[k]??"").slice(0,200),despues:String(data[k]??"").slice(0,200)})):[];
+  const out={...(old||{}),...data}; delete out.id; delete out._id; out.actualizado=ahora;
+  const hist=[...((old&&old.historial)||[])];
+  if(!old||cambios.length||nota) hist.push({f:ahora,...(old?{}:{alta:true}),...(cambios.length?{c:cambios}:{}),...(nota?{n:nota}:{})});
+  out.historial=hist.slice(-300);
+  try{ if(id){await S.db.collection(col).doc(id).set(out);return id}
+       const r=S.db.collection(col).doc(); out.creado=ahora; await r.set(out); return r.id; }
+  catch(e){console.error("guardar",col,e);S.soloLectura=e.code||e.message||"error";toast(e.code==="quota_exceeded"?"La base de datos está llena: borra registros antiguos":"No se ha guardado: "+(e.code||"")+" "+(e.message||""));return null}
+}
+$("#frm").addEventListener("submit",async ev=>{
+  ev.preventDefault(); if(cur&&cur.col==="pegar")return guardarPegado(); const data=leerForm();
+  if(cur.col==="ajustes"){return guardarAjustes()}
+  if(cur.col==="contactos"&&data.etapa!=="KO"&&data.etapa!=="Encargo"&&!data.proxFecha){toast("Pon fecha a la próxima acción");$("#fld-proxFecha").focus();return}
+  if(CON_ZONA.includes(cur.col)){const z=zonaDe(data.direccion);if(z)data.zona=z}
+  if(cur.col==="contactos"&&data.publicado&&!data.fechaPublicado)data.fechaPublicado=hoyISO();
+  if(cur.col==="contactos"){const err=reglasVivienda(data);if(err){toast(err);$("#viv-q")?.focus();return}
+    const otra=data.censoId&&S.contactos.find(c=>c.censoId===data.censoId&&c.id!==cur.id);if(otra&&!cur.id){$("#dlg").close();toast("Esa vivienda ya tiene noticia: te la abro");setTimeout(()=>abrir("contactos",otra.id),150);return}}
+  const nota=($("#fld-nuevaNota")?.value||"").trim();
+  if(!cur.id&&cur.col==="contactos"&&data.censoId){}else if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
+    if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
+  if(await guardar(cur.col,cur.id,data,nota)){$("#dlg").close();toast("Guardado");if(cur.col==="contactos")sincronizarCenso(data)}
+});
+$("#frm").addEventListener("input",e=>{if(e.target.id==="fld-direccion")pistaZona();if(e.target.id==="viv-q"){clearTimeout(pintarVivRes.t);pintarVivRes.t=setTimeout(pintarVivRes,200)}});
+$("#frm").addEventListener("change",e=>{if(e.target.id==="viv-manual"){cur.manual=e.target.checked;cur.vq=$("#viv-q")?.value;pintarVivBox();if(cur.manual)$("#fld-direccion").focus()}});
+function reglasVivienda(data){ /* devuelve texto de error o "" y completa data */
+  if(cur.censoId){data.censoId=cur.censoId;const r=buscarViv(cur.censoId);if(r){data.direccion=dirViv(r);data.zona=r.zona}return ""}
+  data.censoId="";
+  if(!S.censo)return "";
+  if(!cur.manual)return "Elige la vivienda en el censo o marca «Aún no está localizada».";
+  if(data.etapa!=="Desarrollo"&&data.etapa!=="KO"&&candidatosViv(data.direccion).u.length)return "Ya está localizada: elige su vivienda en el censo (o déjala en Desarrollo).";
+  return "";
+}
+async function sincronizarCenso(data){const cid=data.censoId,r=cid&&buscarViv(cid);if(!r)return;const v={...r.u,...(S.censoEd[cid]||{})},ch={};
+  if(data.nombre&&!(v.prop||v.abre))ch.prop=data.nombre;if(data.telefono&&!v.tel)ch.tel=data.telefono;if(!S.censoEd[cid]?.noticia)ch.noticia=true;
+  if(Object.keys(ch).length){const sl=S.soloLectura;await guardar("censoEdits",cid,ch,"Datos copiados desde su noticia.");S.soloLectura=sl}}
+$("#frm").addEventListener("click",async ev=>{
+  const vs=ev.target.closest("[data-vivsel]");
+  if(vs){const id=vs.dataset.vivsel,n=notiDe(id);
+    if(n&&n.id!==cur.id){if(!cur.id){$("#dlg").close();toast("Esa vivienda ya tiene noticia: te la abro");setTimeout(()=>abrir("contactos",n.id),150)}else toast("Esa vivienda ya es otra noticia ("+(n.asesor||"sin asesor")+"). Pide a Stiwhar que las una.");return}
+    const r=buscarViv(id),v={...r.u,...(S.censoEd[id]||{})};cur.censoId=id;cur.manual=false;
+    if(!$("#fld-nombre").value&&(v.prop||v.abre))$("#fld-nombre").value=v.prop||v.abre;if(!$("#fld-telefono").value&&v.tel)$("#fld-telefono").value=v.tel;
+    pintarVivBox();return}
+  const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
+  if(a==="cerrar") return $("#dlg").close();
+  if(a==="pgRevisar"){const F=pgParse($("#pg-txt").value,cur.pg.U);if(!F.length){toast("Escribe o pega alguna línea");return}pgAnadir(F);$("#pg-txt").value="";return}
+  if(a==="vivVer"){const id=cur.censoId;$("#dlg").close();setTimeout(()=>abrirViv(id),100);return}
+  if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>$("#viv-q")?.focus(),50);return}
+  if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
+    if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200)}},"Solicitud de borrado: "+m)){$("#dlg").close();toast("Solicitud de borrado enviada. Apruébala desde Hoy")}return}
+  if(a==="aCenso"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué no era noticia");$("#fld-nuevaNota")?.focus();return}
+    if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200),tipo:"censo"}},"Pide que vuelva al censo (no era noticia): "+m)){$("#dlg").close();toast("Solicitud enviada. Apruébala desde Hoy")}return}
+  if(a==="rechazarBorrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(await guardar(cur.col,cur.id,{borrarSolicitado:null},"Borrado rechazado"+(m?": "+m:"."))){$("#dlg").close();toast("Solicitud rechazada: el registro se queda")}return}
+  if(a==="aprobarBorrar"){ if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para borrar";return}
+    const old=anterior(cur.col,cur.id); let msg="Borrado. Queda una copia en el registro de borrados";
+    if(old?.borrarSolicitado?.tipo==="censo"){
+      if(!S.censo){b.textContent="Cargando censo…";await cargarCenso()}
+      const vid=(old.censoId&&buscarViv(old.censoId)?old.censoId:null)||viviendaDeDir(old.direccion);
+      if(vid){const ex={...(buscarViv(vid)?.u||{}),...(S.censoEd[vid]||{})};
+        const com=[ex.com,`${fmtF(hoyISO())} Fue noticia y vuelve al censo (${old.borrarSolicitado.motivo||""}).`,[old.nombre,old.telefono].filter(Boolean).length?"Datos de la noticia: "+[old.nombre,old.telefono].filter(Boolean).join(" · "):"",old.notas].filter(Boolean).join("\n").slice(0,4000);
+        const ok=await guardar("censoEdits",vid,{prop:ex.prop||old.nombre||"",tel:ex.tel||old.telefono||"",com,noticia:false},"Vuelve al censo desde la noticia: "+(old.borrarSolicitado.motivo||""));
+        if(!ok){b.textContent="Aprobar: vuelve al censo";delete b.dataset.sure;return}
+        msg="Hecho: ya no es noticia y su información queda en la vivienda del censo"}
+      else msg="Ya no es noticia. No he encontrado la vivienda exacta en el censo: sus datos quedan en el registro de borrados"}
+    try{await S.db.collection("borrados").doc().set({col:cur.col,docId:cur.id,f:new Date().toISOString(),motivo:old?.borrarSolicitado?.motivo||"",datos:JSON.parse(JSON.stringify(old||{}))});
+      await S.db.collection(cur.col).doc(cur.id).delete();$("#dlg").close();toast(msg)}catch(e){toast("No se ha borrado")} return }
+  if(a==="nota"){const t=$("#fld-notas");t.value=`${fmtF(hoyISO())} · \n`+t.value;t.focus();t.setSelectionRange(t.value.indexOf("\n"),t.value.indexOf("\n"));return}
+  if(a==="ctoHoy"){$("#fld-ult").value=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});$("#fld-nuevaNota").focus();return}
+  if(a==="aNoticia"){const v=leerForm(),r=cur.viv,id=cur.id,nota=($("#fld-nuevaNota")?.value||"").trim();const ok=await guardar("censoEdits",id,{...v,noticia:true},nota||(S.censoEd[id]?.noticia?"":"Pasada a noticia."));if(!ok)return;$("#dlg").close();
+    const dir=[r.b.via,r.b.num,r.u.esc&&("Esc "+r.u.esc),r.u.planta&&(r.u.planta+"º"),r.u.puerta].filter(Boolean).join(" ");
+    const ya=S.contactos.find(c=>c.censoId===id)||S.contactos.find(c=>claveDir(c.direccion)===claveDir(dir));
+    if(ya){toast("Este inmueble ya tiene noticia: te la abro");S.view="contactos";S.f.etapa="activos";render();setTimeout(()=>{abrir("contactos",ya.id);if(nota)$("#fld-nuevaNota").value=nota},300);return}
+    const as=(S.ajustes.asesores.find(x=>x.zona===r.zona)||{}).nombre||"";
+    const nid=await guardar("contactos",null,{direccion:dir,nombre:v.prop||v.abre,telefono:v.tel,asesor:as,zona:r.zona,etapa:"Desarrollo",origen:"",motivo:"",proxAccion:"",proxFecha:hoyISO(),necesitaSti:false,notaSti:"",notas:(v.com||"")+"\n(Desde el censo.)",censoId:id},nota);
+    if(nid){S.view="contactos";S.f.etapa="Desarrollo";render();setTimeout(()=>abrir("contactos",nid),300)}return}
+  if(a==="aSeg"){const v=leerForm();v.etapa="Seguimiento";{const err=reglasVivienda(v);if(err){toast(err.startsWith("Ya está")?"Para pasar a Seguimiento, elige primero su vivienda en el censo.":err);$("#viv-q")?.focus();return}}if(!v.proxFecha)v.proxFecha=hoyISO();const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,n||"Propietario localizado: pasa a Seguimiento.")){$("#dlg").close();toast("Pasada a Seguimiento")}return}
+  if(a==="vendida"){if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez";return}const v=leerForm();v.etapa="KO";v.vendida=hoyISO();v.vendidaVista=false;const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,"Se ha vendido"+(n?": "+n:"."))){$("#dlg").close();toast("Marcada como vendida. Le llega el aviso a Stiwhar")}return}
+  if(a==="vistoVend"){if(await guardar("contactos",cur.id,{vendidaVista:true},"Stiwhar enterado de la venta.")){$("#dlg").close();toast("Aviso quitado")}return}
+  if(a==="capLocalizar"){const v=leerForm();$("#dlg").close();const z=zonaDe(v.direccion);
+    const pd=partesDir(v.direccion||"");S.lf={...S.lf,zona:"",num:pd.n!=null?String(pd.n)+(pd.letra&&pd.letra!=="BIS"?pd.letra:""):"",calle:(v.direccion||"").replace(/^\s*(calle|c\/|cl|avenida|avda\.?|av\.?|plaza|paseo|urbanizaci[oó]n)\s+(de\s+(la\s+|los\s+|las\s+)?)?/i,"").replace(/[\s,]*\d.*$/,"").trim(),m2:String(parseFloat(String(v.m2||"").replace(",","."))||""),anio:"",planta:pd.planta??pd.plantaSola??"",rc:"",tipo:/chalet|casa|adosad|unifamiliar/i.test(v.tipo||"")?"chalet":/piso|apartamento|[aá]tico|d[uú]plex/i.test(v.tipo||"")?"piso":""};
+    if(!S.lf.calle&&z)S.lf.zona=z; S.view="localizar";render();window.scrollTo(0,0);return}
+  if(a==="capNoticia"){const v=leerForm(),id=cur.id,nota=($("#fld-nuevaNota")?.value||"").trim();
+    const ya=S.contactos.find(c=>c.capId===id)||S.contactos.find(c=>claveDir(c.direccion)===claveDir(v.direccion));
+    const ok=await guardar("captaciones",id,{...v,estado:"Pasada a noticia"},nota||(ya?"":"Pasada a noticia."));if(!ok)return;$("#dlg").close();
+    if(ya){toast("Este inmueble ya tiene noticia: te la abro");S.view="contactos";S.f.etapa="activos";render();setTimeout(()=>{abrir("contactos",ya.id);if(nota)$("#fld-nuevaNota").value=nota},300);return}
+    const zn=zonaDe(v.direccion)||(Object.keys(ZONAS).includes(v.zona)?v.zona:"");
+    const notas=[v.tipo,v.m2,v.relacion,v.venderEn,v.valAlquiler&&("Alquiler "+v.valAlquiler)].filter(Boolean).join(" · ")+(v.encontrado?"\nEncontrado: "+v.encontrado:"")+(v.comentario?"\n"+v.comentario:"")+"\n(Desde el mapa de captaciones.)";
+    const nid=await guardar("contactos",null,{direccion:v.direccion,nombre:v.propietario||"",telefono:v.telefono||"",asesor:v.asesor,zona:zn,etapa:"Desarrollo",origen:"Consulta de valor (solo dirección)",motivo:"",proxAccion:"Contactar al propietario",proxFecha:hoyISO(),fechaValoracion:v.fecha||"",precioValorado:v.valVenta||null,necesitaSti:false,notaSti:"",notas,capId:id},nota);
+    if(nid){S.view="contactos";S.f.etapa="Desarrollo";render();setTimeout(()=>abrir("contactos",nid),300)}return}
+  if(a==="calProx"||a==="calVal"){const v=leerForm(),val=a==="calVal",f=val?v.fechaValoracion:v.proxFecha;
+    if(!f){toast(val?"Pon primero la fecha de valoración":"Pon primero la fecha del próximo paso");$(val?"#fld-fechaValoracion":"#fld-proxFecha").focus();return}
+    const tit=(val?"Valoración":(v.proxAccion||"Próximo paso"))+" · "+(v.direccion||"")+(v.asesor?" ("+v.asesor+")":"");
+    const det=[v.nombre&&("Propietario: "+v.nombre),v.telefono&&("Teléfono: "+v.telefono),v.etapa&&("Etapa: "+v.etapa),val&&v.precioPropietario&&("Pide: "+v.precioPropietario+" €"),"Desde el CRM Hogares Fuenlabrada"].filter(Boolean).join("\n");
+    gcalNuevo(tit,f,det,v.direccion);return}
+  if(a==="avisoPortal"){const v=leerForm(),col=cur.col,d=S[col].find(x=>x.id===cur.id)||{};$("#dlg").close();setTimeout(()=>abrirAvisoPortal(col==="operaciones"?"vendido":"venta",v.direccion||v.inmueble||"",d),120);return}
+  if(a==="informe"){const v=leerForm();informeMercado(v.direccion,cur.censoId,v.zona);return}
+  if(a==="informeViv"){informeMercado("",cur.id,"");return}
+  if(a==="resenaHoy"){$("#fld-resenaPedida").value=hoyISO();toast("Pulsa Guardar para apuntarlo");return}
+  if(a==="felicitadoHoy"){$("#fld-ultimaFelicitacion").value=hoyISO();toast("Pulsa Guardar para apuntarlo");return}
+  if(a==="avisoImprimir"){imprimirCartas(cur.aviso);return}
+  if(a==="avisoApuntar"){apuntarAviso(cur.aviso);return}
+  if(a==="mas7"){const d=new Date();d.setDate(d.getDate()+7);$("#fld-proxFecha").value=new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);return}
+  if(a==="revisado"){$("#fld-ultimaRevisionPrecio").value=hoyISO();return}
+  if(a==="aEncargo"){const c=leerForm();c.etapa="Encargo";const id=await guardar("contactos",cur.id,c);if(!id)return;$("#dlg").close();
+    const nid=await guardar("encargos",null,{direccion:c.direccion,asesor:c.asesor,zona:c.zona,precio:c.precioPropietario||c.precioValorado||null,exclusiva:"Sí",estado:"Activo",fechaCaptacion:hoyISO(),honorarioPrevisto:6000,contactoId:cur.id,notas:""});
+    if(nid){S.view="encargos";render();setTimeout(()=>abrir("encargos",nid),300)}return}
+  if(a==="aOp"){const e=leerForm(),encId=cur.id;$("#dlg").close();
+    const nid=await guardar("operaciones",null,{inmueble:e.direccion,asesor:e.asesor,tipo:"Venta",ladoCobrado:"Ambos",precio:e.precio,honorarios:null,estado:"Reserva",encargoId:encId,notas:""});
+    if(nid){S.view="operaciones";render();setTimeout(()=>abrir("operaciones",nid),300)}return}
+});
+function abrirAjustes(){
+  const A=S.ajustes; cur={col:"ajustes"};
+  $("#frm").innerHTML=`<div class="dh">Objetivos y asesores</div><div class="db">
+   <label>Objetivo del mes (€)<input id="aj-mes" type="number" value="${A.objetivoMes}"></label>
+   <label>Objetivo del periodo (€)<input id="aj-per" type="number" value="${A.objetivoPeriodo}"></label>
+   <label>Inicio del periodo<input id="aj-ini" type="date" value="${A.periodoInicio}"></label>
+   <label>Fin del periodo<input id="aj-fin" type="date" value="${A.periodoFin}"></label>
+   <label>Gastos fijos al mes (€)<input id="aj-gas" type="number" value="${A.gastosMes}"></label>
+   <label>Días hasta revisar precio<input id="aj-rev" type="number" value="${A.diasRevisionPrecio}"></label>
+   <label>Teléfono de la oficina (para cartas)<input id="aj-tel" type="tel" value="${esc(A.telefonoOficina||"")}"></label>
+   <label class="full">Metas semanales por asesor (noticias, gestiones, censo, valoraciones, captaciones)<input id="aj-metas" type="text" value="${esc(METAS_ET.map(([k])=>({...DEF_METAS,...(A.metas||{})})[k]).join(", "))}"></label>
+   <label class="full">Google Calendar compartido (ID del calendario)<input id="aj-cal" type="text" placeholder="...@group.calendar.google.com" value="${esc(A.calendarioId||"")}"></label>
+   <label class="full">Asesores (uno por línea: Nombre, ZONA)<textarea id="aj-ase">${esc(A.asesores.map(a=>a.nombre+(a.zona?", "+a.zona:"")).join("\n"))}</textarea></label>
+  </div><div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  $("#dlg").showModal();
+}
+async function guardarAjustes(){
+  const n=id=>Number($(id).value)||0;
+  const A={objetivoMes:n("#aj-mes"),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
+    asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()}))};
+  if(!S.db) return toast("No se puede guardar fuera de claude.ai");
+  try{await S.db.doc("ajustes/general").set({...S.ajustes,...A});$("#dlg").close();toast("Ajustes guardados")}catch(e){toast("No se han guardado los ajustes")}
+}
+
+
+/* ---------- zona por dirección (índice sacado del censo) ---------- */
+const ZTIPOS=/^\s*(C\/|(?:CL|CALLE|AV|AVD|AVDA|AVENIDA|PZA|PZ|PL|PLAZA|PASEO|PS|PSO|CAMINO|CM|CTRA|CARRETERA|TRAVESIA|TR|GLORIETA|GTA|RONDA|RD|URB|URBANIZACION)(?:\.|\s|\/)+)/;
+const zUp=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+const zCalle=t=>zUp(t).replace(ZTIPOS,"").replace(/\b(DE|DEL|LA|LAS|LOS|EL)\b/g," ").replace(/[^A-Z0-9]/g,"");
+function zonaDe(dir){
+  const I=S.zidx; if(!I||!dir) return "";
+  const a=zUp(dir).replace(ZTIPOS,""),m=a.match(/^(.*?[A-Z].*?)[\s,.ºª-]*(\d+)([A-Z](?![A-Z]))?/);
+  const c=zCalle(m?m[1]:a),n=m?+m[2]:null,l=m&&m[3]||""; let P=I[c];
+  if(!P&&c.length>=5){const ks=Object.keys(I).filter(k=>k.includes(c)||(k.length>=5&&c.includes(k)));if(ks.length===1)P=I[ks[0]]}
+  if(!P) return "";
+  if(n!=null&&P[n+l]) return P[n+l];
+  if(n!=null&&P[n]) return P[n];
+  const zs=[...new Set(Object.values(P))]; if(zs.length===1) return zs[0];
+  if(n==null) return "";
+  let best="",bd=1e9; for(const [k0,z] of Object.entries(P)){const k=parseInt(k0);const d=Math.abs(k-n)+(k%2===n%2?0:1000);if(d<bd){bd=d;best=z}} return best;
+}
+const CON_ZONA=["contactos","encargos","captaciones"];
+function pistaZona(){
+  if(!cur||!CON_ZONA.includes(cur.col)) return; const sel=$("#fld-zona"),di=$("#fld-direccion"); if(!sel||!di) return;
+  let h=$("#zhint"); if(!h){sel.insertAdjacentHTML("afterend",`<small id="zhint" style="display:block;margin-top:4px;font-size:12px;color:var(--muted)"></small>`);h=$("#zhint")}
+  const z=zonaDe(di.value);
+  if(z){sel.value=z;sel.disabled=true;sel.dataset.auto=1;h.textContent="Zona según el censo para esta dirección."}
+  else{if(sel.dataset.auto){sel.value="";delete sel.dataset.auto}sel.disabled=false;h.textContent=di.value.trim()?(S.zidx?"Calle fuera del censo: elige la zona a mano.":""):""}
+}
+function partesDir(dir){
+  let a=zUp(dir).replace(/\s+/g," ").trim().replace(ZTIPOS,"").replace(/^(URB(ANIZACION)?\.? )?PARQUE /,"");
+  const m=a.match(/^(.*?[A-Z].*?)[\s,.ºª°-]*(?:N[ºª°]\s*)?(\d+)(?:(BIS|[A-F])(?![A-Z0-9])|\s+(BIS)\b)?/); if(!m) return {c:zCalle(a)};
+  let rest=a.slice(m.index+m[0].length);
+  const o={c:zCalle(m[1]),n:+m[2]};if(m[3]||m[4])o.letra=m[3]||m[4];
+  const e=rest.match(/\b(?:ESC(?:ALERA)?|PORTAL|P|BLOQ(?:UE)?|BLQ|E)\.?\s*:?\s*(\d+|IZQ\w*|DCH\w*|DER\w*)\b/);
+  if(e){o.esc=/^IZQ/.test(e[1])?"I":/^(DCH|DER)/.test(e[1])?"D":String(+e[1]);rest=rest.slice(0,e.index)+" "+rest.slice(e.index+e[0].length)}
+  rest=rest.replace(/\b(PISO|PLT|PLANTA|PUERTA)\b:?/g," ");
+  const p=rest.match(/(?:^|[\s,.-])(BAJO|BJ|B|\d{1,2})\s*[ºª°]?\s*[-\s]?\s*([A-H]|\d{1,2})\b/)||rest.match(/(?:^|[\s,.-])(BAJO|BJ|B|\d{1,2})[ºª°]?([A-H])\b/);
+  if(p){o.planta=/^B/.test(p[1])?"0":String(+p[1]);o.puerta=/^\d+$/.test(p[2])?String(+p[2]):p[2]}
+  else{const p2=rest.match(/(?:^|[\s,.-])(BAJO|BJ|\d{1,2})\s*[ºª°]?\s*$/);if(p2)o.plantaSola=/^B/.test(p2[1])?"0":String(+p2[1])}
+  return o;
+}
+const zPP=t=>String(t??"").toUpperCase().trim().replace(/^0+(?=[0-9A-Z])/,"");
+const zPl=t=>{t=String(t??"").toUpperCase().trim();return /^(BJ|BAJO|B)$/.test(t)?"0":t.replace(/^0+(?=[0-9A-Z])/,"")};
+/* Viviendas del censo que encajan con una dirección escrita. buscar=true: modo buscador (calle por prefijo, sin exigir piso). */
+function candidatosViv(dir,buscar){
+  const C=S.censo||{},P=partesDir(dir);if(!P.c)return {P,u:[],edificios:0};
+  let B=[];const bOk=b=>P.n==null||parseInt(b.num)===P.n;
+  for(const [zn,Z] of Object.entries(C))for(const b of Z.edificios)if(zCalle(b.via)===P.c&&bOk(b))B.push([zn,b]);
+  if(!B.length&&P.c.length>=(buscar?3:5)){const ks=new Set();for(const Z of Object.values(C))for(const b of Z.edificios){const k=zCalle(b.via);if(buscar?k.includes(P.c):(k.includes(P.c)||P.c.includes(k)&&k.length>=5))ks.add(k)}
+    if(buscar||ks.size===1)for(const [zn,Z] of Object.entries(C))for(const b of Z.edificios)if(ks.has(zCalle(b.via))&&bOk(b))B.push([zn,b])}
+  if(P.n==null&&!buscar)return {P,u:[],edificios:B.length};
+  let U=B.flatMap(([zona,b])=>b.u.map(u=>({zona,b,u})));
+  if(P.letra||!buscar){const f=U.filter(x=>(x.u.letra||"")===(P.letra||""));if(f.length||P.letra)U=f}
+  if(P.planta!=null)U=U.filter(x=>zPl(x.u.planta)===P.planta&&zPP(x.u.puerta)===zPP(P.puerta));
+  if(buscar&&P.plantaSola!=null)U=U.filter(x=>zPl(x.u.planta)===P.plantaSola);
+  if(P.esc&&U.length>1){const f=U.filter(x=>zPP(x.u.esc)===P.esc);if(f.length)U=f}
+  if(buscar)U.sort((x,y)=>(x.b.via+x.b.num).localeCompare(y.b.via+y.b.num)||(+zPl(x.u.planta)||0)-(+zPl(y.u.planta)||0)||zPP(x.u.puerta).localeCompare(zPP(y.u.puerta)));
+  return {P,u:U,edificios:B.length};
+}
+function viviendaDeDir(dir){const r=candidatosViv(dir);return r.u.length===1?r.u[0].u._id:null}
+function dirViv(r){const u=r.u,pl=zPl(u.planta);return [r.b.via,r.b.num+(u.letra?" "+u.letra:""),u.esc&&!/^T$/.test(u.esc)&&("Esc "+u.esc),u.planta&&!/^OD$/.test(u.planta)&&(pl==="0"?"Bajo":pl+"º"),u.puerta&&!/^OS$/.test(u.puerta)&&zPP(u.puerta)].filter(Boolean).join(" ")}
+const notiDe=id=>id&&S.contactos.find(c=>c.censoId===id);
+function buscarViv(id){for(const [zn,Z] of Object.entries(S.censo||{}))for(const b of Z.edificios)for(const u of b.u)if(u._id===id)return {zona:zn,b,u};return null}
+const OCUPA=["","PROPIETARIO","INQUILINO","VACIO","FAMILIAR","OKUPA","NEGOCIO"];
+/* ---------- portales (para hacer zona / puerta fría) ---------- */
+FORMS.portales={titulo:"portal",fields:[["presidente","Presidente de la comunidad","text"],["presPiso","Piso del presidente","text"],["presTel","Teléfono del presidente","tel"],
+  ["portero","¿Tiene portero?","sel",()=>["","Sí","No"]],["porteroHorario","Horario del portero","text"],["limpieza","¿Tiene limpieza?","sel",()=>["","Sí","No"]],["limpiezaHorario","Días y horario de limpieza","text"],
+  ["notasPortal","Notas del portal (acceso, buzones, telefonillo…)","textarea",{full:1}]]};
+function ocupacion(U){let p=0,a=0,v=0;for(const u of U){const o=String(u.ocu||"").toUpperCase();if(/^PROP|FAMILIAR/.test(o))p++;else if(/INQUIL|ALQ/.test(o))a++;else if(/VAC/.test(o))v++}return {p,a,v,n:p+a+v,total:U.length}}
+const portalId=b=>b.u[0]&&b.u[0]._id?b.u[0]._id.replace(/\.\d+$/,""):"";
+function buscarPortal(pid){for(const [zona,Z] of Object.entries(S.censo||{}))for(const b of Z.edificios)if(portalId(b)===pid)return {b,zona};return null}
+function resumenPortal(b){const P=S.portales[portalId(b)]||{},O=ocupacion(b.u.map(u=>({...u,...(S.censoEd[u._id]||{})}))),pc=x=>Math.round(x/O.n*100)+" %";
+  const t=[];if(P.presidente)t.push("Presidente: "+P.presidente+(P.presPiso?" ("+P.presPiso+")":""));if(P.portero==="Sí")t.push("Portero"+(P.porteroHorario?" "+P.porteroHorario:""));else if(P.portero==="No")t.push("Sin portero");
+  if(P.limpieza==="Sí")t.push("Limpieza"+(P.limpiezaHorario?" "+P.limpiezaHorario:""));
+  return {t,O,txt:O.n?`Propietario ${pc(O.p)} · Alquilado ${pc(O.a)} · Vacío ${pc(O.v)} <span style="opacity:.75">(de ${O.n} con dato)</span>`:"Sin datos de ocupación"}}
+function abrirPortal(pid){const r=buscarPortal(pid);if(!r)return;const d=S.portales[pid]||{};cur={col:"portales",id:pid};const R=resumenPortal(r.b);
+  $("#frm").innerHTML=`<div class="dh">${esc(r.b.via)} ${esc(r.b.num)}<div style="font:500 13px var(--body);color:var(--muted)">Zona ${esc(r.zona.toLowerCase())} · ${r.b.u.length} viviendas · ${R.txt}</div></div>
+    <div class="db">${FORMS.portales.fields.map(f=>field(f,d[f[0]])).join("")}${bloqueHist(d,true)}</div>
+    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  $("#dlg").showModal()}
+FORMS.censoEdits={titulo:"vivienda",fields:[["prop","Propietario","text",{full:1}],["abre","Quién abre","text"],["tel","Teléfono","tel"],["ocu","Ocupado por","sel",()=>OCUPA],
+  ["loc","Propietario localizado","sel",()=>["","SI","NO"]],["ult","Último contacto","text"],["tipo","Tipo de contacto","text"],["val","Valorada (fecha y precio)","text"],["com","Comentarios","textarea",{full:1}]]};
+function abrirViv(id){
+  const r=buscarViv(id); if(!r) return; const d={...r.u,...(S.censoEd[id]||{})}; cur={col:"censoEdits",id,viv:r};
+  const dir=[r.b.via,r.b.num,r.u.esc&&("Esc "+r.u.esc),r.u.planta&&(r.u.planta+"º"),r.u.puerta].filter(Boolean).join(" ");
+  $("#frm").innerHTML=`<div class="dh">${esc(dir)}<div style="font:500 13px var(--body);color:var(--muted)">Zona ${esc(r.zona.toLowerCase())}${r.u.m2?" · "+esc(r.u.m2)+" m²":""}${r.u.anio?" · "+esc(r.u.anio):""}${r.u.rc?` · <span style="font-family:ui-monospace,monospace;user-select:all">${esc(r.u.rc)}</span>`:""}</div>${(n=>n?`<div style="margin-top:6px"><span class="pill acc">Es noticia de ${esc(n.asesor||"sin asesor")} · ${esc(n.etapa||"")}</span></div>`:"")(notiDe(id))}</div>
+    <div class="db">${FORMS.censoEdits.fields.map(f=>field(f,f[0]==="ocu"&&d.ocu&&!OCUPA.includes(d.ocu)?d.ocu:d[f[0]])).join("")}
+    <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="ctoHoy">+ Contacto hoy</button><button class="btn small" type="button" data-act="informeViv">Informe de mercado</button><button class="btn small" type="button" data-act="aNoticia">${(S.contactos.find(c=>c.censoId===id))?"Abrir su noticia":"Pasar a noticia"}</button></div>${bloqueHist(S.censoEd[id]||{},true)}</div>
+    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+  const o=$("#fld-ocu"); if(d.ocu&&!OCUPA.includes(d.ocu)){o.insertAdjacentHTML("beforeend",`<option selected>${esc(d.ocu)}</option>`)}
+  $("#dlg").showModal();
+}
+
+/* ---------- eventos ---------- */
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.view=b.dataset.v;S.f.asesor="";if(S.view==="contactos"){S.f.etapa="activos";S.f.paso=""}try{localStorage.setItem("crm-view",S.view)}catch(_){}render();window.scrollTo(0,0)});
+$("#view").addEventListener("click",e=>{const pp=e.target.closest("[data-pagp]");if(pp){const P=S.pag[pp.dataset.pagp];P.p+=+pp.dataset.d;render();const pg=$(`[data-pager="${pp.dataset.pagp}"]`);if(pg)pg.closest("section")?.scrollIntoView({block:"start"});e.stopImmediatePropagation();return}
+  const hm=e.target.closest("[data-hoymas]");if(hm){S.hoyMas[hm.dataset.hoymas]=!S.hoyMas[hm.dataset.hoymas];render();e.stopImmediatePropagation();return}},true);
+$("#view").addEventListener("change",e=>{const pn=e.target.closest("[data-pagn]");if(pn){const P=S.pag[pn.dataset.pagn];P.n=+pn.value;P.p=0;render()}});
+$("#view").addEventListener("click",e=>{const eg=e.target.closest("[data-etapa-go]");if(eg){S.view="contactos";S.f.asesor="";S.f.paso="";S.f.etapa=eg.dataset.etapaGo;render();window.scrollTo(0,0);return}const g=e.target.closest("[data-go]");if(g){S.view="contactos";S.f.asesor="";S.f.etapa="activos";S.f.paso=g.dataset.go;render();window.scrollTo(0,0);return}const ke=e.target.closest("[data-kest]");if(ke){S.kf.estado=ke.dataset.kest;render();return}const ch=e.target.closest("[data-etapa]");if(ch){S.f.etapa=ch.dataset.etapa;render();return}if(e.target.id==="btn-perm"){(async()=>{try{const pm=await window.claude.use("permissions");await pm.manage();S.permDb=await pm.state("db");S.soloLectura=null;render()}catch(_){toast("Abre el menú Permisos de la página (arriba a la derecha)")}})();return}const pt=e.target.closest("[data-portal]");if(pt)return abrirPortal(pt.dataset.portal);const vv=e.target.closest("[data-viv]");if(vv)return abrirViv(vv.dataset.viv);const r=e.target.closest("[data-open]");if(r)return abrir(r.dataset.open,r.dataset.id);if(e.target.id==="btn-ajustes")abrirAjustes();if(e.target.id==="l-buscar")leerLoc();if(e.target.id==="l-limpiar"){S.lf={zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""};render()}});
+function leerLoc(){for(const k of ["zona","calle","num","m2","dm2","anio","danio","tipo","planta","rc"]){const el=$("#l-"+k);if(el)S.lf[k]=el.value}render()}
+$("#view").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id&&e.target.id.startsWith("l-")){e.preventDefault();leerLoc()}});
+$("#view").addEventListener("input",e=>{const id=e.target.id;if(id==="f-q"||id==="c-q"||id==="k-q"){if(id==="f-q")S.f.q=e.target.value;else if(id==="k-q")S.kf.q=e.target.value;else S.cf.q=e.target.value;clearTimeout(render.t);render.t=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)}});
+$("#view").addEventListener("change",e=>{const m={"f-asesor":"asesor","f-paso":"paso","f-estado":"estado"}[e.target.id];if(m){S.f[m]=e.target.value;render()}if(["l-zona","l-tipo"].includes(e.target.id))leerLoc();if(e.target.id==="k-zona"){S.kf.zona=e.target.value;render()}if(e.target.id==="k-asesor"){S.kf.asesor=e.target.value;render()}if(e.target.id==="c-zona"){S.cf.zona=e.target.value;render()}if(e.target.id==="c-ko"){S.cf.ko=e.target.checked;render()}});
+document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf.mapa;if(S.cf.mapa&&!S.geo&&S.db)S.db.doc("geo/parcelas").onSnapshot(s=>{S.geo=s.exists?s.data():{};if(S.view==="censo"&&S.cf.mapa)render()},()=>{S.geo={}});render();return}
+  const cq=e.target.closest("[data-cq]");if(cq){S.cf.mapa=false;S.cf.q=cq.dataset.cq;render();window.scrollTo(0,0);return}
+  const rp=e.target.closest("[data-resper]");if(rp){S.resPer=rp.dataset.resper;render();return}
+  const pm=e.target.closest("[data-portalmapa]");if(pm){abrirPortal(pm.dataset.portalmapa);return}
+  const pgb=e.target.closest("[data-pegar]");if(pgb){abrirPegar(S.cf.zona,+pgb.dataset.pegar);return}
+  const tr=e.target.closest("[data-tara]");if(tr){const Z=S.censo&&S.censo[S.cf.zona],b=Z&&Z.edificios[+tr.dataset.tara];if(b)imprimirTaratura([{zona:S.cf.zona,b}]);return}
+  if(e.target.id==="c-tara"){const L=S.cf.lista||[];if(!L.length){toast("No hay portales que imprimir");return}
+    if(L.length>40&&!e.target.dataset.sure){e.target.dataset.sure=1;e.target.textContent=`Son ${L.length} portales. Pulsa otra vez`;return}
+    imprimirTaratura(L);return}});
+$("#btn-new").addEventListener("click",()=>abrir({encargos:"encargos",operaciones:"operaciones",captaciones:"captaciones"}[S.view]||"contactos"));
+
+try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar")S.view=v}catch(_){}
+render();
+(async()=>{
+  const db=window.claude?await window.claude.use("db"):null; S.dbIntentado=true; if(!db) return render();
+  try{const pm=await window.claude.use("permissions");if(pm){S.permDb=await pm.state("db");}}catch(_){}
+  S.db=db;
+  for(const col of ["contactos","encargos","operaciones","captaciones"]){
+    db.collection(col).limit(1000).onSnapshot(s=>{S[col]=s.docs.map(d=>{const o={id:d.id,...d.data()};if(ETAPA_ANTIGUA[o.etapa])o.etapa=ETAPA_ANTIGUA[o.etapa];return o});if(!$("#dlg").open)render()},()=>{});
+  }
+  db.doc("zonas/indice").onSnapshot(s=>{if(!s.exists)return;const d=s.data(),I={};for(const [c,v] of Object.entries(d.calles||{})){const P={};for(const t of String(v).split(",")){const m=t.match(/^(\d+[A-Z]?)([A-Z])$/);if(m)P[m[1]]=(d.codigos||{})[m[2]]||""}I[c]=P}S.zidx=I},()=>{});
+  db.doc("ajustes/general").onSnapshot(s=>{S.ajustes=s.exists?{...DEF_AJUSTES,...s.data()}:DEF_AJUSTES;render()},()=>{});
+  render();
+})();
+$("#dlg").addEventListener("close",()=>render());
+</script>
