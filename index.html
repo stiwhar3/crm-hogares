@@ -96,6 +96,7 @@ details.bld summary::-webkit-details-marker{display:none}
 details.bld summary .t{font-weight:600} details.bld summary .m{font-size:13px;color:var(--muted)}
 details.bld[open] summary{background:var(--accent-soft)}
 details.bld .tbl-wrap{border:0;border-radius:0;border-top:1px solid var(--line)}
+.pager{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}.pager label{display:flex;gap:6px;align-items:center}.pager select{width:auto;padding:4px 8px}
 .vivbox{border:1px solid var(--line);padding:10px 12px;display:grid;gap:6px;background:var(--card,transparent)}.vivbox .vb-h{font-weight:600;display:flex;gap:8px;align-items:center}.vivbox .vb-t{font-weight:600}.vivbox .vb-s{font-size:13px;color:var(--muted)}.vivbox .vb-c{font-size:13px;white-space:pre-wrap;max-height:90px;overflow:auto;color:var(--muted)}.vivbox .vb-b{display:flex;gap:8px;flex-wrap:wrap}.vb-res{display:grid;gap:4px;max-height:240px;overflow:auto}.vb-o{all:unset;cursor:pointer;padding:7px 9px;border:1px solid var(--line);font-size:14px}.vb-o:hover,.vb-o:focus{border-color:var(--accent)}.vb-o span{color:var(--muted);font-size:12px}
 .portal{display:grid;gap:6px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px}.portal .pi{display:flex;flex-wrap:wrap;gap:4px}.portal .po{color:var(--muted)}.portal .btn{justify-self:start}
 .pbar{display:flex;height:6px;background:var(--line);overflow:hidden;max-width:320px}.pbar i{display:block;height:100%}
@@ -206,7 +207,7 @@ const EST_OP = ["Reserva","Aceptada","Arras","Escriturada","Caída"];
 const DEF_AJUSTES = {asesores:[{nombre:"Carlos",zona:"ROSA"},{nombre:"Iván",zona:"AZUL"},{nombre:"Sergio",zona:"AMARILLA"},{nombre:"Mery",zona:"VERDE"},{nombre:"Mario",zona:""}],
   objetivoMes:40000,objetivoPeriodo:200000,periodoInicio:"2026-10-01",periodoFin:"2026-12-31",gastosMes:24000,diasRevisionPrecio:30};
 
-const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},portales:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},lf:{zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
+const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},portales:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},pag:{},hoyMas:{},lf:{zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
 const $ = s=>document.querySelector(s);
 const esc = v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur = n=>(Number(n)||0).toLocaleString("es-ES",{maximumFractionDigits:0})+" €";
@@ -272,6 +273,13 @@ function rowOp(o){
     <span class="m"><span>${esc(o.asesor||"")}</span><span class="pill ${est==="Cobrada"?"ok":est==="Caída"?"bad":est==="Reserva"?"warn":"acc"}">${esc(est)}</span>${o.fechaAceptacion?`<span>Facturado ${fmtF(o.fechaAceptacion)}</span>`:"<span>Sin aceptar</span>"}${o.fechaCobro?`<span>Cobrado ${fmtF(o.fechaCobro)}</span>`:""}<span>${esc(o.ladoCobrado||"")}</span></span>
   </button>`;
 }
+const TAMS=[30,50,100,200];
+function paginar(key,arr){const P=S.pag[key]||(S.pag[key]={n:30,p:0});const tot=arr.length,pags=Math.max(1,Math.ceil(tot/P.n)),f0=arr[0]||{},sig=tot+"|"+(f0.id||f0.via||(f0.u&&f0.u._id)||f0.dir||"");if(P.sig!==sig){P.sig=sig;P.p=0}if(P.p>=pags)P.p=pags-1;if(P.p<0)P.p=0;
+  const a=P.p*P.n,items=arr.slice(a,a+P.n);
+  const ctrl=tot<=TAMS[0]?"":`<div class="pager" data-pager="${key}"><span>${a+1}–${Math.min(a+P.n,tot)} de ${tot}</span><button class="btn small" type="button" data-pagp="${key}" data-d="-1"${P.p?"":" disabled"}>‹ Anterior</button><button class="btn small" type="button" data-pagp="${key}" data-d="1"${P.p<pags-1?"":" disabled"}>Siguiente ›</button><label>Filas <select data-pagn="${key}">${TAMS.map(n=>`<option${n===P.n?" selected":""}>${n}</option>`).join("")}</select></label></div>`;
+  return {items,ctrl}}
+function hoyLista(key,arr,fn,vacio){const mas=S.hoyMas[key],v=mas?arr:arr.slice(0,5);
+  return listOr(v.map(fn),vacio)+(arr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="${key}">${mas?"Ver menos":`Ver ${arr.length-5} más`}</button></div>`:"")}
 const listOr=(rows,vacio)=>`<div class="list">${rows.length?rows.join(""):`<div class="empty">${vacio}</div>`}</div>`;
 function kpi(l,v,s,pct){return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:""}${pct!=null?`<div class="bar"><i style="width:${Math.min(100,Math.max(0,pct))}%"></i></div>`:""}</div>`}
 
@@ -287,21 +295,21 @@ function vHoy(){
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro);
   return `
-  ${urg.length?`<section><h2>Urgente: publicadas sin localizar <span class="n">${urg.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">En Desarrollo y a la venta. Hay que localizar al propietario y pasarlas a Seguimiento: 2 días si está con agencia o portal, 1 día si vende un particular.</p>${listOr(urg.slice(0,40).map(rowContacto),"")}${urg.length>40?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-etapa-go="__urg">Ver las ${urg.length}</button></div>`:""}</section>`:""}
-  ${vend.length?`<section><h2>Avisos: se han vendido <span class="n">${vend.length}</span></h2>${listOr(vend.map(rowContacto),"")}</section>`:""}
+  ${urg.length?`<section><h2>Urgente: publicadas sin localizar <span class="n">${urg.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">En Desarrollo y a la venta. Hay que localizar al propietario y pasarlas a Seguimiento: 2 días si está con agencia o portal, 1 día si vende un particular.</p>${hoyLista("urg",urg,rowContacto,"")}</section>`:""}
+  ${vend.length?`<section><h2>Avisos: se han vendido <span class="n">${vend.length}</span></h2>${hoyLista("vend",vend,rowContacto,"")}</section>`:""}
   <section class="kpis">
     ${kpi("Facturado este mes",eur(fm),`Objetivo ${eur(A.objetivoMes)} · equilibrio ${eur(eq)}`,fm/A.objetivoMes*100)}
     ${kpi("Facturado del periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,fp/A.objetivoPeriodo*100)}
     ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
     ${kpi("Encargos activos",S.encargos.filter(e=>e.estado==="Activo").length,`${S.encargos.filter(e=>e.estado==="Activo"&&e.exclusiva==="Sí").length} en exclusiva`)}
   </section>
-  ${solBorr.length?`<section><h2>Solicitudes de borrado <span class="n">${solBorr.length}</span></h2><div class="list">${solBorr.map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div></section>`:""}
+  ${solBorr.length?`<section><h2>Solicitudes de borrado <span class="n">${solBorr.length}</span></h2><div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}</section>`:""}
   <div class="grid2">
-    <section><h2>Próximos pasos vencidos o de hoy <span class="n">${pend.length}</span></h2>${listOr(pend.slice(0,40).map(rowContacto),"Nada vencido. Todos los propietarios tienen su próximo paso en fecha.")}
-      <div class="tools" style="margin-top:10px">${pend.length>40?`<button class="btn small" type="button" data-go="vencidos">Ver los ${pend.length} vencidos</button>`:""}${sinPaso().length?`<button class="btn small" type="button" data-go="sinpaso">${sinPaso().length} propietarios sin próximo paso</button>`:""}</div></section>
-    <section><h2>Esperan a Stiwhar <span class="n">${sti.length}</span></h2>${listOr(sti.map(rowContacto),"Ningún asesor ha marcado nada para ti.")}</section>
-    <section><h2>Encargos que piden atención <span class="n">${encAl.length}</span></h2>${listOr(encAl.map(rowEncargo),"Todos los encargos activos tienen precio revisado y exclusiva en vigor.")}</section>
-    <section><h2>Reservas en negociación <span class="n">${reservas.length}</span></h2>${listOr(reservas.map(rowOp),"No hay reservas abiertas.")}</section>
+    <section><h2>Próximos pasos vencidos o de hoy <span class="n">${pend.length}</span></h2>${hoyLista("pend",pend,rowContacto,"Nada vencido. Todos los propietarios tienen su próximo paso en fecha.")}
+      <div class="tools" style="margin-top:10px">${sinPaso().length?`<button class="btn small" type="button" data-go="sinpaso">${sinPaso().length} propietarios sin próximo paso</button>`:""}</div></section>
+    <section><h2>Esperan a Stiwhar <span class="n">${sti.length}</span></h2>${hoyLista("sti",sti,rowContacto,"Ningún asesor ha marcado nada para ti.")}</section>
+    <section><h2>Encargos que piden atención <span class="n">${encAl.length}</span></h2>${hoyLista("encAl",encAl,rowEncargo,"Todos los encargos activos tienen precio revisado y exclusiva en vigor.")}</section>
+    <section><h2>Reservas en negociación <span class="n">${reservas.length}</span></h2>${hoyLista("res",reservas,rowOp,"No hay reservas abiertas.")}</section>
   </div>`;
 }
 function selOpts(arr,val,todos){return (todos?`<option value="">${todos}</option>`:"")+arr.map(x=>`<option${x===val?" selected":""}>${esc(x)}</option>`).join("")}
@@ -319,7 +327,7 @@ function vContactos(){
     <select id="f-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}<option value="__none"${f.asesor==="__none"?" selected":""}>Sin asesor</option></select>
     <select id="f-paso"><option value="">Cualquier próximo paso</option><option value="vencidos"${f.paso==="vencidos"?" selected":""}>Vencidos u hoy</option><option value="sinpaso"${f.paso==="sinpaso"?" selected":""}>Sin próximo paso</option></select>
   </div>
-  <h2>Noticias <span class="n">${L.length}</span></h2>${listOr(L.map(rowContacto),S.contactos.length?"Ninguna noticia coincide con el filtro.":"Aún no hay noticias. Pulsa «+ Nuevo» para añadir la primera.")}</section>`;
+  <h2>Noticias <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowContacto),S.contactos.length?"Ninguna noticia coincide con el filtro.":"Aún no hay noticias. Pulsa «+ Nuevo» para añadir la primera.")+pg.ctrl)(paginar("noticias",L))}</section>`;
 }
 const EST_CAP=["Pendiente","Encontrada","Pasada a noticia","Descartada"];
 function rowCap(k){
@@ -341,20 +349,20 @@ function vCaptaciones(){
     <select id="k-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}</select>
   </div>
   <p class="hint" style="color:var(--muted);font-size:13px;margin:0 0 8px">Valoraciones online del mapa de captaciones. Encuentra la vivienda, apunta qué piso es y pásala a noticia.</p>
-  <h2>Captaciones <span class="n">${L.length}</span></h2>${listOr(L.map(rowCap),S.captaciones.length?"Ninguna captación coincide con el filtro.":"Aún no hay captaciones.")}</section>`;
+  <h2>Captaciones <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowCap),S.captaciones.length?"Ninguna captación coincide con el filtro.":"Aún no hay captaciones.")+pg.ctrl)(paginar("captaciones",L))}</section>`;
 }
 function vEncargos(){
   const f=S.f; const L=S.encargos.filter(e=>(!f.asesor||e.asesor===f.asesor)&&(!f.estado||e.estado===f.estado)).sort((a,b)=>(b.fechaCaptacion||"").localeCompare(a.fechaCaptacion||""));
   return `<section><div class="tools">
     <select id="f-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}</select>
     <select id="f-estado">${selOpts(EST_ENC,f.estado,"Todos los estados")}</select></div>
-  <h2>Encargos <span class="n">${L.length}</span></h2>${listOr(L.map(rowEncargo),"No hay encargos con este filtro.")}</section>`;
+  <h2>Encargos <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowEncargo),"No hay encargos con este filtro.")+pg.ctrl)(paginar("encargos",L))}</section>`;
 }
 function vOps(){
   const A=S.ajustes,L=[...S.operaciones].sort((a,b)=>(b.fechaAceptacion||"9").localeCompare(a.fechaAceptacion||"9"));
   const y=hoyISO().slice(0,4),fa=sumFact(y+"-01-01",y+"-12-31"),ca=sumCobr(y+"-01-01",y+"-12-31");
   return `<section class="kpis">${kpi("Facturado "+y,eur(fa),"Por fecha de aceptación")}${kpi("Cobrado "+y,eur(ca),"Por fecha de cobro")}${kpi("Comisiones (30 %)",eur(sumFact(A.periodoInicio,A.periodoFin)*0.3),"Del periodo: 15 % asesor + 15 % responsable")}</section>
-  <section><h2>Operaciones <span class="n">${L.length}</span></h2>${listOr(L.map(rowOp),"No hay operaciones.")}</section>`;
+  <section><h2>Operaciones <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowOp),"No hay operaciones.")+pg.ctrl)(paginar("operaciones",L))}</section>`;
 }
 function vEquipo(){
   const A=S.ajustes,[m0,m1]=mesActual(),h=hoyISO();
@@ -386,7 +394,7 @@ async function cargarCenso(){
   censoCargando=false; if(S.view==="censo"||S.view==="localizar") render();
 }
 const pct=(a,b)=>b?Math.round(a/b*100)+" %":"–";
-function vLocalizar(){
+let pgL;function vLocalizar(){
   if(!S.censo) return `<div class="empty">${S.db?"Cargando el censo…":"Sin conexión con la base de datos."}</div>`;
   const f=S.lf,zonas=Object.keys(S.censo).sort(),inp=(id,v,ph,t="text",w="")=>`<input id="${id}" type="${t}"${t==="number"?' inputmode="numeric"':""} placeholder="${ph}" value="${esc(v)}"${w?` style="max-width:${w}"`:""}>`;
   const tools=`<div class="tools">
@@ -414,8 +422,8 @@ function vLocalizar(){
   const fila=({zn,b,u,id})=>`<tr class="viv" data-viv="${esc(id)}" tabindex="0"><td style="text-align:left;white-space:normal;min-width:170px"><b>${esc(b.via)} ${esc(b.num)}${u.letra?" "+esc(u.letra):""}</b><div style="font-size:12px;color:var(--muted)">${esc([u.esc&&u.esc!=="T"&&("Esc "+u.esc),u.planta&&u.planta!=="OD"&&(u.planta+"º"),u.puerta&&u.puerta!=="OS"&&u.puerta].filter(Boolean).join(" ")||(u.esc==="T"?"Unifamiliar":""))}</div></td>
     <td>${zona(zn)}</td><td>${esc(u.m2||"")}</td><td>${esc(u.anio||"")}</td><td style="font-family:ui-monospace,monospace;font-size:12px;user-select:all">${esc(u.rc||"")}</td>
     <td style="text-align:left;white-space:normal;min-width:140px">${esc(u.prop||u.abre||"")}${tel(u.tel)?` <span class="pill ok">tel</span>`:""}${b.ko&&b.ko.length?` <span class="pill bad">KO en portal</span>`:""}</td></tr>`;
-  return `<section>${tools}<h2>Viviendas que encajan <span class="n">${R.length}${R.length>150?" · mostrando las 150 más parecidas":""}</span></h2>
-  ${R.length?`<div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Dirección</th><th>Zona</th><th>m²</th><th>Año</th><th>Ref. catastral</th><th style="text-align:left">Propietario</th></tr></thead><tbody>${R.slice(0,150).map(fila).join("")}</tbody></table></div>`:`<div class="empty">Ninguna vivienda encaja. Prueba a ampliar el margen de m² o de año.</div>`}
+  return `<section>${tools}<h2>Viviendas que encajan <span class="n">${R.length}</span></h2>
+  ${R.length?`<div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Dirección</th><th>Zona</th><th>m²</th><th>Año</th><th>Ref. catastral</th><th style="text-align:left">Propietario</th></tr></thead><tbody>${(pgL=paginar("localizar",R)).items.map(fila).join("")}</tbody></table></div>${pgL.ctrl}`:`<div class="empty">Ninguna vivienda encaja. Prueba a ampliar el margen de m² o de año.</div>`}
   <p style="color:var(--muted);font-size:13px">Ordenadas de más a menos parecida. Toca una para abrir su ficha del censo.</p></section>`;
 }
 function vCenso(){
@@ -429,7 +437,7 @@ function vCenso(){
   const R=Z.resumen||{};
   const q=cf.q.toLowerCase().trim();
   let E=Z.edificios.filter(b=>(!cf.ko||(b.ko&&b.ko.length))&&(!q||(b.via+" "+b.num).toLowerCase().includes(q)||b.u.some(u0=>{const u=viv(u0);return [u.prop,u.abre,u.tel].join(" ").toLowerCase().includes(q)})));
-  const total=E.length; E=E.slice(0,80);
+  const total=E.length; const pgC=paginar("censo",E); E=pgC.items;
   const tel=t=>/\d{6}/.test((t||"").replace(/\s/g,""));
   const fila=u0=>{const u=viv(u0);return `<tr class="viv${S.censoEd[u0._id]?" ed":""}" data-viv="${esc(u0._id)}" tabindex="0"><td>${esc([u.esc&&("Esc "+u.esc),u.planta,u.puerta].filter(Boolean).join(" · "))}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(u.prop||u.abre||"")}${(n=>n?` <span class="pill acc">Noticia · ${esc(n.etapa||"")}</span>`:"")(notiDe(u0._id))}</td><td>${esc(u.tel||"")}</td><td style="text-align:left">${esc(u.ocu||"")}</td><td>${esc(u.ult||"")}</td><td style="text-align:left;white-space:normal;min-width:220px;color:var(--muted)">${esc((u.com||"").slice(0,180))}</td></tr>`};
   const koRow=k=>`<div class="ko"><span class="pill bad">KO${k.estado?" · "+esc(k.estado):""}</span> <b>${esc(k.dir)}</b>${k.prop?" · "+esc(k.prop):""}${k.tel?" · "+esc(k.tel):""}${k.inmo?" · "+esc(k.inmo):""}${k.precio?" · "+esc(k.precio):""}<div class="s">${esc((k.com||"").slice(0,300))}</div></div>`;
@@ -441,7 +449,7 @@ function vCenso(){
       <div class="tbl-wrap"><table><thead><tr><th>Vivienda</th><th style="text-align:left">Propietario</th><th>Teléfono</th><th style="text-align:left">Ocupado por</th><th>Últ. contacto</th><th style="text-align:left">Comentarios</th></tr></thead><tbody>${b.u.map(fila).join("")}</tbody></table></div></details>`};
   return `<section>${tools}
   <div class="kpis">${kpi("Viviendas",(R.viviendas||0).toLocaleString("es-ES"),`${R.edificios||0} portales`)}${kpi("Con nombre",pct(R.conNombre,R.viviendas),`${(R.conNombre||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conNombre/R.viviendas*100:0)}${kpi("Con teléfono",pct(R.conTel,R.viviendas),`${(R.conTel||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conTel/R.viviendas*100:0)}${kpi("KO",R.ko||0,`${R.koUbicados||0} ubicados en su portal`)}</div></section>
-  <p style="margin:0;color:var(--muted);font-size:13px">Toca una vivienda para añadir contacto, teléfono o notas, o para pasarla a noticia.</p><section><h2>Portales <span class="n">${total}${total>80?" · mostrando 80, afina la búsqueda":""}</span></h2><div class="list">${E.length?E.map(ed).join(""):`<div class="empty">Ningún portal coincide.</div>`}</div></section>
+  <p style="margin:0;color:var(--muted);font-size:13px">Toca una vivienda para añadir contacto, teléfono o notas, o para pasarla a noticia.</p><section><h2>Portales <span class="n">${total}</span></h2>${pgC.ctrl}<div class="list">${E.length?E.map(ed).join(""):`<div class="empty">Ningún portal coincide.</div>`}</div>${pgC.ctrl}</section>
   ${cf.ko&&Z.koSinUbicar.length?`<section><h2>KO sin portal en el censo <span class="n">${Z.koSinUbicar.length}</span></h2><div class="list kos">${Z.koSinUbicar.map(koRow).join("")}</div></section>`:""}`;
 }
 function render(){
@@ -761,6 +769,9 @@ function abrirViv(id){
 
 /* ---------- eventos ---------- */
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.view=b.dataset.v;S.f.asesor="";if(S.view==="contactos"){S.f.etapa="activos";S.f.paso=""}try{localStorage.setItem("crm-view",S.view)}catch(_){}render();window.scrollTo(0,0)});
+$("#view").addEventListener("click",e=>{const pp=e.target.closest("[data-pagp]");if(pp){const P=S.pag[pp.dataset.pagp];P.p+=+pp.dataset.d;render();const pg=$(`[data-pager="${pp.dataset.pagp}"]`);if(pg)pg.closest("section")?.scrollIntoView({block:"start"});e.stopImmediatePropagation();return}
+  const hm=e.target.closest("[data-hoymas]");if(hm){S.hoyMas[hm.dataset.hoymas]=!S.hoyMas[hm.dataset.hoymas];render();e.stopImmediatePropagation();return}},true);
+$("#view").addEventListener("change",e=>{const pn=e.target.closest("[data-pagn]");if(pn){const P=S.pag[pn.dataset.pagn];P.n=+pn.value;P.p=0;render()}});
 $("#view").addEventListener("click",e=>{const eg=e.target.closest("[data-etapa-go]");if(eg){S.view="contactos";S.f.asesor="";S.f.paso="";S.f.etapa=eg.dataset.etapaGo;render();window.scrollTo(0,0);return}const g=e.target.closest("[data-go]");if(g){S.view="contactos";S.f.asesor="";S.f.etapa="activos";S.f.paso=g.dataset.go;render();window.scrollTo(0,0);return}const ke=e.target.closest("[data-kest]");if(ke){S.kf.estado=ke.dataset.kest;render();return}const ch=e.target.closest("[data-etapa]");if(ch){S.f.etapa=ch.dataset.etapa;render();return}if(e.target.id==="btn-perm"){(async()=>{try{const pm=await window.claude.use("permissions");await pm.manage();S.permDb=await pm.state("db");S.soloLectura=null;render()}catch(_){toast("Abre el menú Permisos de la página (arriba a la derecha)")}})();return}const pt=e.target.closest("[data-portal]");if(pt)return abrirPortal(pt.dataset.portal);const vv=e.target.closest("[data-viv]");if(vv)return abrirViv(vv.dataset.viv);const r=e.target.closest("[data-open]");if(r)return abrir(r.dataset.open,r.dataset.id);if(e.target.id==="btn-ajustes")abrirAjustes();if(e.target.id==="l-buscar")leerLoc();if(e.target.id==="l-limpiar"){S.lf={zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""};render()}});
 function leerLoc(){for(const k of ["zona","calle","num","m2","dm2","anio","danio","tipo","planta","rc"]){const el=$("#l-"+k);if(el)S.lf[k]=el.value}render()}
 $("#view").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id&&e.target.id.startsWith("l-")){e.preventDefault();leerLoc()}});
