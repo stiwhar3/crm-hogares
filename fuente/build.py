@@ -1,5 +1,5 @@
 import re,sys
-src=open('/mnt/project-files/crm/crm.html',encoding='utf-8').read()
+src=open('/mnt/project-files/crm/fuente/crm.html',encoding='utf-8').read()
 def rep(old,new,count=1):
     global src
     n=src.count(old)
