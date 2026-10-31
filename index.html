@@ -216,6 +216,40 @@ const dias = (a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 const fmtF = s=>s?new Date(s+"T12:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"";
 const zona = z=>z?`<span class="zone" style="--z:${ZONAS[z]||"#999"}">${esc(z.charAt(0)+z.slice(1).toLowerCase())}</span>`:"";
 const personas = ()=>[...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","OFICINA"];
+/* ---------- Mapa del censo y ruta de puerta fría ---------- */
+function cargarLeaflet(){return cargarLeaflet.p||(cargarLeaflet.p=new Promise((ok,ko)=>{const l=document.createElement("link");l.rel="stylesheet";l.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";document.head.appendChild(l);
+  const sc=document.createElement("script");sc.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";sc.onload=ok;sc.onerror=ko;document.head.appendChild(sc)}))}
+function portalesMapa(zona){const Z=(S.censo||{})[zona],G=S.geo||{},hoy=Date.now(),out=[];if(!Z)return out;
+  for(const b of Z.edificios){const pc=(b.u.find(u=>u.rc&&u.rc.length>=14)||{}).rc;const g=pc&&G[pc.slice(0,14)];if(!g)continue;
+    const U=b.u.map(u=>({...u,...(S.censoEd[u._id]||{})}));let ult=null;
+    for(const u of U){const f=fechaTxt(u.ult);if(f&&(!ult||f>ult))ult=f;const e=S.censoEd[u._id];if(e&&e.actualizado){const d=new Date(e.actualizado);if(!ult||d>ult)ult=d}}
+    const not=b.u.some(u=>notiDe(u._id)),ko=b.ko&&b.ko.length,dd=ult?Math.round((hoy-ult)/864e5):null,tel=U.filter(u=>/\d{9}/.test(String(u.tel||"").replace(/\s/g,""))).length;
+    const est=not?"noticia":ko?"ko":dd!=null&&dd<=90?"tocado":"sin";
+    out.push({pid:portalId(b),b,lat:g[0],lon:g[1],est,dd,tel,n:b.u.length})}
+  return out}
+const COL_MAPA={noticia:"#ac9465",ko:"#b3261e",tocado:"#2f7d3a",sin:"#8a8784"};
+function rutaHoy(P,n){const L=P.filter(p=>p.est==="sin").sort((a,b)=>b.n-a.n);if(!L.length)return [];const r=[L.shift()];
+  while(r.length<n&&L.length){const c=r[r.length-1];let bi=0,bd=1e9;L.forEach((p,i)=>{const d=(p.lat-c.lat)**2+((p.lon-c.lon)*0.76)**2;if(d<bd){bd=d;bi=i}});r.push(L.splice(bi,1)[0])}return r}
+const ll=p=>p.lat.toFixed(6)+","+p.lon.toFixed(6);
+function vMapa(zona){const P=portalesMapa(zona),cnt=k=>P.filter(p=>p.est===k).length,R=rutaHoy(P,10);S.ruta=R;
+  if(!S.geo)return `<div class="empty">Cargando las coordenadas de los portales…</div>`;
+  const url=R.length>1?"https://www.google.com/maps/dir/?api=1&travelmode=walking&origin="+ll(R[0])+"&destination="+ll(R[R.length-1])+(R.length>2?"&waypoints="+R.slice(1,-1).map(ll).join("|"):""):"";
+  return `<section><div class="tools" style="font-size:13px;gap:14px">${[["sin","Sin tocar en 90 días"],["tocado","Contactado en 90 días"],["noticia","Con noticia"],["ko","Con KO"]].map(([k,t])=>`<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${COL_MAPA[k]}"></span> ${t} (${cnt(k)})</span>`).join("")}</div>
+  <div id="mapa" style="height:480px;border:1px solid var(--line);margin-top:8px"></div>
+  <p style="margin:6px 0 0;color:var(--muted);font-size:12px">${P.length} portales con coordenadas del catastro. Toca un portal para ver sus datos.</p></section>
+  <section><h2>Ruta de puerta fría de hoy <span class="n">${R.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Portales sin tocar en 90 días, empezando por el más grande y siguiendo por el más cercano.</p>
+  ${R.length?`<div class="list">${R.map((p,i)=>`<button class="row" type="button" data-cq="${esc(p.b.via+" "+p.b.num)}"><span class="t">${i+1}. ${esc(titulo(viaLarga(p.b.via)))} ${esc(p.b.num)}</span><span class="r">${p.n} viv.</span><span class="m"><span>${p.tel} con teléfono</span><span>${p.dd==null?"Nunca contactado":"Último contacto hace "+p.dd+" días"}</span></span></button>`).join("")}</div>
+  ${url?`<div class="tools" style="margin-top:8px"><a class="btn primary small" href="${url}" target="_blank" rel="noopener">Abrir la ruta en Google Maps (a pie)</a></div>`:""}`:`<div class="empty">Todos los portales con coordenadas se han tocado en los últimos 90 días.</div>`}</section>`}
+async function pintarMapa(zona){try{await cargarLeaflet()}catch(e){$("#mapa").innerHTML=`<div class="empty">No se ha podido cargar el mapa.</div>`;return}
+  const el=$("#mapa");if(!el||el._hecho)return;el._hecho=1;const P=portalesMapa(zona);if(!P.length)return;
+  const m=L.map(el);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(m);
+  const v=S.mapaVista&&S.mapaVista.zona===zona?S.mapaVista:null;
+  if(v)m.setView(v.c,v.z);else m.fitBounds(L.latLngBounds(P.map(p=>[p.lat,p.lon])),{padding:[20,20]});
+  m.on("moveend",()=>{S.mapaVista={zona,c:m.getCenter(),z:m.getZoom()}});
+  const enRuta=new Set((S.ruta||[]).map(p=>p.pid));
+  for(const p of P)L.circleMarker([p.lat,p.lon],{radius:enRuta.has(p.pid)?9:6,color:enRuta.has(p.pid)?"#333130":COL_MAPA[p.est],weight:enRuta.has(p.pid)?3:1,fillColor:COL_MAPA[p.est],fillOpacity:.85}).addTo(m)
+    .bindPopup(`<b>${esc(titulo(viaLarga(p.b.via)))} ${esc(p.b.num)}</b><br>${p.n} viviendas · ${p.tel} con teléfono<br>${p.dd==null?"Nunca contactado":"Último contacto hace "+p.dd+" días"}<br><button class="btn small" type="button" data-cq="${esc(p.b.via+" "+p.b.num)}" style="margin-top:6px">Ver viviendas</button> <button class="btn small" type="button" data-portalmapa="${esc(p.pid)}" style="margin-top:6px">Datos del portal</button>`)}
+
 /* ---------- Informe de mercado de la calle ---------- */
 async function cargarMercado(){if(S.mercado&&Date.now()-S.mercado.t<10*6e4)return S.mercado.L;let L=[];
   try{if(S.db){const sn=await S.db.collection("mercado").get();L=sn.docs.map(x=>({id:x.id,...x.data()}))}}catch(e){}
@@ -628,7 +662,9 @@ function vCenso(){
   const cf=S.cf,Z=S.censo[cf.zona]; const zonas=Object.keys(S.censo).sort();
   const tools=`<div class="tools"><select id="c-zona">${zonas.map(z=>`<option value="${z}"${z===cf.zona?" selected":""}>Zona ${z.charAt(0)+z.slice(1).toLowerCase()}${(S.ajustes.asesores.find(a=>a.zona===z)||{}).nombre?" · "+S.ajustes.asesores.find(a=>a.zona===z).nombre:""}</option>`).join("")}</select>
     <input type="search" id="c-q" placeholder="Buscar calle, número o propietario…" value="${esc(cf.q)}">
-    <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="c-ko"${cf.ko?" checked":""}> Solo con KO</label></div>`;
+    <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="c-ko"${cf.ko?" checked":""}> Solo con KO</label>
+    <button class="btn small${cf.mapa?" primary":""}" type="button" id="c-mapa">${cf.mapa?"Ver lista":"Ver mapa y ruta"}</button></div>`;
+  if(cf.mapa&&Z) return tools+vMapa(cf.zona);
   if(!Z) return tools+`<div class="empty">No hay censo de esta zona.</div>`;
   const viv=u=>({...u,...(S.censoEd[u._id]||{})});
   const R=Z.resumen||{};
@@ -656,6 +692,7 @@ function render(){
   const ban=!S.db?`<div class="banner">${S.dbIntentado?"No hay conexión con la base de datos. Revisa tu conexión a internet y recarga la página.":"Conectando con la base de datos…"}</div>`
     :S.permDb==="denied"?`<div class="banner">Has bloqueado el permiso de guardar datos en esta página. <button class="btn small" type="button" id="btn-perm">Activar permiso</button></div>`
     :S.soloLectura?`<div class="banner">No se ha podido guardar (${esc(S.soloLectura)}). Puede que esta vista sea solo de lectura. <button class="btn small" type="button" id="btn-perm">Revisar permisos</button></div>`:"";
+  setTimeout(()=>{if(S.view==="censo"&&S.cf.mapa&&$("#mapa"))pintarMapa(S.cf.zona)},0);
   $("#view").innerHTML=ban+({hoy:vHoy,contactos:vContactos,captaciones:vCaptaciones,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo}[S.view])();
   if((S.view==="censo"||S.view==="localizar")&&!S.censo&&S.db) cargarCenso();
 }
@@ -993,6 +1030,9 @@ function leerLoc(){for(const k of ["zona","calle","num","m2","dm2","anio","danio
 $("#view").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id&&e.target.id.startsWith("l-")){e.preventDefault();leerLoc()}});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id==="f-q"||id==="c-q"||id==="k-q"){if(id==="f-q")S.f.q=e.target.value;else if(id==="k-q")S.kf.q=e.target.value;else S.cf.q=e.target.value;clearTimeout(render.t);render.t=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)}});
 $("#view").addEventListener("change",e=>{const m={"f-asesor":"asesor","f-paso":"paso","f-estado":"estado"}[e.target.id];if(m){S.f[m]=e.target.value;render()}if(["l-zona","l-tipo"].includes(e.target.id))leerLoc();if(e.target.id==="k-zona"){S.kf.zona=e.target.value;render()}if(e.target.id==="k-asesor"){S.kf.asesor=e.target.value;render()}if(e.target.id==="c-zona"){S.cf.zona=e.target.value;render()}if(e.target.id==="c-ko"){S.cf.ko=e.target.checked;render()}});
+document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf.mapa;if(S.cf.mapa&&!S.geo&&S.db)S.db.doc("geo/parcelas").onSnapshot(s=>{S.geo=s.exists?s.data():{};if(S.view==="censo"&&S.cf.mapa)render()},()=>{S.geo={}});render();return}
+  const cq=e.target.closest("[data-cq]");if(cq){S.cf.mapa=false;S.cf.q=cq.dataset.cq;render();window.scrollTo(0,0);return}
+  const pm=e.target.closest("[data-portalmapa]");if(pm){abrirPortal(pm.dataset.portalmapa);return}});
 $("#btn-new").addEventListener("click",()=>abrir({encargos:"encargos",operaciones:"operaciones",captaciones:"captaciones"}[S.view]||"contactos"));
 
 try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar")S.view=v}catch(_){}
@@ -1001,7 +1041,7 @@ render();
 const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
 const TABLA={contactos:"contactos",captaciones:"captaciones",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados",mercado:"mercado"};
-const DOCS={"ajustes/general":"general","zonas/indice":"zonas_indice"};
+const DOCS={"ajustes/general":"general","zonas/indice":"zonas_indice","geo/parcelas":"geo_parcelas"};
 const nuevoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 function fila(t,id,d){const r={id,d};if(t==="censo")r.zona=d.zona;if(t==="censo_edits"||t==="portales")r.zona=id.split("-")[0].toUpperCase();return r}
 function fallo(error){const e=new Error(error.message||"error");e.code=error.code==="42501"?"sin_permiso":error.code;return e}
