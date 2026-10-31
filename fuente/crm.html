@@ -157,6 +157,27 @@ const dias = (a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 const fmtF = s=>s?new Date(s+"T12:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"";
 const zona = z=>z?`<span class="zone" style="--z:${ZONAS[z]||"#999"}">${esc(z.charAt(0)+z.slice(1).toLowerCase())}</span>`:"";
 const personas = ()=>[...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","OFICINA"];
+/* ---------- «A quién llamar hoy»: probabilidad de vender ---------- */
+function fechaTxt(t){let best=null;for(const m of String(t||"").matchAll(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/g)){let y=+m[3];if(y<100)y+=2000;const d=new Date(y,+m[2]-1,+m[1]);if(!isNaN(d)&&d<=new Date()&&(!best||d>best))best=d}return best}
+function puntuarViv(u){let p=0;const M=[],ocu=String(u.ocu||"").toUpperCase(),com=String(u.com||"");
+  if(/VAC/.test(ocu)){p+=30;M.push("Vacía")}else if(/INQUIL|ALQ/.test(ocu)){p+=25;M.push("Alquilada (inversor)")}else if(/FAMILIAR/.test(ocu)){p+=10;M.push("Vive un familiar")}
+  if(u.val){p+=25;M.push("Ya se valoró")}
+  const em=[...com.matchAll(/\((19\d{2})\)/g)].map(m=>+m[1]);
+  if(em.length){const y=Math.min(...em);if(y<=1950){p+=20;M.push("Mayores de 75")}else if(y<=1958){p+=10;M.push("Mayores de 67")}}
+  const f=fechaTxt(u.ult)||fechaTxt(com),dd=f?Math.round((Date.now()-f)/864e5):null;
+  if(dd==null){p+=15;M.push("Nunca contactada")}else if(dd>180){p+=10;M.push("Sin contacto hace "+Math.round(dd/30)+" meses")}else if(dd<30){p-=40;M.push("Contactada hace "+dd+" días")}
+  if(+u.anio&&+u.anio<1975){p+=5}
+  if(/no (quiere|vende|va a vender)|no le (vuelva|llame)|\bko\b|borr(e|ar) su/i.test(com)){p-=50;M.push("Dijo que no")}
+  return {p,M}}
+function aQuienLlamar(zona){const Z=(S.censo||{})[zona];if(!Z)return [];const out=[];
+  for(const b of Z.edificios)for(const u0 of b.u){if(notiDe(u0._id))continue;const u={...u0,...(S.censoEd[u0._id]||{})};
+    if(!/\d{9}/.test(String(u.tel||"").replace(/\s/g,"")))continue;const r=puntuarViv(u);if(r.p>=20)out.push({id:u0._id,b,u,...r})}
+  return out.sort((a,b)=>b.p-a.p)}
+function rowLlamar(x){return `<button class="row" type="button" data-viv="${esc(x.id)}"><span class="t">${esc(viaLarga(x.b.via))} ${esc(x.b.num)} ${esc([x.u.esc&&!/^T$/.test(x.u.esc)?"Esc "+x.u.esc:"",x.u.planta,x.u.puerta].filter(Boolean).join(" "))}</span><span class="r"><span class="pill acc">${x.p} pts</span></span><span class="m"><span>${esc(x.u.prop||x.u.abre||"Sin nombre")}</span><span>${esc(x.u.tel||"")}</span>${x.M.map(t=>`<span class="pill">${esc(t)}</span>`).join("")}</span></button>`}
+function miZonaLlamar(){const yo=S.yo;if(!yo||yo.rol==="responsable")return "";const z=yo.zona||(S.ajustes.asesores.find(a=>a.nombre===yo.nombre)||{}).zona;return z||""}
+function vLlamarHoy(){const z=miZonaLlamar();if(!z||!S.censo)return "";const L=aQuienLlamar(z);
+  return `<section><h2>A quién llamar hoy <span class="n">${L.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Viviendas de tu zona con teléfono y más probabilidad de vender (vacías, alquiladas, ya valoradas, mayores, sin contacto reciente). Al llamar, apunta el contacto en la vivienda y baja de la lista.</p>${hoyLista("llamar",L,rowLlamar,"No hay viviendas con teléfono pendientes de llamar.")}</section>`}
+
 /* ---------- «Vendido en tu portal»: avisar a los vecinos ---------- */
 function portalDeFicha(dir,d){
   const ids=[d&&d.censoId,(()=>{const c=d&&d.contactoId&&S.contactos.find(x=>x.id===d.contactoId);return c&&c.censoId})(),
@@ -317,6 +338,7 @@ function vHoy(){
   const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro);
   return `
   ${vAgenda()}
+  ${vLlamarHoy()}
   ${urg.length?`<section><h2>Urgente: publicadas sin localizar <span class="n">${urg.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">En Desarrollo y a la venta. Hay que localizar al propietario y pasarlas a Seguimiento: 2 días si está con agencia o portal, 1 día si vende un particular.</p>${hoyLista("urg",urg,rowContacto,"")}</section>`:""}
   ${vend.length?`<section><h2>Avisos: se han vendido <span class="n">${vend.length}</span></h2>${hoyLista("vend",vend,rowContacto,"")}</section>`:""}
   <section class="kpis">
@@ -487,6 +509,7 @@ function vCenso(){
       <div class="tbl-wrap"><table><thead><tr><th>Vivienda</th><th style="text-align:left">Propietario</th><th>Teléfono</th><th style="text-align:left">Ocupado por</th><th>Últ. contacto</th><th style="text-align:left">Comentarios</th></tr></thead><tbody>${b.u.map(fila).join("")}</tbody></table></div></details>`};
   return `<section>${tools}
   <div class="kpis">${kpi("Viviendas",(R.viviendas||0).toLocaleString("es-ES"),`${R.edificios||0} portales`)}${kpi("Con nombre",pct(R.conNombre,R.viviendas),`${(R.conNombre||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conNombre/R.viviendas*100:0)}${kpi("Con teléfono",pct(R.conTel,R.viviendas),`${(R.conTel||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conTel/R.viviendas*100:0)}${kpi("KO",R.ko||0,`${R.koUbicados||0} ubicados en su portal`)}</div></section>
+  ${!q&&!cf.ko?(L=>`<section><h2>A quién llamar hoy <span class="n">${L.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Con teléfono y más probabilidad de vender: vacías, alquiladas, ya valoradas, mayores y sin contacto reciente. Las que ya son noticia no salen.</p>${hoyLista("llamarC",L,rowLlamar,"No hay viviendas con teléfono pendientes de llamar en esta zona.")}</section>`)(aQuienLlamar(cf.zona)):""}
   <p style="margin:0;color:var(--muted);font-size:13px">Toca una vivienda para añadir contacto, teléfono o notas, o para pasarla a noticia.</p><section><h2>Portales <span class="n">${total}</span></h2>${pgC.ctrl}<div class="list">${E.length?E.map(ed).join(""):`<div class="empty">Ningún portal coincide.</div>`}</div>${pgC.ctrl}</section>
   ${cf.ko&&Z.koSinUbicar.length?`<section><h2>KO sin portal en el censo <span class="n">${Z.koSinUbicar.length}</span></h2><div class="list kos">${Z.koSinUbicar.map(koRow).join("")}</div></section>`:""}`;
 }
