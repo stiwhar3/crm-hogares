@@ -185,6 +185,7 @@ h2{font-size:21px;letter-spacing:0}
     </div>
     <nav id="tabs" aria-label="Secciones">
       <button data-v="hoy" type="button">Hoy</button>
+      <button data-v="resultados" type="button">Resultados</button>
       <button data-v="contactos" type="button">Noticias</button>
       <button data-v="captaciones" type="button">Captaciones</button>
       <button data-v="encargos" type="button">Encargos</button>
@@ -323,12 +324,12 @@ function vClientesAntiguos(){const L=clientesAntiguos();if(!L.length)return "";c
 
 /* ---------- Ranking semanal y metas ---------- */
 const DEF_METAS={noticias:5,gestiones:40,censo:30,valoraciones:2,captaciones:1};
-const METAS_ET=[["noticias","Noticias nuevas"],["gestiones","Gestiones en noticias"],["censo","Contactos en el censo"],["valoraciones","Valoraciones"],["captaciones","Captaciones"]];
+const METAS_ET=[["noticias","Noticias nuevas"],["gestiones","Gestiones en noticias"],["censo","Contactos en el censo"],["valoraciones","Valoraciones"],["captaciones","Encargos"]];
 function pedirRanking(){if(typeof window.rankingSemana!=="function"||pedirRanking.t&&Date.now()-pedirRanking.t<5*6e4)return;pedirRanking.t=Date.now();
-  Promise.resolve().then(()=>window.rankingSemana()).then(({data,error})=>{if(error||!data)return;S.ranking=data||[];if(S.view==="hoy"&&!$("#dlg").open)render()}).catch(()=>{})}
+  Promise.resolve().then(()=>window.rankingSemana()).then(({data,error})=>{if(error||!data)return;S.ranking=data||[];if((S.view==="hoy"||S.view==="resultados")&&!$("#dlg").open)render()}).catch(()=>{})}
 function vRanking(){pedirRanking();const R=S.ranking;if(!R||!R.length)return "";const M={...DEF_METAS,...(S.ajustes.metas||{})};
   const yo=R.find(r=>r.es_yo),resp=!S.yo||S.yo.rol==="responsable";
-  if(yo&&!resp){return `<section><h2>Tu semana <span class="n">${yo.posicion}º de ${yo.total}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Ranking de actividad del equipo (no de facturación): solo ves tu puesto. Puntos: noticia nueva 3, gestión 1, contacto en el censo 1, valoración 10, captación 25.</p>
+  if(yo&&!resp){return `<section><h2>Tu semana <span class="n">${yo.posicion}º de ${yo.total}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Ranking de actividad del equipo (no de facturación): solo ves tu puesto. Puntos: noticia nueva 3, gestión 1, contacto en el censo 1, valoración 10, encargo 25.</p>
     <div class="kpis">${METAS_ET.map(([k,t])=>kpi(t,yo[k],`Meta de la semana: ${M[k]}`,M[k]?yo[k]/M[k]*100:0)).join("")}${kpi("Puntos",yo.puntos,`Vas ${yo.posicion}º de ${yo.total}`)}</div></section>`}
   if(!resp)return "";
   return `<section><h2>Ranking de la semana</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Actividad desde el lunes, sacada del registro de cambios. Cada asesor solo ve su puesto. Metas por asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}.</p>
@@ -609,16 +610,9 @@ function vHoy(){
   const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro);
   return `
   ${vAgenda()}
-  ${vRanking()}
   ${vLlamarHoy()}
   ${urg.length?`<section><h2>Urgente: publicadas sin localizar <span class="n">${urg.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">En Desarrollo y a la venta. Hay que localizar al propietario y pasarlas a Seguimiento: 2 días si está con agencia o portal, 1 día si vende un particular.</p>${hoyLista("urg",urg,rowContacto,"")}</section>`:""}
   ${vend.length?`<section><h2>Avisos: se han vendido <span class="n">${vend.length}</span></h2>${hoyLista("vend",vend,rowContacto,"")}</section>`:""}
-  <section class="kpis">
-    ${kpi("Facturado este mes",eur(fm),`Objetivo ${eur(A.objetivoMes)} · equilibrio ${eur(eq)}`,fm/A.objetivoMes*100)}
-    ${kpi("Facturado del periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,fp/A.objetivoPeriodo*100)}
-    ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
-    ${kpi("Encargos activos",S.encargos.filter(e=>e.estado==="Activo").length,`${S.encargos.filter(e=>e.estado==="Activo"&&e.exclusiva==="Sí").length} en exclusiva`)}
-  </section>
   ${solBorr.length?`<section><h2>Solicitudes de borrado <span class="n">${solBorr.length}</span></h2><div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}</section>`:""}
   <div class="grid2">
     <section><h2>Próximos pasos vencidos o de hoy <span class="n">${pend.length}</span></h2>${hoyLista("pend",pend,rowContacto,"Nada vencido. Todos los propietarios tienen su próximo paso en fecha.")}
@@ -628,6 +622,24 @@ function vHoy(){
     ${vClientesAntiguos()}
     <section><h2>Reservas en negociación <span class="n">${reservas.length}</span></h2>${hoyLista("res",reservas,rowOp,"No hay reservas abiertas.")}</section>
   </div>`;
+}
+function vResultados(){
+  const A=S.ajustes,[m0,m1]=mesActual(),fm=sumFact(m0,m1),fp=sumFact(A.periodoInicio,A.periodoFin),eq=A.gastosMes/0.7,resp=!S.yo||S.yo.rol==="responsable";
+  const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro),act=S.encargos.filter(e=>e.estado==="Activo");
+  const M={...DEF_METAS,...(A.metas||{})},pc=(a,b)=>b?Math.round(a/b*100)+" %":"—";
+  const fact=resp?`<section><h2>Facturado</h2><div class="kpis">
+    ${kpi("Facturado este mes",eur(fm),`Objetivo ${eur(A.objetivoMes)} · equilibrio ${eur(eq)}`,fm/A.objetivoMes*100)}
+    ${kpi("Facturado del periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,fp/A.objetivoPeriodo*100)}
+    ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
+    ${kpi("Encargos activos",act.length,`${act.filter(e=>e.exclusiva==="Sí").length} en exclusiva`)}</div></section>`
+   :`<section class="kpis">${kpi("Encargos activos",act.length,`${act.filter(e=>e.exclusiva==="Sí").length} en exclusiva`)}</section>`;
+  const obj=resp?`<section><h2>Objetivos</h2><div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Objetivo</th><th>Meta</th><th>Llevamos</th><th>Cumplido</th></tr></thead><tbody>
+    <tr><td style="text-align:left">Facturación del mes</td><td>${eur(A.objetivoMes)}</td><td>${eur(fm)}</td><td>${pc(fm,A.objetivoMes)}</td></tr>
+    <tr><td style="text-align:left">Punto de equilibrio del mes</td><td>${eur(eq)}</td><td>${eur(fm)}</td><td>${pc(fm,eq)}</td></tr>
+    <tr><td style="text-align:left">Facturación del periodo (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})</td><td>${eur(A.objetivoPeriodo)}</td><td>${eur(fp)}</td><td>${pc(fp,A.objetivoPeriodo)}</td></tr>
+    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">Metas semanales de cada asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}. Se cambian en Ajustes.</p></section>`:"";
+  const rk=vRanking();
+  return fact+(rk||`<section><h2>${resp?"Ranking de la semana":"Tu semana"}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+obj;
 }
 function selOpts(arr,val,todos){return (todos?`<option value="">${todos}</option>`:"")+arr.map(x=>`<option${x===val?" selected":""}>${esc(x)}</option>`).join("")}
 function vContactos(){
@@ -799,7 +811,7 @@ function render(){
     :S.permDb==="denied"?`<div class="banner">Has bloqueado el permiso de guardar datos en esta página. <button class="btn small" type="button" id="btn-perm">Activar permiso</button></div>`
     :S.soloLectura?`<div class="banner">No se ha podido guardar (${esc(S.soloLectura)}). Puede que esta vista sea solo de lectura. <button class="btn small" type="button" id="btn-perm">Revisar permisos</button></div>`:"";
   setTimeout(()=>{if(S.view==="censo"&&S.cf.mapa&&$("#mapa"))pintarMapa(S.cf.zona)},0);
-  $("#view").innerHTML=ban+({hoy:vHoy,contactos:vContactos,captaciones:vCaptaciones,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo}[S.view])();
+  $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo}[S.view])();
   if((S.view==="censo"||S.view==="localizar")&&!S.censo&&S.db) cargarCenso();
 }
 
