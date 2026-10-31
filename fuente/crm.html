@@ -157,6 +157,22 @@ const dias = (a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 const fmtF = s=>s?new Date(s+"T12:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"";
 const zona = z=>z?`<span class="zone" style="--z:${ZONAS[z]||"#999"}">${esc(z.charAt(0)+z.slice(1).toLowerCase())}</span>`:"";
 const personas = ()=>[...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","OFICINA"];
+/* ---------- Google Calendar ---------- */
+const gcalD=f=>String(f||"").replace(/-/g,"");
+const gcalSig=f=>{const d=new Date(f+"T12:00:00");d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,"")};
+function gcalNuevo(titulo,fecha,detalle,lugar){
+  const u=new URLSearchParams({action:"TEMPLATE",text:titulo,dates:gcalD(fecha)+"/"+gcalSig(fecha),details:detalle||"",location:lugar?lugar+", Fuenlabrada":"",ctz:"Europe/Madrid"});
+  if(S.ajustes.calendarioId)u.set("src",S.ajustes.calendarioId);
+  window.open("https://calendar.google.com/calendar/render?"+u.toString(),"_blank","noopener");
+}
+function vAgenda(){
+  const id=S.ajustes.calendarioId; if(!id) return "";
+  const q=new URLSearchParams({src:id,ctz:"Europe/Madrid",mode:"AGENDA",showTitle:"0",showPrint:"0",showTabs:"1",showCalendars:"0",showTz:"0",hl:"es"});
+  return `<section class="agenda"><h2>Agenda de la oficina</h2>
+    <iframe title="Google Calendar de la oficina" src="https://calendar.google.com/calendar/embed?${q}" loading="lazy" style="width:100%;height:420px;border:1px solid var(--line);background:#fff"></iframe>
+    <div class="tools" style="margin-top:8px"><a class="btn small" href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(id)}" target="_blank" rel="noopener">Abrir en Google Calendar</a>
+    <span style="color:var(--muted);font-size:12px">Si no ves las citas, entra en Google con la cuenta que tiene el calendario compartido.</span></div></section>`;
+}
 function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2200)}
 
 /* ---------- reglas de negocio ---------- */
@@ -244,6 +260,7 @@ function vHoy(){
     ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
     ${kpi("Encargos activos",S.encargos.filter(e=>e.estado==="Activo").length,`${S.encargos.filter(e=>e.estado==="Activo"&&e.exclusiva==="Sí").length} en exclusiva`)}
   </section>
+  ${vAgenda()}
   ${solBorr.length?`<section><h2>Solicitudes de borrado <span class="n">${solBorr.length}</span></h2><div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}</section>`:""}
   <div class="grid2">
     <section><h2>Próximos pasos vencidos o de hoy <span class="n">${pend.length}</span></h2>${hoyLista("pend",pend,rowContacto,"Nada vencido. Todos los propietarios tienen su próximo paso en fecha.")}
@@ -459,7 +476,7 @@ function field([k,l,t,opt],v){
 function abrir(col,id){
   const F=FORMS[col]; const d=id?S[col].find(x=>x.id===id):DEFAULTS[col]();
   if(!d) return; cur={col,id};
-  const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
+  const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
   const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
   const extraEnc=col==="encargos"&&id?`<button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
@@ -604,6 +621,11 @@ $("#frm").addEventListener("click",async ev=>{
     const notas=[v.tipo,v.m2,v.relacion,v.venderEn,v.valAlquiler&&("Alquiler "+v.valAlquiler)].filter(Boolean).join(" · ")+(v.encontrado?"\nEncontrado: "+v.encontrado:"")+(v.comentario?"\n"+v.comentario:"")+"\n(Desde el mapa de captaciones.)";
     const nid=await guardar("contactos",null,{direccion:v.direccion,nombre:v.propietario||"",telefono:v.telefono||"",asesor:v.asesor,zona:zn,etapa:"Desarrollo",origen:"Consulta de valor (solo dirección)",motivo:"",proxAccion:"Contactar al propietario",proxFecha:hoyISO(),fechaValoracion:v.fecha||"",precioValorado:v.valVenta||null,necesitaSti:false,notaSti:"",notas,capId:id},nota);
     if(nid){S.view="contactos";S.f.etapa="Desarrollo";render();setTimeout(()=>abrir("contactos",nid),300)}return}
+  if(a==="calProx"||a==="calVal"){const v=leerForm(),val=a==="calVal",f=val?v.fechaValoracion:v.proxFecha;
+    if(!f){toast(val?"Pon primero la fecha de valoración":"Pon primero la fecha del próximo paso");$(val?"#fld-fechaValoracion":"#fld-proxFecha").focus();return}
+    const tit=(val?"Valoración":(v.proxAccion||"Próximo paso"))+" · "+(v.direccion||"")+(v.asesor?" ("+v.asesor+")":"");
+    const det=[v.nombre&&("Propietario: "+v.nombre),v.telefono&&("Teléfono: "+v.telefono),v.etapa&&("Etapa: "+v.etapa),val&&v.precioPropietario&&("Pide: "+v.precioPropietario+" €"),"Desde el CRM Hogares Fuenlabrada"].filter(Boolean).join("\n");
+    gcalNuevo(tit,f,det,v.direccion);return}
   if(a==="mas7"){const d=new Date();d.setDate(d.getDate()+7);$("#fld-proxFecha").value=new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);return}
   if(a==="revisado"){$("#fld-ultimaRevisionPrecio").value=hoyISO();return}
   if(a==="aEncargo"){const c=leerForm();c.etapa="Encargo";const id=await guardar("contactos",cur.id,c);if(!id)return;$("#dlg").close();
@@ -622,13 +644,14 @@ function abrirAjustes(){
    <label>Fin del periodo<input id="aj-fin" type="date" value="${A.periodoFin}"></label>
    <label>Gastos fijos al mes (€)<input id="aj-gas" type="number" value="${A.gastosMes}"></label>
    <label>Días hasta revisar precio<input id="aj-rev" type="number" value="${A.diasRevisionPrecio}"></label>
+   <label class="full">Google Calendar compartido (ID del calendario)<input id="aj-cal" type="text" placeholder="...@group.calendar.google.com" value="${esc(A.calendarioId||"")}"></label>
    <label class="full">Asesores (uno por línea: Nombre, ZONA)<textarea id="aj-ase">${esc(A.asesores.map(a=>a.nombre+(a.zona?", "+a.zona:"")).join("\n"))}</textarea></label>
   </div><div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal();
 }
 async function guardarAjustes(){
   const n=id=>Number($(id).value)||0;
-  const A={objetivoMes:n("#aj-mes"),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,
+  const A={objetivoMes:n("#aj-mes"),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),
     asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()}))};
   if(!S.db) return toast("No se puede guardar fuera de claude.ai");
   try{await S.db.doc("ajustes/general").set(A);$("#dlg").close();toast("Ajustes guardados")}catch(e){toast("No se han guardado los ajustes")}
