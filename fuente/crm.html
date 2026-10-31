@@ -1027,7 +1027,7 @@ function fmtFH(iso){const d=new Date(iso);return d.toLocaleDateString("es-ES",{d
 function bloqueHist(d,conHist){
   const H=[...((d&&d.historial)||[])].reverse();
   return `<label class="full">Nueva nota (se guarda con fecha en el historial)<textarea id="fld-nuevaNota" placeholder="Qué ha pasado hoy…"></textarea></label>
-  ${conHist?`<div class="full hist"><div class="hl">Historial</div>${H.length?H.map(h=>`<div class="he"><span class="hf">${fmtFH(h.f)}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join(""):`<div class="he" style="color:var(--muted)">Aún no hay cambios guardados desde el CRM.</div>`}</div>`:""}`;
+  ${conHist?`<div class="full hist"><div class="hl">Historial</div>${H.length?H.map(h=>`<div class="he"><span class="hf">${h.d?new Date(h.f).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"}):fmtFH(h.f)}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join(""):`<div class="he" style="color:var(--muted)">Aún no hay cambios guardados desde el CRM.</div>`}</div>`:""}`;
 }
 function leerForm(){
   const F=FORMS[cur.col],o={};
