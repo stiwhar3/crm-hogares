@@ -125,3 +125,51 @@ main{gap:18px;padding-block:16px 60px}
   .df .btn{flex:1}
   nav#tabs button[data-v]{padding:14px 16px;font-size:16px}
 }
+
+/* Etiquetas: solo una con color por fila, el resto como texto gris */
+.row .m .pill.gris{background:none!important;color:var(--muted)!important;padding:0!important;font-weight:500}
+.row .m .pill.acc.gris{color:var(--accent)!important;font-weight:600}
+
+/* Hoy: las filas van directamente dentro del apartado, sin tarjeta dentro de tarjeta */
+.hb .hb-in{padding:0}
+.hb .hb-in>.nota{margin:0;padding:0 16px 10px}
+.hb .list{border:0!important;border-radius:0!important;box-shadow:none;border-top:1px solid var(--line)!important}
+.hb .row{padding:12px 16px}
+.hb .tools{padding:0 16px 12px;margin-top:4px!important}
+.hb .agenda{padding:0 16px 14px}
+.hb .agenda iframe{border-radius:12px}
+
+/* Buscador general */
+.lupa{margin-left:auto;display:flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 10px;border-radius:999px;border:0;background:rgba(255,255,255,.1);color:#d6d2ca;font:500 14px var(--body);cursor:pointer;min-width:200px}
+.lupa:hover{background:rgba(255,255,255,.16);color:#fff}
+.lupa svg,.bq-top svg,.barra svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lupa+#btn-new{margin-left:10px}
+.buscar{position:fixed;inset:0;z-index:45;background:rgba(20,18,15,.4);display:flex;justify-content:center;align-items:flex-start;padding:calc(60px + env(safe-area-inset-top,0px)) 16px 16px}
+.buscar[hidden]{display:none}
+.bq-caja{width:min(680px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--bg);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.3);overflow:hidden}
+.bq-top{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--line);color:var(--muted)}
+.bq-top input{flex:1;border:0;background:none;font:500 17px var(--body);color:var(--fg);outline:none;min-width:0}
+.bq-res{overflow:auto;padding:6px 14px 16px}
+.bq-res h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 4px 6px}
+.bq-res h3 span{font-weight:500}
+.bq-vacio{color:var(--muted);font-size:14px;padding:12px 4px;margin:0}
+
+/* Barra de pestañas abajo: solo en el móvil */
+.barra{display:none}
+@media (max-width:700px){
+  .lupa{min-width:0;width:40px;height:40px;padding:0;justify-content:center;margin-left:auto}
+  .lupa span{display:none}
+  .buscar{padding:0}
+  .bq-caja{width:100%;height:100%;border-radius:0;padding-top:env(safe-area-inset-top,0px)}
+  .bq-top input{font-size:17px}
+  .barra{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:16;background:var(--surface);border-top:1px solid var(--line);padding:6px max(6px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 18px rgba(0,0,0,.05)}
+  .barra button{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:var(--muted);font:500 11.5px var(--body);padding:6px 2px;border-radius:12px;cursor:pointer;min-height:52px}
+  .barra button svg{width:24px;height:24px}
+  .barra button[aria-current="true"]{color:var(--accent)}
+  .barra button[aria-current="true"] svg{stroke-width:2.2}
+  .barra button i{position:absolute;top:2px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font:700 11px/18px var(--body);font-style:normal}
+  #btn-new{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  main{padding-bottom:170px}
+  .df{bottom:0}
+  nav#tabs{position:fixed;top:auto;left:8px;right:8px;width:auto;bottom:calc(74px + env(safe-area-inset-bottom,0px));max-height:calc(100dvh - 160px)}
+}

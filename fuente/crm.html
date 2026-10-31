@@ -790,7 +790,7 @@ function render(){
     :S.permDb==="denied"?`<div class="banner">Has bloqueado el permiso de guardar datos en esta página. <button class="btn small" type="button" id="btn-perm">Activar permiso</button></div>`
     :S.soloLectura?`<div class="banner">No se ha podido guardar (${esc(S.soloLectura)}). Puede que esta vista sea solo de lectura. <button class="btn small" type="button" id="btn-perm">Revisar permisos</button></div>`:"";
   setTimeout(()=>{if(S.view==="censo"&&S.cf.mapa&&$("#mapa"))pintarMapa(S.cf.zona)},0);
-  pintarSecbar();
+  pintarSecbar();setTimeout(()=>{pintarBarra();colorUnico($("#view"))},0);
   $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,compradores:vCompradores,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo}[S.view])();
   if((S.view==="censo"||S.view==="localizar")&&!S.censo&&S.db) cargarCenso();
 }
@@ -1279,7 +1279,9 @@ function pasar(d){const L=secciones(),i=L.findIndex(b=>b.dataset.v===S.view);if(
 function menu(abrir){const n=$("#tabs");n.classList.toggle("abierto",abrir);$("#btn-menu").setAttribute("aria-expanded",abrir);$("#velo").hidden=!abrir}
 (function(){const top=$(".top"),h=top.querySelector("h1"),sb=document.createElement("div");sb.className="secbar";
   sb.innerHTML='<button type="button" id="sec-ant" aria-label="Sección anterior">‹</button><b id="sec-nombre"></b><span class="pos" id="sec-pos"></span><button type="button" id="sec-sig" aria-label="Sección siguiente">›</button>';
-  h.after(sb);const yo=top.querySelector(".yo");if(yo)$("#tabs").appendChild(yo);
+  h.after(sb);const lu=document.createElement("button");lu.type="button";lu.id="btn-buscar";lu.className="lupa";lu.setAttribute("aria-label","Buscar en todo el CRM");
+  lu.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg><span>Buscar</span>';$("#btn-new").before(lu);lu.addEventListener("click",abrirBuscar);
+  document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();abrirBuscar()}if(e.key==="Escape")cerrarBuscar()});const yo=top.querySelector(".yo");if(yo)$("#tabs").appendChild(yo);
   const v=document.createElement("div");v.id="velo";v.className="velo";v.hidden=true;document.body.appendChild(v);v.addEventListener("click",()=>menu(false));
   $("#btn-menu").addEventListener("click",()=>menu(!$("#tabs").classList.contains("abierto")));
   $("#sec-ant").addEventListener("click",()=>pasar(-1));$("#sec-sig").addEventListener("click",()=>pasar(1));
@@ -1288,6 +1290,37 @@ function menu(abrir){const n=$("#tabs");n.classList.toggle("abierto",abrir);$("#
   w.addEventListener("touchstart",e=>{const t=e.target;if(e.touches.length!==1||t.closest(".tbl-wrap,.chips,#mapa,.leaflet-container,iframe,input,select,textarea,.pager,[data-noswipe]")){x0=null;return}x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now()},{passive:true});
   w.addEventListener("touchend",e=>{if(x0===null||$("#dlg").open)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;
     if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.8&&Date.now()-t0<700)pasar(dx<0?1:-1)},{passive:true});})();
+/* Barra de pestañas abajo (móvil): las 4 secciones más usadas y «Más», que abre el menú completo */
+const BARRA_PREF=["hoy","contactos","censo","encargos","compradores","captaciones","operaciones","resultados"];
+function pintarBarra(){let bb=$("#barra");if(!bb){bb=document.createElement("nav");bb.id="barra";bb.className="barra";bb.setAttribute("aria-label","Secciones principales");document.body.appendChild(bb);
+    bb.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.mas!==undefined){menu(!$("#tabs").classList.contains("abierto"));return}irA(b.dataset.b,0)})}
+  const vis=secciones(),ok=v=>vis.some(b=>b.dataset.v===v),L=BARRA_PREF.filter(ok).slice(0,4),nom=v=>{const b=vis.find(x=>x.dataset.v===v);return b?b.firstChild.textContent:v};
+  const IC={hoy:'<path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',contactos:'<path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 14h8M8 18h5"/>',censo:'<path d="M4 21V8l5-3 5 3v13M14 21V11l6 3v7M3 21h18"/><path d="M7 11h1M7 14h1M7 17h1M10 11h1M10 14h1M10 17h1"/>',
+    encargos:'<path d="M3 11 12 4l9 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>',compradores:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>',captaciones:'<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>',
+    operaciones:'<path d="M4 7h16v12H4z"/><path d="M4 11h16M8 15h3"/>',resultados:'<path d="M5 20V11M12 20V5M19 20v-7"/>',mas:'<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>'};
+  const svg=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${IC[k]||IC.mas}</svg>`,enMas=!L.includes(S.view);
+  const n=$("#tabs [data-v=hoy] .count");
+  bb.innerHTML=L.map(v=>`<button type="button" data-b="${v}" aria-current="${S.view===v}">${svg(v)}<span>${esc(nom(v)==="Noticias"?"Noticias":nom(v))}</span>${v==="hoy"&&n?`<i>${n.textContent}</i>`:""}</button>`).join("")+`<button type="button" data-mas aria-current="${enMas}">${svg("mas")}<span>Más</span></button>`}
+/* Buscador general: dirección, nombre o teléfono en todo el CRM */
+function abrirBuscar(){let o=$("#buscar");if(!o){o=document.createElement("div");o.id="buscar";o.className="buscar";o.hidden=true;
+    o.innerHTML='<div class="bq-caja" role="dialog" aria-label="Buscar en todo el CRM"><div class="bq-top"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg><input type="search" id="bq-q" placeholder="Dirección, nombre o teléfono…" autocomplete="off"><button type="button" class="btn small" id="bq-x">Cerrar</button></div><div id="bq-res" class="bq-res"></div></div>';
+    document.body.appendChild(o);o.addEventListener("click",e=>{if(e.target===o||e.target.id==="bq-x")return cerrarBuscar();const r=e.target.closest("[data-open],[data-viv]");if(!r)return;cerrarBuscar();if(r.dataset.viv)abrirViv(r.dataset.viv);else abrir(r.dataset.open,r.dataset.id)});
+    $("#bq-q").addEventListener("input",()=>pintarBuscar())}
+  o.hidden=false;document.body.style.overflow="hidden";menu(false);if(!S.censo&&S.db&&typeof cargarCenso==="function"&&(!S.yo||S.yo.rol!=="coordinador"))cargarCenso().then(()=>pintarBuscar());pintarBuscar();setTimeout(()=>$("#bq-q").focus(),30)}
+function cerrarBuscar(){const o=$("#buscar");if(o){o.hidden=true;document.body.style.overflow=""}}
+function pintarBuscar(){const q=($("#bq-q").value||"").trim().toLowerCase(),qn=q.replace(/\s/g,""),R=$("#bq-res");
+  if(q.length<2){R.innerHTML='<p class="bq-vacio">Escribe al menos 2 letras o números. Busca en noticias, encargos, captaciones, operaciones'+(S.compradores.length?", compradores":"")+' y en el censo.</p>';return}
+  const ok=(...v)=>{const t=v.filter(Boolean).join(" ").toLowerCase();return t.includes(q)||(qn.length>=3&&/^\d+$/.test(qn)&&t.replace(/\s/g,"").includes(qn))};
+  const G=[["Noticias",S.contactos.filter(c=>ok(c.direccion,c.nombre,c.telefono)),rowContacto],["Encargos",S.encargos.filter(e=>ok(e.direccion,e.propietario,e.telefono)),rowEncargo],
+    ["Captaciones",S.captaciones.filter(k=>ok(k.direccion,k.propietario,k.telefono)),rowCap],["Operaciones",S.operaciones.filter(o=>ok(o.inmueble,o.vendedor,o.comprador,o.telVendedor,o.telComprador)),rowOp]];
+  if(S.compradores.length&&typeof rowComp==="function")G.push(["Compradores",S.compradores.filter(c=>ok(c.nombre,c.telefono,c.email)),rowComp]);
+  if(S.censo){const V=[];for(const [zn,Z] of Object.entries(S.censo))for(const b of Z.edificios||[])for(const u of b.u){if(V.length>40)break;const v={...u,...(S.censoEd[u._id]||{})};
+      if(ok(b.via+" "+b.num,viaLarga(b.via)+" "+b.num,v.prop,v.tel))V.push({id:u._id,b,u:v,zn})}
+    G.push(["Censo",V,x=>`<button class="row" type="button" data-viv="${esc(x.id)}"><span class="t">${esc(viaLarga(x.b.via))} ${esc(x.b.num)} ${esc([x.u.planta,x.u.puerta].filter(Boolean).join(" "))}</span><span class="m">${zona(x.zn)}${x.u.prop?`<span>${esc(x.u.prop)}</span>`:""}${x.u.tel?`<span>${esc(x.u.tel)}</span>`:""}</span></button>`])}
+  const H=G.filter(g=>g[1].length).map(([t,L,fn])=>`<h3>${t} <span>${L.length>40?"40+":L.length}</span></h3><div class="list">${L.slice(0,8).map(fn).join("")}</div>`).join("");
+  R.innerHTML=H||'<p class="bq-vacio">No hay nada con «'+esc(q)+'».</p>';colorUnico(R)}
+/* Una sola etiqueta de color por fila: la de la derecha y la más urgente; el resto en gris */
+function colorUnico(raiz){raiz.querySelectorAll(".row .m").forEach(m=>{const P=[...m.querySelectorAll(".pill")];const top=P.find(p=>p.classList.contains("bad"))||P.find(p=>p.classList.contains("warn"));P.forEach(p=>{if(p!==top)p.classList.add("gris")})})}
 function pintarSecbar(){if(!$("#sec-nombre"))return;const L=secciones(),i=L.findIndex(b=>b.dataset.v===S.view),b=L[i];if(!b)return;
   $("#sec-nombre").textContent=b.firstChild?b.firstChild.textContent:b.textContent;$("#sec-pos").textContent=(i+1)+" de "+L.length}
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(!b)return;irA(b.dataset.v,0)});
