@@ -768,7 +768,7 @@ $("#l-enviar").addEventListener("click",async()=>{
   $("#l-enviar").disabled=true;
   const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
   $("#l-enviar").disabled=false;
-  verLogin(error?"No se ha podido enviar: "+error.message:"Te hemos enviado un enlace a "+email+". Ábrelo en este mismo dispositivo.");
+  verLogin(error?(error.status===429||/rate limit|seconds/i.test(error.message)?"Ahora mismo hay demasiados accesos pidiendo enlace. Espera una hora y pulsa una sola vez; no hace falta repetir.":"No se ha podido enviar: "+error.message):"Te hemos enviado un enlace a "+email+". Ábrelo en este mismo dispositivo.");
 });
 $("#l-email").addEventListener("keydown",e=>{if(e.key==="Enter")$("#l-enviar").click()});
 $("#btn-salir").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
