@@ -1,7 +1,7 @@
 /* ---------- base de datos: Supabase (cada asesor solo recibe lo suyo; lo filtra el servidor) ---------- */
 const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
-const TABLA={contactos:"contactos",captaciones:"captaciones",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados"};
+const TABLA={contactos:"contactos",captaciones:"captaciones",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados",mercado:"mercado"};
 const DOCS={"ajustes/general":"general","zonas/indice":"zonas_indice"};
 const nuevoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 function fila(t,id,d){const r={id,d};if(t==="censo")r.zona=d.zona;if(t==="censo_edits"||t==="portales")r.zona=id.split("-")[0].toUpperCase();return r}
