@@ -252,6 +252,7 @@ function vHoy(){
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro);
   return `
+  ${vAgenda()}
   ${urg.length?`<section><h2>Urgente: publicadas sin localizar <span class="n">${urg.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">En Desarrollo y a la venta. Hay que localizar al propietario y pasarlas a Seguimiento: 2 días si está con agencia o portal, 1 día si vende un particular.</p>${hoyLista("urg",urg,rowContacto,"")}</section>`:""}
   ${vend.length?`<section><h2>Avisos: se han vendido <span class="n">${vend.length}</span></h2>${hoyLista("vend",vend,rowContacto,"")}</section>`:""}
   <section class="kpis">
@@ -260,7 +261,6 @@ function vHoy(){
     ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
     ${kpi("Encargos activos",S.encargos.filter(e=>e.estado==="Activo").length,`${S.encargos.filter(e=>e.estado==="Activo"&&e.exclusiva==="Sí").length} en exclusiva`)}
   </section>
-  ${vAgenda()}
   ${solBorr.length?`<section><h2>Solicitudes de borrado <span class="n">${solBorr.length}</span></h2><div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}</section>`:""}
   <div class="grid2">
     <section><h2>Próximos pasos vencidos o de hoy <span class="n">${pend.length}</span></h2>${hoyLista("pend",pend,rowContacto,"Nada vencido. Todos los propietarios tienen su próximo paso en fecha.")}
