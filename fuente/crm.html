@@ -157,6 +157,20 @@ const dias = (a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 const fmtF = s=>s?new Date(s+"T12:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"";
 const zona = z=>z?`<span class="zone" style="--z:${ZONAS[z]||"#999"}">${esc(z.charAt(0)+z.slice(1).toLowerCase())}</span>`:"";
 const personas = ()=>[...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","OFICINA"];
+/* ---------- Clientes antiguos: reseñas, aniversarios y referidos ---------- */
+function clientesAntiguos(){const hoy=hoyISO(),out=[];
+  for(const o of S.operaciones){if(o.estado==="Caída")continue;const base=o.fechaEscritura||o.fechaCobro||(o.estado==="Escriturada"?o.fechaAceptacion:"");if(!base)continue;
+    const dd=dias(base,hoy);
+    if(dd>=15&&!o.resenaPedida)out.push({o,orden:0,txt:"Pedir reseña de Google",cls:"warn",det:`Vendida hace ${dd} días`});
+    const y=+base.slice(0,4),ny=+hoy.slice(0,4);for(const yy of [ny,ny+1]){const an=yy+base.slice(4),n=yy-y,falta=dias(hoy,an);
+      if(n>=1&&falta>=0&&falta<=14&&!(o.ultimaFelicitacion&&o.ultimaFelicitacion>=dias2(an,-30))){out.push({o,orden:1,txt:`Aniversario: ${n} año${n>1?"s":""}`,cls:"acc",det:falta?`el ${fmtF(an)} (en ${falta} días)`:"hoy"});break}}}
+  return out.sort((a,b)=>a.orden-b.orden)}
+const dias2=(f,n)=>{const d=new Date(f+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+function rowCliente(x){const o=x.o,c=[o.vendedor&&("Vendedor: "+o.vendedor+(o.telVendedor?" "+o.telVendedor:"")),o.comprador&&("Comprador: "+o.comprador+(o.telComprador?" "+o.telComprador:""))].filter(Boolean);
+  return `<button class="row" type="button" data-open="operaciones" data-id="${esc(o.id)}"><span class="t">${esc(o.inmueble||"")}</span><span class="r"><span class="pill ${x.cls}">${esc(x.txt)}</span></span><span class="m"><span>${esc(o.asesor||"")}</span><span>${esc(x.det)}</span>${c.length?c.map(t=>`<span>${esc(t)}</span>`).join(""):"<span>Falta el teléfono del cliente</span>"}</span></button>`}
+function vClientesAntiguos(){const L=clientesAntiguos();if(!L.length)return "";const ref=S.contactos.filter(c=>c.origen==="Recomendación"&&(c.creado||"").slice(0,4)===hoyISO().slice(0,4)).length;
+  return `<section><h2>Clientes antiguos <span class="n">${L.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Pide la reseña a los 15 días de la venta y felicita cada aniversario de la compra preguntando si conocen a alguien que venda. Noticias por recomendación este año: ${ref}.</p>${hoyLista("clientes",L,rowCliente,"")}</section>`}
+
 /* ---------- Ranking semanal y metas ---------- */
 const DEF_METAS={noticias:5,gestiones:40,censo:30,valoraciones:2,captaciones:1};
 const METAS_ET=[["noticias","Noticias nuevas"],["gestiones","Gestiones en noticias"],["censo","Contactos en el censo"],["valoraciones","Valoraciones"],["captaciones","Captaciones"]];
@@ -368,6 +382,7 @@ function vHoy(){
       <div class="tools" style="margin-top:10px">${sinPaso().length?`<button class="btn small" type="button" data-go="sinpaso">${sinPaso().length} propietarios sin próximo paso</button>`:""}</div></section>
     <section><h2>Esperan a Stiwhar <span class="n">${sti.length}</span></h2>${hoyLista("sti",sti,rowContacto,"Ningún asesor ha marcado nada para ti.")}</section>
     <section><h2>Encargos que piden atención <span class="n">${encAl.length}</span></h2>${hoyLista("encAl",encAl,rowEncargo,"Todos los encargos activos tienen precio revisado y exclusiva en vigor.")}</section>
+    ${vClientesAntiguos()}
     <section><h2>Reservas en negociación <span class="n">${reservas.length}</span></h2>${hoyLista("res",reservas,rowOp,"No hay reservas abiertas.")}</section>
   </div>`;
 }
@@ -543,7 +558,7 @@ const FORMS={
   contactos:{titulo:"propietario",fields:[
     ["direccion","Dirección del inmueble *","text",{full:1,req:1}],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
     ["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
-    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["motivo","Situación","sel",()=>MOTIVOS],
+    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["motivo","Situación","sel",()=>MOTIVOS],
     ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],
     ["fechaValoracion","Fecha de valoración","date"],["precioValorado","Precio valorado (€)","number"],["precioPropietario","Precio que pide el propietario (€)","number"],
     ["necesitaSti","Necesita a Stiwhar","check"],["notaSti","Qué necesita de Stiwhar","text",{full:1}],
@@ -556,7 +571,9 @@ const FORMS={
   operaciones:{titulo:"operación",fields:[
     ["inmueble","Inmueble *","text",{full:1,req:1}],["asesor","Asesor","sel",()=>personas()],["tipo","Tipo","sel",()=>["Venta","Alquiler"]],
     ["ladoCobrado","Lado cobrado","sel",()=>["Ambos","Vendedor","Comprador"]],["precio","Precio (€)","number"],["honorarios","Honorarios sin IVA (€)","number"],
-    ["estado","Estado","sel",()=>EST_OP],["fechaAceptacion","Fecha de aceptación (facturado)","date"],["fechaCobro","Fecha de cobro","date"],["notas","Notas","textarea",{full:1}]]}
+    ["estado","Estado","sel",()=>EST_OP],["fechaAceptacion","Fecha de aceptación (facturado)","date"],["fechaCobro","Fecha de cobro","date"],["fechaEscritura","Fecha de escritura","date"],
+    ["vendedor","Vendedor (nombre)","text"],["telVendedor","Teléfono del vendedor","tel"],["comprador","Comprador (nombre)","text"],["telComprador","Teléfono del comprador","tel"],
+    ["resenaPedida","Reseña de Google pedida el","date"],["ultimaFelicitacion","Último aniversario felicitado","date"],["notas","Notas","textarea",{full:1}]]}
 };
 FORMS.captaciones={titulo:"captación",fields:[
     ["direccion","Dirección *","text",{full:1,req:1}],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],["asesor","Asesor","sel",()=>personas()],
@@ -581,7 +598,7 @@ function abrir(col,id){
   const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
   const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
   const extraEnc=col==="encargos"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
-  const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button>`:"";
+  const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button><button class="btn small" type="button" data-act="resenaHoy">Reseña pedida hoy</button><button class="btn small" type="button" data-act="felicitadoHoy">Aniversario felicitado hoy</button>`:"";
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>':""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">Solicitar borrado</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
@@ -730,6 +747,8 @@ $("#frm").addEventListener("click",async ev=>{
     const det=[v.nombre&&("Propietario: "+v.nombre),v.telefono&&("Teléfono: "+v.telefono),v.etapa&&("Etapa: "+v.etapa),val&&v.precioPropietario&&("Pide: "+v.precioPropietario+" €"),"Desde el CRM Hogares Fuenlabrada"].filter(Boolean).join("\n");
     gcalNuevo(tit,f,det,v.direccion);return}
   if(a==="avisoPortal"){const v=leerForm(),col=cur.col,d=S[col].find(x=>x.id===cur.id)||{};$("#dlg").close();setTimeout(()=>abrirAvisoPortal(col==="operaciones"?"vendido":"venta",v.direccion||v.inmueble||"",d),120);return}
+  if(a==="resenaHoy"){$("#fld-resenaPedida").value=hoyISO();toast("Pulsa Guardar para apuntarlo");return}
+  if(a==="felicitadoHoy"){$("#fld-ultimaFelicitacion").value=hoyISO();toast("Pulsa Guardar para apuntarlo");return}
   if(a==="avisoImprimir"){imprimirCartas(cur.aviso);return}
   if(a==="avisoApuntar"){apuntarAviso(cur.aviso);return}
   if(a==="mas7"){const d=new Date();d.setDate(d.getDate()+7);$("#fld-proxFecha").value=new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);return}
