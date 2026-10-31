@@ -143,6 +143,7 @@ h2{font-size:21px;letter-spacing:0}
 .login[hidden]{display:none}
 .lbox{max-width:360px;width:100%;display:flex;flex-direction:column;gap:12px}
 #l-paso1{display:flex;flex-direction:column;gap:12px}
+.lnk{background:none;border:0;padding:2px 0;color:#d6d2ca;text-decoration:underline;font:inherit;font-size:14px;text-align:left;cursor:pointer}
 .lbox h1{margin:0 0 4px}.lbox p{margin:0;color:var(--muted)}
 .lbox input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 .lmsg{min-height:1.4em}
@@ -154,9 +155,13 @@ h2{font-size:21px;letter-spacing:0}
   <div class="lbox">
     <h1>Hogares <small>Fuenlabrada · CRM</small></h1>
     <div id="l-paso1">
-      <p>Escribe tu email y te mandamos un enlace para entrar. No hace falta contraseña.</p>
+      <p id="l-intro">Entra con tu email y tu contraseña.</p>
       <input id="l-email" type="email" autocomplete="email" placeholder="tu@email.com">
-      <button class="btn primary" type="button" id="l-enviar">Enviarme el enlace</button>
+      <input id="l-pass" type="password" autocomplete="current-password" placeholder="Contraseña">
+      <input id="l-pass2" type="password" autocomplete="new-password" placeholder="Repite la contraseña" hidden>
+      <button class="btn primary" type="button" id="l-entrar">Entrar</button>
+      <button class="lnk" type="button" id="l-modo">Es mi primera vez: crear mi contraseña</button>
+      <button class="lnk" type="button" id="l-enviar">He olvidado la contraseña: mandarme un enlace</button>
     </div>
     <p id="l-msg" class="lmsg"></p>
   </div>
@@ -165,7 +170,7 @@ h2{font-size:21px;letter-spacing:0}
   <div class="wrap">
     <div class="top">
       <h1>Hogares <small>Fuenlabrada · CRM</small></h1>
-      <span class="yo"><span id="yo-nombre"></span><button class="btn small" id="btn-salir" type="button">Salir</button></span><button class="btn primary small" id="btn-new" type="button">+ Nuevo</button>
+      <span class="yo"><span id="yo-nombre"></span><button class="btn small" id="btn-pass" type="button">Contraseña</button><button class="btn small" id="btn-salir" type="button">Salir</button></span><button class="btn primary small" id="btn-new" type="button">+ Nuevo</button>
     </div>
     <nav id="tabs" aria-label="Secciones">
       <button data-v="hoy" type="button">Hoy</button>
@@ -763,14 +768,41 @@ async function importar(){
 
 /* ---------- acceso ---------- */
 function verLogin(texto){$("#login").hidden=false;$("#l-msg").textContent=texto||""}
-$("#l-enviar").addEventListener("click",async()=>{
-  const email=$("#l-email").value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(email))return verLogin("Escribe un email válido.");
-  $("#l-enviar").disabled=true;
-  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
-  $("#l-enviar").disabled=false;
-  verLogin(error?(error.status===429||/rate limit|seconds/i.test(error.message)?"Ahora mismo hay demasiados accesos pidiendo enlace. Espera una hora y pulsa una sola vez; no hace falta repetir.":"No se ha podido enviar: "+error.message):"Te hemos enviado un enlace a "+email+". Ábrelo en este mismo dispositivo.");
+const tradErr=e=>{const m=(e&&e.message)||"";if(e&&(e.status===429||/rate limit|seconds/i.test(m)))return "Demasiados intentos seguidos. Espera un rato y prueba una sola vez.";
+  if(/Invalid login credentials/i.test(m))return "Email o contraseña incorrectos. Si es tu primera vez, pulsa «Es mi primera vez».";
+  if(/already registered|already exists/i.test(m))return "Ese email ya tiene cuenta. Entra con tu contraseña o, si nunca la pusiste, pide el enlace de «He olvidado la contraseña».";
+  if(/Email not confirmed/i.test(m))return "Falta confirmar tu email: abre el correo que te ha llegado y vuelve a entrar.";
+  if(/Password should be|at least/i.test(m))return "La contraseña debe tener al menos 8 caracteres.";
+  return "No se ha podido: "+m};
+let modoAlta=false;
+$("#l-modo").addEventListener("click",()=>{modoAlta=!modoAlta;$("#l-pass2").hidden=!modoAlta;$("#l-pass").autocomplete=modoAlta?"new-password":"current-password";
+  $("#l-entrar").textContent=modoAlta?"Crear mi contraseña y entrar":"Entrar";$("#l-modo").textContent=modoAlta?"Ya tengo contraseña: entrar":"Es mi primera vez: crear mi contraseña";
+  $("#l-intro").textContent=modoAlta?"Pon tu email de trabajo y elige una contraseña (mínimo 8 caracteres).":"Entra con tu email y tu contraseña.";verLogin("")});
+$("#l-entrar").addEventListener("click",async()=>{
+  const email=$("#l-email").value.trim().toLowerCase(),pass=$("#l-pass").value;if(!/^\S+@\S+\.\S+$/.test(email))return verLogin("Escribe un email válido.");
+  if(pass.length<8)return verLogin("La contraseña debe tener al menos 8 caracteres.");
+  if(modoAlta&&pass!==$("#l-pass2").value)return verLogin("Las dos contraseñas no coinciden.");
+  $("#l-entrar").disabled=true;
+  const r=modoAlta?await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:location.origin+location.pathname}}):await sb.auth.signInWithPassword({email,password:pass});
+  $("#l-entrar").disabled=false;
+  if(r.error)return verLogin(tradErr(r.error));
+  if(modoAlta&&!r.data.session)return verLogin("Te hemos mandado un correo para confirmar tu email. Ábrelo y luego entra con tu contraseña.");
 });
-$("#l-email").addEventListener("keydown",e=>{if(e.key==="Enter")$("#l-enviar").click()});
+$("#l-pass").addEventListener("keydown",e=>{if(e.key==="Enter"&&!modoAlta)$("#l-entrar").click()});
+$("#l-pass2").addEventListener("keydown",e=>{if(e.key==="Enter")$("#l-entrar").click()});
+$("#l-enviar").addEventListener("click",async()=>{
+  const email=$("#l-email").value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(email))return verLogin("Escribe primero tu email.");
+  $("#l-enviar").disabled=true;
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}});
+  $("#l-enviar").disabled=false;
+  verLogin(error?tradErr(error):"Te hemos enviado un enlace a "+email+". Ábrelo en este dispositivo y, ya dentro, pon una contraseña nueva en «Contraseña».");
+});
+$("#btn-pass").addEventListener("click",()=>{cur={col:"__pass"};
+  $("#frm").innerHTML=`<div class="dh">Cambiar mi contraseña</div><div class="db"><label class="full">Contraseña nueva (mínimo 8 caracteres)<input id="np1" type="password" autocomplete="new-password"></label><label class="full">Repítela<input id="np2" type="password" autocomplete="new-password"></label></div>
+    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="button" id="np-ok">Guardar</button></div></div>`;
+  $("#dlg").showModal();
+  $("#np-ok").onclick=async()=>{const a=$("#np1").value,b=$("#np2").value;if(a.length<8)return toast("Mínimo 8 caracteres");if(a!==b)return toast("No coinciden");
+    const {error}=await sb.auth.updateUser({password:a});if(error)return toast(tradErr(error));$("#dlg").close();toast("Contraseña guardada")}});
 $("#btn-salir").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
 $("#view").addEventListener("click",e=>{if(e.target.id==="btn-importar")importar()});
 
