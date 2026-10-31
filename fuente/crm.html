@@ -87,6 +87,12 @@ th:first-child,td:first-child{text-align:left}
 .chip span{color:var(--muted);font-weight:500;margin-left:2px}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .chip[aria-pressed="true"] span{color:var(--on-accent)}
+details.desp>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;list-style:none}
+details.desp>summary::-webkit-details-marker{display:none}
+details.desp>summary h2{margin:0}
+details.desp>summary .flecha{color:var(--muted);font-size:18px;transition:transform .15s}
+details.desp[open]>summary .flecha{transform:rotate(180deg)}
+details.desp[open]>summary{margin-bottom:8px}
 details.bld{border-top:1px solid var(--line)} details.bld:first-child{border-top:0}
 details.bld summary{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;padding:11px 14px;cursor:pointer;list-style:none}
 details.bld summary::-webkit-details-marker{display:none}
@@ -287,6 +293,8 @@ function rowLlamar(x){return `<button class="row" type="button" data-viv="${esc(
 function miZonaLlamar(){const yo=S.yo;if(!yo||yo.rol==="responsable")return "";const z=yo.zona||(S.ajustes.asesores.find(a=>a.nombre===yo.nombre)||{}).zona;return z||""}
 function vLlamarHoy(){const z=miZonaLlamar();if(!z||!S.censo)return "";const L=aQuienLlamar(z);
   return `<section><h2>A quién llamar hoy <span class="n">${L.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Viviendas de tu zona con teléfono y más probabilidad de vender (vacías, alquiladas, ya valoradas, mayores, sin contacto reciente). Al llamar, apunta el contacto en la vivienda y baja de la lista.</p>${hoyLista("llamar",L,rowLlamar,"No hay viviendas con teléfono pendientes de llamar.")}</section>`}
+
+document.addEventListener("toggle",e=>{if(e.target&&e.target.id==="d-llamar")S.llamarAbierto=e.target.open},true);
 
 /* ---------- «Vendido en tu portal»: avisar a los vecinos ---------- */
 function portalDeFicha(dir,d){
@@ -623,7 +631,7 @@ function vCenso(){
       <div class="tbl-wrap"><table><thead><tr><th>Vivienda</th><th style="text-align:left">Propietario</th><th>Teléfono</th><th style="text-align:left">Ocupado por</th><th>Últ. contacto</th><th style="text-align:left">Comentarios</th></tr></thead><tbody>${b.u.map(fila).join("")}</tbody></table></div></details>`};
   return `<section>${tools}
   <div class="kpis">${kpi("Viviendas",(R.viviendas||0).toLocaleString("es-ES"),`${R.edificios||0} portales`)}${kpi("Con nombre",pct(R.conNombre,R.viviendas),`${(R.conNombre||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conNombre/R.viviendas*100:0)}${kpi("Con teléfono",pct(R.conTel,R.viviendas),`${(R.conTel||0).toLocaleString("es-ES")} viviendas`,R.viviendas?R.conTel/R.viviendas*100:0)}${kpi("KO",R.ko||0,`${R.koUbicados||0} ubicados en su portal`)}</div></section>
-  ${!q&&!cf.ko?(L=>`<section><h2>A quién llamar hoy <span class="n">${L.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Con teléfono y más probabilidad de vender: vacías, alquiladas, ya valoradas, mayores y sin contacto reciente. Las que ya son noticia no salen.</p>${hoyLista("llamarC",L,rowLlamar,"No hay viviendas con teléfono pendientes de llamar en esta zona.")}</section>`)(aQuienLlamar(cf.zona)):""}
+  ${!q&&!cf.ko?(L=>`<section><details class="desp" id="d-llamar"${S.llamarAbierto?" open":""}><summary><h2>A quién llamar hoy <span class="n">${L.length}</span></h2><span class="flecha" aria-hidden="true">▾</span></summary><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Con teléfono y más probabilidad de vender: vacías, alquiladas, ya valoradas, mayores y sin contacto reciente. Las que ya son noticia no salen.</p>${hoyLista("llamarC",L,rowLlamar,"No hay viviendas con teléfono pendientes de llamar en esta zona.")}</details></section>`)(aQuienLlamar(cf.zona)):""}
   <p style="margin:0;color:var(--muted);font-size:13px">Toca una vivienda para añadir contacto, teléfono o notas, o para pasarla a noticia.</p><section><h2>Portales <span class="n">${total}</span></h2>${pgC.ctrl}<div class="list">${E.length?E.map(ed).join(""):`<div class="empty">Ningún portal coincide.</div>`}</div>${pgC.ctrl}</section>
   ${cf.ko&&Z.koSinUbicar.length?`<section><h2>KO sin portal en el censo <span class="n">${Z.koSinUbicar.length}</span></h2><div class="list kos">${Z.koSinUbicar.map(koRow).join("")}</div></section>`:""}`;
 }
