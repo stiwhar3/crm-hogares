@@ -28,6 +28,7 @@ function documento(ruta){
 const dbSupabase={collection:coleccion,doc:documento};
 
 /* ---------- quién soy ---------- */
+window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.resolve({data:null});
 const esResp=()=>S.yo&&S.yo.rol==="responsable";
 function ajustarPorRol(){
   $("#yo-nombre").textContent=S.yo?S.yo.nombre:"";

@@ -157,6 +157,20 @@ const dias = (a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 const fmtF = s=>s?new Date(s+"T12:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"";
 const zona = z=>z?`<span class="zone" style="--z:${ZONAS[z]||"#999"}">${esc(z.charAt(0)+z.slice(1).toLowerCase())}</span>`:"";
 const personas = ()=>[...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","OFICINA"];
+/* ---------- Ranking semanal y metas ---------- */
+const DEF_METAS={noticias:5,gestiones:40,censo:30,valoraciones:2,captaciones:1};
+const METAS_ET=[["noticias","Noticias nuevas"],["gestiones","Gestiones en noticias"],["censo","Contactos en el censo"],["valoraciones","Valoraciones"],["captaciones","Captaciones"]];
+function pedirRanking(){if(typeof window.rankingSemana!=="function"||pedirRanking.t&&Date.now()-pedirRanking.t<5*6e4)return;pedirRanking.t=Date.now();
+  Promise.resolve().then(()=>window.rankingSemana()).then(({data,error})=>{if(error||!data)return;S.ranking=data||[];if(S.view==="hoy"&&!$("#dlg").open)render()}).catch(()=>{})}
+function vRanking(){pedirRanking();const R=S.ranking;if(!R||!R.length)return "";const M={...DEF_METAS,...(S.ajustes.metas||{})};
+  const yo=R.find(r=>r.es_yo),resp=!S.yo||S.yo.rol==="responsable";
+  if(yo&&!resp){return `<section><h2>Tu semana <span class="n">${yo.posicion}º de ${yo.total}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Ranking de actividad del equipo (no de facturación): solo ves tu puesto. Puntos: noticia nueva 3, gestión 1, contacto en el censo 1, valoración 10, captación 25.</p>
+    <div class="kpis">${METAS_ET.map(([k,t])=>kpi(t,yo[k],`Meta de la semana: ${M[k]}`,M[k]?yo[k]/M[k]*100:0)).join("")}${kpi("Puntos",yo.puntos,`Vas ${yo.posicion}º de ${yo.total}`)}</div></section>`}
+  if(!resp)return "";
+  return `<section><h2>Ranking de la semana</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Actividad desde el lunes, sacada del registro de cambios. Cada asesor solo ve su puesto. Metas por asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}.</p>
+   <div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Asesor</th><th>Puesto</th><th>Puntos</th>${METAS_ET.map(([k,t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>
+   ${R.map(r=>`<tr><td style="text-align:left">${esc(r.nombre)} <span style="color:var(--muted)">${esc((r.zona||"").toLowerCase())}</span></td><td>${r.posicion}º</td><td><b>${r.puntos}</b></td>${METAS_ET.map(([k])=>`<td style="${r[k]>=M[k]?"color:var(--ok);font-weight:700":r[k]===0?"color:var(--bad)":""}">${r[k]}/${M[k]}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>`}
+
 /* ---------- «A quién llamar hoy»: probabilidad de vender ---------- */
 function fechaTxt(t){let best=null;for(const m of String(t||"").matchAll(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/g)){let y=+m[3];if(y<100)y+=2000;const d=new Date(y,+m[2]-1,+m[1]);if(!isNaN(d)&&d<=new Date()&&(!best||d>best))best=d}return best}
 function puntuarViv(u){let p=0;const M=[],ocu=String(u.ocu||"").toUpperCase(),com=String(u.com||"");
@@ -338,6 +352,7 @@ function vHoy(){
   const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro);
   return `
   ${vAgenda()}
+  ${vRanking()}
   ${vLlamarHoy()}
   ${urg.length?`<section><h2>Urgente: publicadas sin localizar <span class="n">${urg.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">En Desarrollo y a la venta. Hay que localizar al propietario y pasarlas a Seguimiento: 2 días si está con agencia o portal, 1 día si vende un particular.</p>${hoyLista("urg",urg,rowContacto,"")}</section>`:""}
   ${vend.length?`<section><h2>Avisos: se han vendido <span class="n">${vend.length}</span></h2>${hoyLista("vend",vend,rowContacto,"")}</section>`:""}
@@ -736,6 +751,7 @@ function abrirAjustes(){
    <label>Gastos fijos al mes (€)<input id="aj-gas" type="number" value="${A.gastosMes}"></label>
    <label>Días hasta revisar precio<input id="aj-rev" type="number" value="${A.diasRevisionPrecio}"></label>
    <label>Teléfono de la oficina (para cartas)<input id="aj-tel" type="tel" value="${esc(A.telefonoOficina||"")}"></label>
+   <label class="full">Metas semanales por asesor (noticias, gestiones, censo, valoraciones, captaciones)<input id="aj-metas" type="text" value="${esc(METAS_ET.map(([k])=>({...DEF_METAS,...(A.metas||{})})[k]).join(", "))}"></label>
    <label class="full">Google Calendar compartido (ID del calendario)<input id="aj-cal" type="text" placeholder="...@group.calendar.google.com" value="${esc(A.calendarioId||"")}"></label>
    <label class="full">Asesores (uno por línea: Nombre, ZONA)<textarea id="aj-ase">${esc(A.asesores.map(a=>a.nombre+(a.zona?", "+a.zona:"")).join("\n"))}</textarea></label>
   </div><div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
@@ -743,7 +759,7 @@ function abrirAjustes(){
 }
 async function guardarAjustes(){
   const n=id=>Number($(id).value)||0;
-  const A={objetivoMes:n("#aj-mes"),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),
+  const A={objetivoMes:n("#aj-mes"),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
     asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()}))};
   if(!S.db) return toast("No se puede guardar fuera de claude.ai");
   try{await S.db.doc("ajustes/general").set({...S.ajustes,...A});$("#dlg").close();toast("Ajustes guardados")}catch(e){toast("No se han guardado los ajustes")}
