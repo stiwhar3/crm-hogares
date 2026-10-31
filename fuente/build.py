@@ -70,7 +70,9 @@ h2{font-size:21px;letter-spacing:0}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>''')
 
-rep('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap','https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Roboto:wght@400;500;700&display=swap')
+# 1b) diseño moderno (esquinas redondeadas, menú de 3 puntos, móvil): va el último para mandar
+rep('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>','<style>\n'+open('/mnt/project-files/crm/fuente/diseno.css',encoding='utf-8').read()+'</style>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>')
+rep('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap','https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600;700&display=swap')
 rep('<h1>Hogares Fuenlabrada <small>CRM</small></h1>\n      <span class="yo">','<h1>Hogares <small>Fuenlabrada · CRM</small></h1>\n      <span class="yo">')
 rep('<h1>Hogares Fuenlabrada <small>CRM</small></h1>\n    <div id="l-paso1">','<h1>Hogares <small>Fuenlabrada · CRM</small></h1>\n    <div id="l-paso1">')
 # 2) textos que mencionaban claude.ai
