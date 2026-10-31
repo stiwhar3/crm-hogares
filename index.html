@@ -361,7 +361,15 @@ function vEncargos(){
 function vOps(){
   const A=S.ajustes,L=[...S.operaciones].sort((a,b)=>(b.fechaAceptacion||"9").localeCompare(a.fechaAceptacion||"9"));
   const y=hoyISO().slice(0,4),fa=sumFact(y+"-01-01",y+"-12-31"),ca=sumCobr(y+"-01-01",y+"-12-31");
-  return `<section class="kpis">${kpi("Facturado "+y,eur(fa),"Por fecha de aceptación")}${kpi("Cobrado "+y,eur(ca),"Por fecha de cobro")}${kpi("Comisiones (30 %)",eur(sumFact(A.periodoInicio,A.periodoFin)*0.3),"Del periodo: 15 % asesor + 15 % responsable")}</section>
+  const resp=!S.yo||S.yo.rol==="responsable",fp=sumFact(A.periodoInicio,A.periodoFin);
+  const pos=S.operaciones.filter(o=>!facturada(o)&&o.estado!=="Caída"),posT=pos.reduce((s,o)=>s+(+o.honorarios||0),0);
+  const ases=S.ajustes.asesores.map(a=>a.nombre),porAs=f=>ases.map(p=>[p,f(p)]).filter(([,v])=>v).map(([p,v])=>`${esc(p)} ${eur(v*0.15)}`).join(" · ");
+  const per=`${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)}`;
+  return `<section class="kpis">${kpi("Facturado "+y,eur(fa),"Por fecha de aceptación")}${kpi("Cobrado "+y,eur(ca),"Por fecha de cobro")}
+    ${resp?kpi("Mi comisión (15 %)",eur(fp*0.15),`Del periodo ${per}, sobre ${eur(fp)} facturados`)+kpi("Comisión de los asesores (15 %)",eur(ases.reduce((t,p)=>t+sumFact(A.periodoInicio,A.periodoFin,p),0)*0.15),porAs(p=>sumFact(A.periodoInicio,A.periodoFin,p))||"Sin operaciones facturadas en el periodo")
+      :kpi("Mi comisión (15 %)",eur(fp*0.15),`Del periodo ${per}, sobre ${eur(fp)} facturados`)}
+    ${kpi("Posible por facturar",eur(posT),`${pos.length} operaciones en curso sin aceptar`)}
+    ${kpi(resp?"Posible comisión (mi 15 %)":"Posible comisión (15 %)",eur(posT*0.15),resp?(porAs(p=>pos.filter(o=>o.asesor===p).reduce((s,o)=>s+(+o.honorarios||0),0))?"Asesores: "+porAs(p=>pos.filter(o=>o.asesor===p).reduce((s,o)=>s+(+o.honorarios||0),0)):"Si se aceptan todas"):"Si se aceptan todas")}</section>
   <section><h2>Operaciones <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowOp),"No hay operaciones.")+pg.ctrl)(paginar("operaciones",L))}</section>`;
 }
 function vEquipo(){
