@@ -336,6 +336,13 @@ main{gap:18px;padding-block:16px 60px}
   .df{bottom:0}
   nav#tabs{position:fixed;top:auto;left:8px;right:8px;width:auto;bottom:calc(74px + env(safe-area-inset-bottom,0px));max-height:calc(100dvh - 160px)}
 }
+
+/* Botón de cargar de nuevo (sobre todo para la app instalada, que no tiene botón de recargar del navegador) */
+.recargar{margin-left:auto;flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#d6d2ca;display:grid;place-items:center;cursor:pointer}
+.recargar:hover{background:rgba(255,255,255,.16);color:#fff}
+.recargar svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.recargar+.lupa{margin-left:8px}
+@media (prefers-reduced-motion:no-preference){.recargar.girando svg{animation:girar .5s linear infinite}@keyframes girar{to{transform:rotate(360deg)}}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
@@ -1517,6 +1524,9 @@ function menu(abrir){const n=$("#tabs");n.classList.toggle("abierto",abrir);$("#
   sb.innerHTML='<button type="button" id="sec-ant" aria-label="Sección anterior">‹</button><b id="sec-nombre"></b><span class="pos" id="sec-pos"></span><button type="button" id="sec-sig" aria-label="Sección siguiente">›</button>';
   h.after(sb);const lu=document.createElement("button");lu.type="button";lu.id="btn-buscar";lu.className="lupa";lu.setAttribute("aria-label","Buscar en todo el CRM");
   lu.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg><span>Buscar</span>';$("#btn-new").before(lu);lu.addEventListener("click",abrirBuscar);
+  const rc=document.createElement("button");rc.type="button";rc.id="btn-recargar";rc.className="recargar";rc.title="Cargar de nuevo";rc.setAttribute("aria-label","Cargar la página de nuevo");
+  rc.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>';lu.before(rc);
+  rc.addEventListener("click",()=>{rc.classList.add("girando");setTimeout(()=>location.reload(),150)});
   document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();abrirBuscar()}if(e.key==="Escape")cerrarBuscar()});const yo=top.querySelector(".yo");if(yo)$("#tabs").appendChild(yo);
   const v=document.createElement("div");v.id="velo";v.className="velo";v.hidden=true;document.body.appendChild(v);v.addEventListener("click",()=>menu(false));
   $("#btn-menu").addEventListener("click",()=>menu(!$("#tabs").classList.contains("abierto")));
