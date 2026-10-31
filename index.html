@@ -325,14 +325,23 @@ function vClientesAntiguos(){const L=clientesAntiguos();if(!L.length)return "";c
 /* ---------- Ranking semanal y metas ---------- */
 const DEF_METAS={noticias:5,gestiones:40,censo:30,valoraciones:2,captaciones:1};
 const METAS_ET=[["noticias","Noticias nuevas"],["gestiones","Gestiones en noticias"],["censo","Contactos en el censo"],["valoraciones","Valoraciones"],["captaciones","Encargos"]];
-function pedirRanking(){if(typeof window.rankingSemana!=="function"||pedirRanking.t&&Date.now()-pedirRanking.t<5*6e4)return;pedirRanking.t=Date.now();
-  Promise.resolve().then(()=>window.rankingSemana()).then(({data,error})=>{if(error||!data)return;S.ranking=data||[];if((S.view==="hoy"||S.view==="resultados")&&!$("#dlg").open)render()}).catch(()=>{})}
-function vRanking(){pedirRanking();const R=S.ranking;if(!R||!R.length)return "";const M={...DEF_METAS,...(S.ajustes.metas||{})};
+const PER_ET={semana:["de la semana","Desde el lunes"],mes:["del mes","Desde el día 1"],trimestre:["del trimestre","Desde el inicio del trimestre"]};
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function rangoPer(per){const h=new Date();h.setHours(0,0,0,0);let a,b;
+  if(per==="semana"){a=new Date(h);a.setDate(h.getDate()-((h.getDay()+6)%7));b=new Date(a);b.setDate(a.getDate()+6)}
+  else if(per==="trimestre"){const q=Math.floor(h.getMonth()/3)*3;a=new Date(h.getFullYear(),q,1);b=new Date(h.getFullYear(),q+3,0)}
+  else{a=new Date(h.getFullYear(),h.getMonth(),1);b=new Date(h.getFullYear(),h.getMonth()+1,0)}
+  return [iso(a),iso(b),Math.round((b-a)/864e5)+1]}
+function metasPer(per){const M={...DEF_METAS,...(S.ajustes.metas||{})},f=rangoPer(per)[2]/7,o={};for(const k in M)o[k]=M[k]?Math.max(1,Math.round(M[k]*f)):0;return o}
+function pedirRanking(per){per=per||"semana";S.rankings=S.rankings||{};const T=pedirRanking.t=pedirRanking.t||{};
+  if(typeof window.rankingPeriodo!=="function"||T[per]&&Date.now()-T[per]<5*6e4)return;T[per]=Date.now();
+  Promise.resolve().then(()=>window.rankingPeriodo(per)).then(({data,error})=>{if(error||!data)return;S.rankings[per]=data||[];if((S.view==="hoy"||S.view==="resultados")&&!$("#dlg").open)render()}).catch(()=>{})}
+function vRanking(per){per=per||"semana";pedirRanking(per);const R=(S.rankings||{})[per];if(!R||!R.length)return "";const M=metasPer(per),[et,desde]=PER_ET[per];
   const yo=R.find(r=>r.es_yo),resp=!S.yo||S.yo.rol==="responsable";
-  if(yo&&!resp){return `<section><h2>Tu semana <span class="n">${yo.posicion}º de ${yo.total}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Ranking de actividad del equipo (no de facturación): solo ves tu puesto. Puntos: noticia nueva 3, gestión 1, contacto en el censo 1, valoración 10, encargo 25.</p>
-    <div class="kpis">${METAS_ET.map(([k,t])=>kpi(t,yo[k],`Meta de la semana: ${M[k]}`,M[k]?yo[k]/M[k]*100:0)).join("")}${kpi("Puntos",yo.puntos,`Vas ${yo.posicion}º de ${yo.total}`)}</div></section>`}
+  if(yo&&!resp){return `<section><h2>Tu ranking ${et} <span class="n">${yo.posicion}º de ${yo.total}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">${desde}. Ranking de actividad del equipo (no de facturación): solo ves tu puesto. Puntos: noticia nueva 3, gestión 1, contacto en el censo 1, valoración 10, encargo 25.</p>
+    <div class="kpis">${METAS_ET.map(([k,t])=>kpi(t,yo[k],`Meta ${et}: ${M[k]}`,M[k]?yo[k]/M[k]*100:0)).join("")}${kpi("Puntos",yo.puntos,`Vas ${yo.posicion}º de ${yo.total}`)}</div></section>`}
   if(!resp)return "";
-  return `<section><h2>Ranking de la semana</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Actividad desde el lunes, sacada del registro de cambios. Cada asesor solo ve su puesto. Metas por asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}.</p>
+  return `<section><h2>Ranking ${et}</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">${desde}, sacado del registro de cambios. Cada asesor solo ve su puesto. Metas ${et} por asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}.</p>
    <div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Asesor</th><th>Puesto</th><th>Puntos</th>${METAS_ET.map(([k,t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>
    ${R.map(r=>`<tr><td style="text-align:left">${esc(r.nombre)} <span style="color:var(--muted)">${esc((r.zona||"").toLowerCase())}</span></td><td>${r.posicion}º</td><td><b>${r.puntos}</b></td>${METAS_ET.map(([k])=>`<td style="${r[k]>=M[k]?"color:var(--ok);font-weight:700":r[k]===0?"color:var(--bad)":""}">${r[k]}/${M[k]}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>`}
 
@@ -624,22 +633,30 @@ function vHoy(){
   </div>`;
 }
 function vResultados(){
-  const A=S.ajustes,[m0,m1]=mesActual(),fm=sumFact(m0,m1),fp=sumFact(A.periodoInicio,A.periodoFin),eq=A.gastosMes/0.7,resp=!S.yo||S.yo.rol==="responsable";
+  const A=S.ajustes,per=S.resPer||"semana",resp=!S.yo||S.yo.rol==="responsable",eq=A.gastosMes/0.7;
+  const P={semana:rangoPer("semana"),mes:rangoPer("mes"),trimestre:rangoPer("trimestre")};
+  const F={semana:sumFact(P.semana[0],P.semana[1]),mes:sumFact(P.mes[0],P.mes[1]),trimestre:sumFact(P.trimestre[0],P.trimestre[1])},fp=sumFact(A.periodoInicio,A.periodoFin);
+  const O={semana:Math.round(A.objetivoMes*12/52),mes:+A.objetivoMes||0,trimestre:(+A.objetivoMes||0)*3};
   const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro),act=S.encargos.filter(e=>e.estado==="Activo");
-  const M={...DEF_METAS,...(A.metas||{})},pc=(a,b)=>b?Math.round(a/b*100)+" %":"—";
+  const M={...DEF_METAS,...(A.metas||{})},pc=(a,b)=>b?Math.round(a/b*100)+" %":"—",fr=([a,b])=>fmtF(a)+" – "+fmtF(b);
+  const sel=`<div class="tools">${["semana","mes","trimestre"].map(k=>`<button class="btn small${k===per?" primary":""}" type="button" data-resper="${k}">${k.charAt(0).toUpperCase()+k.slice(1)}</button>`).join("")}</div>`;
   const fact=resp?`<section><h2>Facturado</h2><div class="kpis">
-    ${kpi("Facturado este mes",eur(fm),`Objetivo ${eur(A.objetivoMes)} · equilibrio ${eur(eq)}`,fm/A.objetivoMes*100)}
-    ${kpi("Facturado del periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,fp/A.objetivoPeriodo*100)}
+    ${kpi("Esta semana",eur(F.semana),`Objetivo ${eur(O.semana)} (${fr(P.semana)})`,O.semana?F.semana/O.semana*100:0)}
+    ${kpi("Este mes",eur(F.mes),`Objetivo ${eur(O.mes)} · equilibrio ${eur(eq)}`,O.mes?F.mes/O.mes*100:0)}
+    ${kpi("Este trimestre",eur(F.trimestre),`Objetivo ${eur(O.trimestre)} (${fr(P.trimestre)})`,O.trimestre?F.trimestre/O.trimestre*100:0)}
+    ${kpi("Periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,A.objetivoPeriodo?fp/A.objetivoPeriodo*100:0)}
     ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
     ${kpi("Encargos activos",act.length,`${act.filter(e=>e.exclusiva==="Sí").length} en exclusiva`)}</div></section>`
    :`<section class="kpis">${kpi("Encargos activos",act.length,`${act.filter(e=>e.exclusiva==="Sí").length} en exclusiva`)}</section>`;
-  const obj=resp?`<section><h2>Objetivos</h2><div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Objetivo</th><th>Meta</th><th>Llevamos</th><th>Cumplido</th></tr></thead><tbody>
-    <tr><td style="text-align:left">Facturación del mes</td><td>${eur(A.objetivoMes)}</td><td>${eur(fm)}</td><td>${pc(fm,A.objetivoMes)}</td></tr>
-    <tr><td style="text-align:left">Punto de equilibrio del mes</td><td>${eur(eq)}</td><td>${eur(fm)}</td><td>${pc(fm,eq)}</td></tr>
-    <tr><td style="text-align:left">Facturación del periodo (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})</td><td>${eur(A.objetivoPeriodo)}</td><td>${eur(fp)}</td><td>${pc(fp,A.objetivoPeriodo)}</td></tr>
-    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">Metas semanales de cada asesor: ${METAS_ET.map(([k,t])=>t.toLowerCase()+" "+M[k]).join(" · ")}. Se cambian en Ajustes.</p></section>`:"";
-  const rk=vRanking();
-  return fact+(rk||`<section><h2>${resp?"Ranking de la semana":"Tu semana"}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+obj;
+  const fila=(t,m,l)=>`<tr><td style="text-align:left">${t}</td><td>${eur(m)}</td><td>${eur(l)}</td><td>${pc(l,m)}</td></tr>`;
+  const obj=resp?`<section><h2>Objetivos</h2><div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Objetivo de facturación</th><th>Meta</th><th>Llevamos</th><th>Cumplido</th></tr></thead><tbody>
+    ${fila(`Semana (${fr(P.semana)})`,O.semana,F.semana)}${fila("Mes",O.mes,F.mes)}${fila("Punto de equilibrio del mes",eq,F.mes)}${fila(`Trimestre (${fr(P.trimestre)})`,O.trimestre,F.trimestre)}${fila(`Periodo (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,A.objetivoPeriodo,fp)}
+    </tbody></table></div>
+    <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th style="text-align:left">Metas de actividad por asesor</th><th>Semana</th><th>Mes</th><th>Trimestre</th></tr></thead><tbody>
+    ${(m=>METAS_ET.map(([k,t])=>`<tr><td style="text-align:left">${t}</td><td>${m.semana[k]}</td><td>${m.mes[k]}</td><td>${m.trimestre[k]}</td></tr>`).join(""))({semana:metasPer("semana"),mes:metasPer("mes"),trimestre:metasPer("trimestre")})}
+    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">La semana y el trimestre salen del objetivo mensual (×12/52 y ×3). Las metas de actividad se ponen por semana en Ajustes y se escalan al mes y al trimestre.</p></section>`:"";
+  const rk=vRanking(per);
+  return fact+sel+(rk||`<section><h2>Ranking ${PER_ET[per][0]}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+obj;
 }
 function selOpts(arr,val,todos){return (todos?`<option value="">${todos}</option>`:"")+arr.map(x=>`<option${x===val?" selected":""}>${esc(x)}</option>`).join("")}
 function vContactos(){
@@ -1151,6 +1168,7 @@ $("#view").addEventListener("input",e=>{const id=e.target.id;if(id==="f-q"||id==
 $("#view").addEventListener("change",e=>{const m={"f-asesor":"asesor","f-paso":"paso","f-estado":"estado"}[e.target.id];if(m){S.f[m]=e.target.value;render()}if(["l-zona","l-tipo"].includes(e.target.id))leerLoc();if(e.target.id==="k-zona"){S.kf.zona=e.target.value;render()}if(e.target.id==="k-asesor"){S.kf.asesor=e.target.value;render()}if(e.target.id==="c-zona"){S.cf.zona=e.target.value;render()}if(e.target.id==="c-ko"){S.cf.ko=e.target.checked;render()}});
 document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf.mapa;if(S.cf.mapa&&!S.geo&&S.db)S.db.doc("geo/parcelas").onSnapshot(s=>{S.geo=s.exists?s.data():{};if(S.view==="censo"&&S.cf.mapa)render()},()=>{S.geo={}});render();return}
   const cq=e.target.closest("[data-cq]");if(cq){S.cf.mapa=false;S.cf.q=cq.dataset.cq;render();window.scrollTo(0,0);return}
+  const rp=e.target.closest("[data-resper]");if(rp){S.resPer=rp.dataset.resper;render();return}
   const pm=e.target.closest("[data-portalmapa]");if(pm){abrirPortal(pm.dataset.portalmapa);return}
   const pgb=e.target.closest("[data-pegar]");if(pgb){abrirPegar(S.cf.zona,+pgb.dataset.pegar);return}
   const tr=e.target.closest("[data-tara]");if(tr){const Z=S.censo&&S.censo[S.cf.zona],b=Z&&Z.edificios[+tr.dataset.tara];if(b)imprimirTaratura([{zona:S.cf.zona,b}]);return}
@@ -1193,6 +1211,7 @@ const dbSupabase={collection:coleccion,doc:documento};
 /* ---------- quién soy ---------- */
 window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=await sb.functions.invoke("leer-buzon",{body:{imagen}});if(r.error){let m=r.error.message;try{const j=await r.error.context.json();m=j.error||m}catch(_){}return {error:m}}return r};
 window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.resolve({data:null});
+window.rankingPeriodo=(periodo)=>sb?sb.rpc("ranking_periodo",{periodo}):Promise.resolve({data:null});
 const esResp=()=>S.yo&&S.yo.rol==="responsable";
 function ajustarPorRol(){
   $("#yo-nombre").textContent=S.yo?S.yo.nombre:"";
