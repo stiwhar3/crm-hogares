@@ -352,38 +352,126 @@ function imprimirTaratura(L){if(!L||!L.length)return;
   const w=window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})),"_blank");if(!w)toast("Permite las ventanas emergentes para imprimir")}
 
 /* ---------- Notas rápidas del portal (texto pegado o foto del buzón) ---------- */
-const PG_PART=/^(de|del|la|las|los|y|e|da|di|van|von)$/i,PG_NONAME=/^(vac[ií][oa]s?|no|alquilad[oa]s?|inquilin[oa]s?|nadie|cerrad[oa]|okupad[oa]|local)$/i;
+const PG_PART=/^(de|del|la|las|los|y|e|da|di|van|von)$/i,PG_NONAME=/^(vac[ií][oa]s?|no|alquilad[oa]s?|alq|inquilin[oa]s?|inquila|nadie|cerrad[oa]|okupad[oa]s?|ocupad[oa]s?|local|nsnv|ns|nv|ni|nitp|nc|tp|nt|m\??|prop|props)$/i;
+const PG_NOESNOMBRE=new Set("ME MI MIS SE LE LES LO LA LAS EL LOS UN UNA UNOS UNAS YA SI SÍ NI NO MUY MAS MÁS HAY HA HAN HE ES SON ESTA ESTÁ ESTAN ESTÁN ESTABA TIENE TIENEN VIVE VIVEN DICE DICEN HABLO HABLA ABRE ABREN ABRO SALE SALEN VEO ESCUCHO SUENA LLAMO LLAMÓ DEJO DEJA CREO PUEDE PARECE PARECEN QUIERE QUIEREN VENDE VENDIDO VENDIDA ACABA ACABAN COMPRADO REFORMA REFORMANDO OBRAS SEÑORA SEÑOR SEÑORES SEÑORAS CHICA CHICO CHAVAL CHAVALA CHICOS HIJA HIJO HIJOS GENTE MUJER HOMBRE VECINO VECINA VECINOS PAREJA NIÑO NIÑOS NIÑA MAYOR MAYORES JOVEN MAJO MAJA MAJETE MAJETA PERRO GATO PISO CASA BUZÓN BUZON PUERTA TIMBRE MIRILLA CERRADURA CARTA CARTAS TARJETA REVISTA PRESIDENTE PRESIDENTA PROPIETARIO PROPIETARIA DUEÑO DUEÑA EN DE CON POR PARA QUE QUÉ TODO TODOS TAMBIÉN TAMBIEN PERO SIN SOLO SÓLO OTRO OTRA AQUÍ AQUI AHÍ AHI ALLÍ ALLI NADA NUNCA SIEMPRE ANTES DESPUÉS DESPUES HOY AYER MAÑANA TARDE NOCHE LUNES MARTES MIÉRCOLES MIERCOLES JUEVES VIERNES SÁBADO SABADO DOMINGO OJO POSIBLE PUEDE IGUAL CASI ESC ESCALERA PORTAL BLOQUE PLANTA BAJO ÁTICO ATICO VER LLAMAR VOLVER INSISTIR PREGUNTAR PASAR IR".split(" "));
 function pgPuerta(t){t=String(t||"").toUpperCase().replace(/\.$/,"");if(/^IZ/.test(t))return "IZ";if(/^(DCH|DER|DR)/.test(t))return "DR";if(/^CENT/.test(t))return "CN";return zPP(t)}
-function pgUnidad(U,esc,pl,pu){let C=U.filter(u=>zPl(u.planta)===pl&&zPP(u.puerta)===pgPuerta(pu));if(esc){const f=C.filter(u=>zPP(u.esc)===zPP(esc));if(f.length)C=f}return C.length===1?C[0]._id:""}
-function pgParse(txt,U){const out=[];
-  for(const raw of String(txt||"").split(/\r?\n/)){const l=raw.replace(/^[\s•\-*·]+/,"").trim();if(!l)continue;
-    const m=l.match(/^(?:(?:esc(?:alera)?|portal)\.?\s*([0-9a-z]+)\s*[,.\-]?\s*)?(bajo|bj|[áa]tico|at|\d{1,2})\s*[ºª°]?\s*[-\/]?\s*(izq(?:da|uierda)?\.?|dcha\.?|dch\.?|derecha|centro|[a-h]|\d{1,2})(?![a-záéíóúñ0-9])[\s,.:;\-]*(.*)$/i);
-    if(!m){if(out.length)out[out.length-1].com=(out[out.length-1].com+" "+l).trim();else out.push({id:"",piso:l,nombre:"",tel:"",com:"",err:true});continue}
-    const pl=/^b/i.test(m[2])?"0":/^[áa]t/i.test(m[2])?"AT":String(+m[2]);let rest=m[4]||"",tel="",nombre="",com="";
+function pgEscVal(t){t=zUp(t||"").replace(/[.:\s]/g,"");if(/^(D|DCHA|DCH|DER|DERECHA)$/.test(t))return "D";if(/^(I|IZ|IZQ|IZQDA|IZDA|IZQUIERDA)$/.test(t))return "I";return t}
+function pgEscIgual(U,e){e=zPP(pgEscVal(e));if(!e)return ()=>true;const alt={D:"2",I:"1"}[e];const usa=U.some(u=>zPP(u.esc)===e)?e:alt&&U.some(u=>zPP(u.esc)===alt)?alt:e;return u=>zPP(u.esc)===usa}
+function pgUnidad(U,esc,pl,pu){let C=U.filter(u=>zPl(u.planta)===pl&&zPP(u.puerta)===pgPuerta(pu));if(esc){const f=C.filter(pgEscIgual(U,esc));if(f.length)C=f}return C.length===1?C[0]._id:""}
+const PG_MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const PG_ABR=[[/•/g," NC "],[/\bns\s*[\/\-]?\s*nv\b/gi,"nsnv"],[/\bno sabe,? (?:ni |no )?vende\b/gi,"nsnv"],[/\bns\s*[\/\-]?\s*ni\b/gi,"No sabe, no interesa"],[/\bnsnv\b/gi,"No sabe ni vende"],[/\bnitp\b/gi,"No interesa tras puerta"],[/\bNC\b/g,"No contactado"],[/(^|\s)M\??(?=\s|[,.;:]|$)/g,"$1Mirilazo"],[/\btp\b/gi,"tras puerta"],[/\bnt\b/gi,"no timbre"],[/\br y t\b/gi,"revista y tarjeta"],[/\bPV\b\??/g,"piso en venta"],
+  [/^\s*ni(?=\s*$)/i,"No interesa"],[/^\s*ni\s+(?=interesa\b)/i,"No "],[/(^|\s)ns(?=\s|[,.;:]|$)/gi,"$1no sabe"],[/(^|\s)nv(?=\s|[,.;:]|$)/gi,"$1no vende"],[/\balq\b\.?/gi,"alquilado"]];
+function pgExpand(t){let x=" "+String(t||"")+" ";for(const [r,v] of PG_ABR)x=x.replace(r,v);x=x.replace(/\s+/g," ").trim();x=x.replace(/^no (sabe|vende)\b/,(a,b)=>"No "+b);
+  return x.replace(/^(No contactado|Mirilazo|No sabe, no interesa|No sabe ni vende|No interesa tras puerta|No interesa(?! tras puerta))\s+(?=[a-záéíóúñ])/,"$1, ")}
+const pgSinHablar=c=>/^(No contactado|Mirilazo)/.test(c||"");
+function pgFecha(l){let m=l.match(/(\d{1,2})\s*(?:de\s+)?([a-záéíóú]+)\s*(?:de\s+|del\s+)?(\d{4})/i),d=null;
+  if(m){const k=PG_MESES.findIndex(x=>zUp(x)===zUp(m[2])||zUp(x).slice(0,3)===zUp(m[2]).slice(0,3));if(k>=0)d=[+m[3],k+1,+m[1]]}
+  if(!d){m=l.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);if(m)d=[m[3].length===2?2000+ +m[3]:+m[3],+m[2],+m[1]]}
+  return d&&d[1]>=1&&d[1]<=12&&d[2]>=1&&d[2]<=31?`${d[0]}-${String(d[1]).padStart(2,"0")}-${String(d[2]).padStart(2,"0")}`:""}
+function pgHora(l){let m=l.match(/\b(\d{1,2})\s*[:.h]\s*(\d{2})\b/i)||l.match(/\b(?:a las|sobre las|hacia las)\s+(\d{1,2})\b/i)||l.match(/\b(\d{1,2})\s*h(?:oras)?\b/i);
+  if(!m)return "";let h=+m[1];const mi=m[2]?+m[2]:0;if(/tarde|noche|pm/i.test(l)&&h<12)h+=12;return h<24&&mi<60?String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0"):""}
+/* Mensajes copiados o exportados de WhatsApp: «[19/3/26, 11:02:55] Iván: …» o «19/3/26, 11:02 - Iván: …» */
+const PG_WA=/^\[?(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::\d{2})?\]?\s*(?:-\s*)?[^:\n]{1,40}?:\s?/;
+const PG_ABRV="(?:nsnv|nsni|nitp|ns|nv|ni|nt|tp|alq|m\\b)";
+const PG_PISO=new RegExp("^(?:(?:esc(?:alera)?|portal|bloque)\\.?\\s*([0-9a-z]+)\\s*[,.\\-]?\\s*)?(bajo|bj|[áa]tico|at|\\d{1,2})\\s*[ºª°]?\\s*[-\\/]?\\s*(izq(?:da|uierda)?\\.?|dcha\\.?|dch\\.?|derecha|centro|[a-l]|\\d{1,2})(?![a-záéíóúñ0-9:\\/])[\\s,.:;\\-]*(.*)$","i");
+const PG_NUM=/^(bajo|bj|b|[áa]tico|at|a|\d{1,2})\s*[,.]\s*(\d{1,2})(?![\d.,ºª°a-z])[\s,.:;\-]*(.*)$/i;
+const PG_BN=/^([ab])\.?(\d{1,2})(?![\d.,ºª°a-z])[\s,.:;\-]*(.*)$/i;
+const PG_LETRA=/^([a-l])(?![a-záéíóúñ0-9])[\s•.:;\-]*(.*)$/i;
+const PG_ESCCAB=/^(?:esc(?:alera)?|portal|bloque|blq)\.?\s*(dcha\.?|dch\.?|derecha|izq(?:da|uierda)?\.?|izda\.?|\d{1,2}|[a-z](?![a-záéíóúñ]))\s*[:.,\-]?\s*/i;
+function pgPlanta(t){return /^b/i.test(t)?"0":/^[áa]t|^a$/i.test(t)?"AT":String(+t)}
+/* Divide «4A •, 3A nv, 2A • no timbre» en una vivienda por trozo */
+function pgTrozos(l){const p=l.split(/\s*,\s*(?=(?:bajo|bj|[áa]tico|\d{1,2})\s*[ºª°]?\s*[a-l](?![a-záéíóúñ0-9]))/i);return p.length>1&&p.every(x=>PG_PISO.test(x))?p:[l]}
+function pgParse(txt,U,op){op=op||{};U=U||[];const out=[],cab={fecha:"",hora:"",dir:"",nota:""};let enCab=true,esc="",run=null,portal=null,resto="";
+  const numPuertas=U.length&&U.every(u=>/^\d+$/.test(zPP(u.puerta)));
+  const L=String(txt||"").replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").split(/\r?\n/),L0=[...L];let kFin=L.length;
+  const nota=t=>{cab.nota=(cab.nota+" "+t).trim()};
+  const plTope=e=>{const P=U.filter(pgEscIgual(U,e)).map(u=>zPl(u.planta)).filter(p=>/^\d+$/.test(p)).map(Number);return P.length?Math.max(...P):null};
+  const unidad=(e,pl,pu,rest,ded)=>{let tel="",nombre="",com="";
     const t=rest.match(/(?:\+?34[\s.]?)?([6789](?:[\s.]?\d){8})(?!\d)/);
     let antes=rest,despues="";if(t){tel=t[1].replace(/\D/g,"");antes=rest.slice(0,t.index);despues=rest.slice(t.index+t[0].length)}
     const tk=antes.trim().split(/\s+/).filter(Boolean),N=[];let i=0;
-    for(;i<tk.length;i++){const w=tk[i].replace(/[,:;.\-–]+$/,"");if(/^[A-ZÁÉÍÓÚÑÜ]/.test(w)&&!PG_NONAME.test(w))N.push(w);else if(N.length&&PG_PART.test(w)&&(j=>{while(tk[j]&&PG_PART.test(tk[j]))j++;return tk[j]&&/^[A-ZÁÉÍÓÚÑÜ]/.test(tk[j])})(i+1))N.push(w);else break;if(/[,:;\-–]$/.test(tk[i])){i++;break}}
-    nombre=N.join(" ");com=[tk.slice(i).join(" "),despues].join(" ").replace(/^[\s,.:;\-–]+/,"").replace(/\s+/g," ").trim();
-    out.push({id:pgUnidad(U,m[1],pl,m[3]),piso:[m[1]?"Esc "+m[1]:"",pl==="0"?"Bajo":pl==="AT"?"Ático":pl+"º",pgPuerta(m[3])].filter(Boolean).join(" "),nombre,tel,com})}
-  return out}
+    for(;i<tk.length;i++){const w=tk[i].replace(/[,:;.\-–]+$/,"");
+      if(/^[A-ZÁÉÍÓÚÑÜ][a-záéíóúñüA-ZÁÉÍÓÚÑÜ]/.test(w)&&!PG_NONAME.test(w)&&!PG_NOESNOMBRE.has(zUp(w))&&!PG_NOESNOMBRE.has(w.toUpperCase()))N.push(w);
+      else if(N.length&&PG_PART.test(w)&&(j=>{while(tk[j]&&PG_PART.test(tk[j]))j++;return tk[j]&&/^[A-ZÁÉÍÓÚÑÜ]/.test(tk[j])})(i+1))N.push(w);else break;if(/[,:;\-–]$/.test(tk[i])){i++;break}}
+    nombre=N.join(" ");com=pgExpand([tk.slice(i).join(" "),despues].join(" ").replace(/^[\s,.:;\-–]+/,""));
+    const plTxt=pl==="?"?"¿?":pl==="0"?"Bajo":pl==="AT"?"Ático":pl+"º";
+    out.push({id:pl==="?"?"":pgUnidad(U,e,pl,pu),piso:[e?"Esc "+e:"",plTxt,pgPuerta(pu)].filter(Boolean).join(" "),nombre,tel,com,...(ded?{deducida:1,marcada:false}:{})})};
+  for(let k=0;k<L.length;k++){let raw=L[k],wf="",wh="";const w=raw.match(PG_WA);
+    if(w){wf=`${w[3].length===2?"20"+w[3]:w[3]}-${w[2].padStart(2,"0")}-${w[1].padStart(2,"0")}`;wh=w[4].padStart(2,"0")+":"+w[5];raw=raw.slice(w[0].length)}
+    let l=raw.replace(/<\s*(?:se editó este mensaje|this message was edited|adjunto|attached|multimedia omitido|media omitted)[^>]*>/gi,"").replace(/^[\s\-*·]+(?!\d)/,"").trim();
+    if(w&&!out.length&&enCab){if(!cab.fecha)cab.fecha=wf;if(!cab.hora)cab.hora=wh}
+    if(!l)continue;
+    const f=pgFecha(l),h=pgHora(l);
+    if(enCab&&(f||h)&&!PG_PISO.test(l.replace(/^•\s*/,""))&&!PG_NUM.test(l)||enCab&&f&&!/[a-záéíóúñ]{3,}\s+\d/i.test(l)){if(f&&!cab.fecha)cab.fecha=f;if(h&&!cab.hora)cab.hora=h;continue}
+    // Escalera / portal / bloque como cabecera: «Esc 2:», «Esc.3», «Bloque1», «Escalera derecha 12A …»
+    const ei=l.match(/^(izq(?:da|uierda)?|izda|dcha|derecha)\.?\s*(\d{1,2})?\s*:\s*$/i);if(ei){esc=pgEscVal(ei[1]);run=null;enCab=false;continue}
+    const ec=l.match(PG_ESCCAB);
+    if(ec&&!PG_PISO.test(l)){esc=pgEscVal(ec[1]);run=null;l=l.slice(ec[0].length).trim();enCab=false;if(!l)continue}
+    else if(ec&&PG_PISO.test(l)){const m0=l.match(PG_PISO);if(m0&&m0[1]){esc=pgEscVal(m0[1]);run=null}}
+    const bul=/^•/.test(l);let lp=l.replace(/^•\s*/,"").replace(new RegExp("^(\\d{1,2}\\s*[ºª°]?\\s*[a-l]|[ab]\\.?\\d{1,2}|\\d{1,2}[.,]\\d{1,2})(?="+PG_ABRV+")","i"),"$1 ");
+    const pz=pgTrozos(lp);
+    if(pz.length>1){enCab=false;run=null;for(const x of pz){const m=x.match(PG_PISO);unidad(m[1]?pgEscVal(m[1]):esc,pgPlanta(m[2]),m[3],(m[4]||""))}continue}
+    let m=lp.match(PG_PISO),mn=!m&&lp.match(PG_NUM),mb=!m&&!mn&&lp.match(PG_BN);
+    if(mb&&!numPuertas&&U.length){m=[lp,"",mb[2],mb[1],mb[3]];mb=null}
+    if(m){enCab=false;run=null;unidad(m[1]?pgEscVal(m[1]):esc,pgPlanta(m[2]),m[3],(bul?"• ":"")+(m[4]||""));continue}
+    if(mn){enCab=false;run=null;unidad(esc,pgPlanta(mn[1]),mn[2],mn[3]||"");continue}
+    if(mb){enCab=false;run=null;unidad(esc,pgPlanta(mb[1]),mb[2],mb[3]||"");continue}
+    // Solo la letra («A •», «B nsnv»): la planta se deduce por el orden (de arriba abajo)
+    const ml=lp.match(PG_LETRA);
+    if(ml&&(run||/^(•|ns|nv|ni|nitp|nt|m\b|m\?|alq|tp|-|$)/i.test((ml[2]||"").trim())||/^[a-l]\s*•/i.test(lp))&&(!enCab||esc||cab.dir)){
+      enCab=false;const pu=ml[1].toUpperCase();
+      if(!run){const tope=plTope(esc);run={pl:tope,vistas:new Set()}}
+      else if(run.vistas.has(pu)){run.pl=run.pl==null?null:run.pl-1;run.vistas=new Set()}
+      run.vistas.add(pu);const pl=run.pl==null||run.pl<0?"?":run.pl===0?"0":String(run.pl);
+      unidad(esc,pl,pu,(lp.startsWith(ml[1]+"•")||/^[a-l]\s*•/i.test(lp)?"• ":"")+(ml[2]||"").replace(/^•\s*/,""),true);continue}
+    // Dirección del portal
+    const d=l.match(/^(?:(?:c\/|calle|avda\.?|avenida|plaza|pza\.?|paseo|pº)\s*)?([a-záéíóúñü][a-záéíóúñü .'ºª]*?[a-záéíóúñü])\s*,?\s*(?:n[ºª°.]\s*|n[uú]m(?:ero)?\.?\s*)?(\d{1,4})(?!\s*[ºª°]?\s*[a-l](?![a-záéíóúñ]))\b[\s,.:\-]*(.*)$/i);
+    if(d){const dir=(d[1]+" "+d[2]).trim();const bp=op.esPortal?op.esPortal(dir):null;
+      if(enCab||!out.length){if(!cab.dir||bp&&bp!==portal){cab.dir=dir;portal=bp;cab.nota="";esc="";run=null;
+          if(w){cab.fecha=wf;cab.hora=wh}
+          let r=d[3].trim();const e2=r.match(PG_ESCCAB);if(e2){esc=pgEscVal(e2[1]);r=r.slice(e2[0].length).trim()}
+          if(r){const pz2=pgTrozos(r.replace(/^•\s*/,""));if(PG_PISO.test(pz2[0])||PG_NUM.test(pz2[0])){L[k]=r;k--;enCab=false;continue}
+            if(!cab.hora)cab.hora=pgHora(r);nota(r)}
+          continue}}
+      else if(bp&&bp!==portal){resto=L0.slice(k).join("\n");kFin=k;break}}
+    if(enCab||!out.length){nota(l);continue}
+    if(w){nota(l);continue}
+    out[out.length-1].com=pgExpand(out[out.length-1].com+" "+l.replace(/^•\s*/,""))}
+  return {F:out.filter(x=>x.nombre||x.tel||x.com),cab,resto,texto:L0.slice(0,kFin).join("\n")}}
 const pgNorm=t=>zUp(t||"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
 function pgFila(x,i,U){const u=x.id?{...U.find(v=>v._id===x.id),...(S.censoEd[x.id]||{})}:null;
   const igual=u&&!x.tel&&!x.com&&x.nombre&&[u.prop,u.abre].some(n=>pgNorm(n)===pgNorm(x.nombre));
   return `<tr class="${x.id?"":"pg-ko"}${igual?" pg-igual":""}"><td><input type="checkbox" data-pg="ok" data-i="${i}"${(x.marcada!==undefined?x.marcada:x.id&&!igual)?" checked":""}></td>
-   <td><select data-pg="id" data-i="${i}"><option value="">— elige vivienda —</option>${U.map(v=>`<option value="${esc(v._id)}"${v._id===x.id?" selected":""}>${esc(pisoTxt(v,new Set(U.map(w=>w.esc||"")).size>1)||"?")}</option>`).join("")}</select>${!x.id?`<div class="pg-m">Escrito: ${esc(x.piso)}</div>`:""}</td>
+   <td><select data-pg="id" data-i="${i}"><option value="">— elige vivienda —</option>${U.map(v=>`<option value="${esc(v._id)}"${v._id===x.id?" selected":""}>${esc(pisoTxt(v,new Set(U.map(w=>w.esc||"")).size>1)||"?")}</option>`).join("")}</select>${!x.id?`<div class="pg-m">Escrito: ${esc(x.piso)}</div>`:x.deducida?`<div class="pg-m">Planta deducida por el orden (${esc(x.piso)}): compruébala</div>`:""}</td>
    <td><input data-pg="nombre" data-i="${i}" value="${esc(x.nombre)}">${u&&(u.prop||u.abre)?`<div class="pg-m">${igual?"Sin cambios":"Antes: "+esc(u.prop||u.abre)}</div>`:""}</td>
-   <td><input data-pg="tel" data-i="${i}" inputmode="tel" value="${esc(x.tel)}"></td><td><input data-pg="com" data-i="${i}" value="${esc(x.com)}"></td></tr>`}
+   <td><input data-pg="tel" data-i="${i}" inputmode="tel" value="${esc(x.tel)}"></td><td><input data-pg="com" data-i="${i}" value="${esc(x.com)}"><div class="pg-m">${pgSinHablar(x.com)?"No habló con nadie: queda en el historial, no cuenta como último contacto":x.com||x.nombre||x.tel?"Habló: cuenta como último contacto":""}</div></td></tr>`}
 function pgPintar(){const P=cur.pg,U=P.U;const el=$("#pg-prev");if(!el)return;
   el.innerHTML=P.F.length?`<div class="tbl-wrap"><table class="pg"><thead><tr><th></th><th style="text-align:left">Vivienda</th><th style="text-align:left">Nombre</th><th style="text-align:left">Teléfono</th><th style="text-align:left">Comentario</th></tr></thead><tbody>${P.F.map((x,i)=>pgFila(x,i,U)).join("")}</tbody></table></div>
    <p class="pg-m">Se guardan solo las filas marcadas. ${P.F.filter(x=>!x.id).length?"Las filas en rojo no se han reconocido: elige la vivienda a mano o déjalas sin marcar.":""}</p>`:""}
-function abrirPegar(zona,idx){const b=S.censo[zona].edificios[idx];if(!b)return;const U=ordenTaratura(b.u);cur={col:"pegar",pg:{zona,b,U,F:[]}};
-  $("#frm").innerHTML=`<div class="dh">Notas rápidas · ${esc(b.via)} ${esc(b.num)}<div style="font:500 13px var(--body);color:var(--muted)">Pega lo que tengas en las notas del móvil, una línea por vivienda empezando por el piso. O haz una foto a los buzones y se sacan los nombres solos.</div></div>
-   <div class="db"><label class="full">Notas<textarea id="pg-txt" rows="5" placeholder="4A Juan García 612345678 no quiere vender&#10;4B no contesta&#10;Bajo C María López, alquilado"></textarea></label>
-   <div class="full" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="pgRevisar">Revisar notas</button><label class="btn small" style="cursor:pointer">Foto del buzón<input type="file" id="pg-foto" accept="image/*" capture="environment" hidden></label><span id="pg-est" class="pg-m"></span></div>
-   <div class="full" id="pg-prev"></div></div>
+function abrirPegar(zona,idx){const b=zona!=null?S.censo[zona].edificios[idx]:null;cur={col:"pegar",pg:{zona:b?zona:null,b,U:b?ordenTaratura(b.u):[],F:[],nota:""}};
+  $("#frm").innerHTML=`<div class="dh">Notas rápidas${b?" · "+esc(b.via)+" "+esc(b.num):""}<div style="font:500 13px var(--body);color:var(--muted)">Pega las notas del móvil o los mensajes de WhatsApp tal cual, aunque sean de varios portales: la dirección del portal y una línea por vivienda empezando por el piso (4B, 4ºB, 5,1, B4, «Esc 2:» para cambiar de escalera). • o NC = no contactado, M = mirilazo, nsnv o ns/nv = no sabe ni vende, nitp = no interesa tras puerta, ni = no interesa, alq = alquilado. También puedes hacer una foto a los buzones.</div></div>
+   <div class="db"><label class="full">Notas<textarea id="pg-txt" rows="6" placeholder="23 de septiembre 2026 18:30&#10;Leganés 31 1B presidente&#10;4H no vende, le dejo tarjeta&#10;4G •&#10;4D nitp&#10;3H nsnv señora mayor&#10;1D M"></textarea></label>
+   <label>Fecha de la vuelta<input type="date" id="pg-fecha" value="${hoyISO()}"></label><label>Hora de la vuelta *<input type="time" id="pg-hora"></label>
+   <div class="full" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="pgRevisar">Revisar notas</button>${b?`<label class="btn small" style="cursor:pointer">Foto del buzón<input type="file" id="pg-foto" accept="image/*" capture="environment" hidden></label>`:""}<span id="pg-est" class="pg-m"></span></div>
+   <div class="full" id="pg-cab"></div><div class="full" id="pg-prev"></div></div>
    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal()}
+const pgEsPortal=dir=>{const f=portalDeFicha(dir);return f?f.b:null};
+function pgRevisar(){const txt=$("#pg-txt").value;if(!txt.trim()){toast("Escribe o pega alguna línea");return}const P=cur.pg;
+  let t=txt,r;for(;;){r=pgParse(t,P.U,{esPortal:pgEsPortal});if(r.F.length||!r.resto)break;t=r.resto}
+  const seg=r.texto;P.resto=r.resto||"";
+  if(r.cab.dir){const f=portalDeFicha(r.cab.dir);
+    if(f&&(!P.b||f.b!==P.b)){if(P.b&&P.F.length){toast("Esas notas son de otro portal: guárdalas por separado");return}P.b=f.b;P.zona=f.zona;P.U=ordenTaratura(f.b.u);r=pgParse(seg,P.U,{esPortal:pgEsPortal})}
+    else if(!f&&!P.b){$("#pg-est").textContent=`No encuentro el portal «${r.cab.dir}» en el censo. Ábrelo en Censo y usa su botón «Notas rápidas».`;return}}
+  if(!P.b){$("#pg-est").textContent="Pon en una línea la calle y el número del portal (por ejemplo «Leganés 31»).";return}
+  if(r.cab.fecha)$("#pg-fecha").value=r.cab.fecha;if(r.cab.hora)$("#pg-hora").value=r.cab.hora;
+  if(r.cab.nota)P.nota=(P.nota?P.nota+" ":"")+r.cab.nota;
+  $("#pg-cab").innerHTML=`<p class="pg-m" style="font-size:14px"><b>${esc(P.b.via)} ${esc(P.b.num)}</b> · zona ${esc((P.zona||"").toLowerCase())}</p><label>Nota del portal (se guarda en los datos del portal)<input id="pg-np" value="${esc(P.nota)}"></label>`;
+  const nRes=P.resto?P.resto.split(/\n/).filter(x=>x.trim()).length:0;
+  $("#pg-est").innerHTML=[$("#pg-hora").value?"":"Falta la hora de la vuelta: ponla arriba antes de guardar.",
+    nRes?`Quedan ${nRes} líneas de otros portales: al guardar este se abren para revisarlas. <button class="btn small" type="button" data-act="pgSaltar">Saltar este portal</button>`:""].filter(Boolean).join(" ");
+  pgAnadir(r.F);$("#pg-txt").value=""}
+function pgSiguiente(resto){abrirPegar(null);$("#pg-txt").value=resto;pgRevisar()}
 function pgLeerFilas(){document.querySelectorAll("#pg-prev [data-pg]").forEach(e=>{const x=cur.pg.F[+e.dataset.i];if(!x)return;if(e.dataset.pg==="ok")x.marcada=e.checked;else x[e.dataset.pg]=e.value})}
 function pgAnadir(F){pgLeerFilas();const P=cur.pg;P.F.forEach(x=>{if(x.marcada===undefined)x.marcada=!!x.id});P.F.push(...F);pgPintar()}
 async function pgFoto(file){const est=$("#pg-est");if(!file)return;if(!window.leerBuzon){toast("La lectura de fotos no está disponible sin conexión");return}
@@ -397,10 +485,16 @@ async function pgFoto(file){const est=$("#pg-est");if(!file)return;if(!window.le
     pgAnadir(F);est.textContent=`${B.length} buzones leídos, ${nuevos} con información nueva.`}
   catch(e){console.error("leerBuzon",e);est.textContent="No se ha podido leer la foto: "+(e.message||e)}}
 async function guardarPegado(){pgLeerFilas();const P=cur.pg,F=P.F.filter(x=>x.id&&(x.marcada===undefined?true:x.marcada)&&(x.nombre||x.tel||x.com));
-  if(!F.length){toast("No hay filas marcadas con vivienda");return}
-  const hoy=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});let n=0;
-  for(const x of F){const d={ult:hoy};if(x.nombre)d.prop=x.nombre.trim();if(x.tel)d.tel=x.tel.replace(/\s/g,"");if(await guardar("censoEdits",x.id,d,x.com||""))n++;else break}
-  $("#dlg").close();toast(`Guardadas ${n} de ${F.length} viviendas`);render()}
+  const fe=$("#pg-fecha").value,ho=$("#pg-hora").value,np=($("#pg-np")?.value||"").trim();
+  if(!F.length&&!np){toast("No hay filas marcadas con vivienda");return}
+  if(!fe||!ho){toast("Pon la fecha y la hora de la vuelta al bloque");$(ho?"#pg-fecha":"#pg-hora").focus();return}
+  const [y,mo,d]=fe.split("-"),fTxt=`${d}/${mo}/${y}`,cuando=`Vuelta del ${fTxt} a las ${ho}`;let n=0;
+  for(const x of F){const dd={};if(!pgSinHablar(x.com))dd.ult=fTxt;if(x.nombre)dd.prop=x.nombre.trim();if(x.tel)dd.tel=x.tel.replace(/\s/g,"");
+    if(await guardar("censoEdits",x.id,dd,`${cuando}: ${x.com||(x.nombre?"nombre "+x.nombre:"")}`))n++;else break}
+  if(np&&P.b){const pid=portalId(P.b),old=S.portales[pid]||{},dp={notasPortal:[old.notasPortal,`[${fTxt} ${ho}] ${np}`].filter(Boolean).join("\n")};
+    const pm=np.match(/\b(\d{1,2}\s*º?\s*[a-h])\s+presidente\b|\bpresidente\s+(?:en\s+)?(\d{1,2}\s*º?\s*[a-h])\b/i);if(pm&&!old.presPiso)dp.presPiso=(pm[1]||pm[2]).replace(/\s|º/g,"").toUpperCase();
+    await guardar("portales",pid,dp,cuando)}
+  const resto=P.resto;$("#dlg").close();toast(`Guardadas ${n} viviendas${np?" y la nota del portal":""}`);render();if(resto)pgSiguiente(resto)}
 $("#frm").addEventListener("change",e=>{if(e.target.id==="pg-foto"){pgFoto(e.target.files[0]);e.target.value=""}});
 
 /* ---------- «Vendido en tu portal»: avisar a los vecinos ---------- */
@@ -487,7 +581,7 @@ function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeou
 
 /* ---------- reglas de negocio ---------- */
 function urgPub(c){
-  if(!c.publicado||c.etapa!=="Desarrollo") return null;
+  if(!c.publicado||c.etapa!=="Desarrollo"||c.censoId||c.viviendaLocalizada) return null; /* viviendaLocalizada: casilla temporal para calles fuera del censo. */ /* con vivienda del censo ya está localizada: sigue en Desarrollo hasta hablar con el propietario */
   const lim=c.publicado==="Particular"?1:2,d0=new Date((c.fechaPublicado||hoyISO())+"T12:00");d0.setDate(d0.getDate()+lim);
   const lv=d0.toISOString().slice(0,10),d=dias(hoyISO(),lv);
   return {limite:lv,d,cls:d<=0?"bad":"warn",txt:d<0?`Publicada sin localizar: venció hace ${-d} d`:d===0?"Publicada: localizar HOY":`Publicada: localizar antes del ${fmtF(lv)}`};
@@ -523,7 +617,7 @@ function rowContacto(c){
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
     <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
     <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
-    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${!c.censoId&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.publicado&&c.etapa==="Desarrollo"&&(c.censoId||c.viviendaLocalizada)?`<span class="pill warn">Publicada · localizada, falta hablar con el propietario</span>`:""}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${!c.censoId&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
   </button>`;
 }
 function rowEncargo(e){
@@ -556,13 +650,16 @@ function hoyBloques(B,vacios){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const nom=S.yo&&S.yo.nombre?S.yo.nombre:"",h=new Date().getHours(),sal=h<14?"Buenos días":h<21?"Buenas tardes":"Buenas noches";
   const tot=vis.filter(b=>!b.info).reduce((t,b)=>t+b.n,0);
   const fecha=new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
-  return `<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
-  <div class="hoy-bloques">${vis.map(b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${b.nota?`<p class="nota">${b.nota}</p>`:""}${b.html}</div></details>`).join("")}</div>
+  const movil=window.matchMedia&&matchMedia("(max-width:700px)").matches,ag=movil?vis.find(b=>b.k==="agenda"):null;if(ag)vis.splice(vis.indexOf(ag),1);
+  const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${b.nota?`<p class="nota">${b.nota}</p>`:""}${b.html}</div></details>`;
+  return `${ag?bloque(ag):""}<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
+  <div class="hoy-bloques">${vis.map(bloque).join("")}</div>
   ${vacios.length?`<p class="aldia"><b>Al día:</b> ${vacios.join(" · ")}</p>`:""}`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-hoyb]");if(!t)return;const k=t.dataset.hoyb;S.hoyAbierto=S.hoyAbierto===k?null:k;render();const d=$("#hb-"+k);if(d)d.scrollIntoView({block:"nearest",behavior:"smooth"})});
 document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("hb"))return;const k=d.id.slice(3);
   if(d.open)S.hoyAbierto=k;else if(S.hoyAbierto===k||S.hoyAbierto===undefined)S.hoyAbierto=null;
   document.querySelectorAll("[data-hoyb]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.hoyb===S.hoyAbierto))},true);
+const capNuevas=()=>{const d=new Date();d.setDate(d.getDate()-7);const h=iso(d);return S.captaciones.filter(k=>k.estado==="Pendiente"&&capFecha(k)>=h).sort((a,b)=>capFecha(b).localeCompare(capFecha(a)))};
 function vHoy(){
   if(esCoord())return vHoyCoord();
   const pend=contactosPendientes().sort((a,b)=>(a.proxFecha||"").localeCompare(b.proxFecha||""));
@@ -574,8 +671,9 @@ function vHoy(){
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sp=sinPaso().length,cli=clientesAntiguos(),llamar=(()=>{const z=miZonaLlamar();return z&&S.censo?aQuienLlamar(z):[]})();
   const B=[
-    {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza al propietario y pásala a Seguimiento: 2 días si es agencia o portal, 1 si es particular.",html:hoyLista("urg",urg,rowContacto,"")},
+    {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza la vivienda y enlázala a su ficha del censo: 2 días si es agencia o portal, 1 si es particular. Pasa a Seguimiento cuando hables con el propietario.",html:hoyLista("urg",urg,rowContacto,"")},
     {k:"pend",t:"Próximos pasos de hoy",n:pend.length,tono:pend.some(c=>proxEstado(c).cls==="bad")?"bad":"warn",html:hoyLista("pend",pend,rowContacto,"")+(sp?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-go="sinpaso">${sp} sin próximo paso</button></div>`:"")},
+    {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
     {k:"vend",t:"Se han vendido",n:vend.length,tono:"warn",html:hoyLista("vend",vend,rowContacto,"")},
     {k:"borr",t:"Solicitudes de borrado",n:solBorr.length,tono:"warn",html:`<div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
@@ -635,16 +733,18 @@ const EST_CAP=["Pendiente","Encontrada","Pasada a noticia","Descartada"];
 function rowCap(k){
   return `<button class="row" type="button" data-open="captaciones" data-id="${esc(k.id)}">
     <span class="t">${esc(k.direccion)}${k.propietario?` · <span style="font-weight:500">${esc(k.propietario)}</span>`:""}</span><span class="r">${k.valVenta?eur(k.valVenta):""}</span>
-    <span class="m">${zona(k.zona)}<span>${esc(k.asesor||"Sin asesor")}</span><span class="pill ${k.estado==="Pendiente"?"warn":k.estado==="Encontrada"?"acc":k.estado==="Pasada a noticia"?"ok":""}">${esc(k.estado||"")}</span>${[k.tipo,k.m2,k.relacion].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${k.venderEn&&/vender/i.test(k.venderEn)?`<span class="pill ${/urgent/i.test(k.venderEn)?"bad":""}">${esc(k.venderEn)}</span>`:""}${k.fecha?`<span>Valorada ${fmtF(k.fecha)}</span>`:""}</span>
+    <span class="m">${zona(k.zona)}<span>${esc(k.asesor||"Sin asesor")}</span><span class="pill ${k.estado==="Pendiente"?"warn":k.estado==="Encontrada"?"acc":k.estado==="Pasada a noticia"?"ok":""}">${esc(k.estado||"")}</span>${k.veces>1?`<span class="pill ${k.veces>=3?"bad":"warn"}">Pedida ${k.veces} veces</span>`:""}${[k.tipo,k.m2,k.relacion].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${k.venderEn&&/vender/i.test(k.venderEn)?`<span class="pill ${/urgent/i.test(k.venderEn)?"bad":""}">${esc(k.venderEn)}</span>`:""}${k.fecha?`<span>Valorada ${fmtF(k.fecha)}</span>`:""}</span>
   </button>`;
 }
 function vCaptaciones(){
   const f=S.kf,q=f.q.toLowerCase();
   const base=S.captaciones.filter(k=>(!f.zona||k.zona===f.zona)&&(!f.asesor||k.asesor===f.asesor)&&(!q||[k.direccion,k.propietario,k.telefono,k.encontrado,k.pisosPosibles,k.comentario].join(" ").toLowerCase().includes(q)));
-  const L=base.filter(k=>!f.estado||k.estado===f.estado).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const L=base.filter(k=>!f.estado||k.estado===f.estado).sort((a,b)=>capFecha(b).localeCompare(capFecha(a)));
   const zonas=[...new Set(S.captaciones.map(k=>k.zona).filter(Boolean))].sort();
+  const botones=`<div class="tools">${veTodo()?`<button class="btn small primary" type="button" data-act2="capSubirAbrir">Subir Excel de captaciones</button>`:""}<button class="btn small${S.kreg?" primary":""}" type="button" data-act2="capReg">${S.kreg?"Volver a la lista":"Registro del mes"}</button></div>`;
+  if(S.kreg)return botones+vRegistroCap();
   const chips=[...EST_CAP.map(e=>[e,e==="Pendiente"?"Pendientes de encontrar":e==="Encontrada"?"Encontradas":e==="Descartada"?"Descartadas":e]),["","Todas"]];
-  return `<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-kest="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(k=>!v||k.estado===v).length}</span></button>`).join("")}</div>
+  return botones+`<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-kest="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(k=>!v||k.estado===v).length}</span></button>`).join("")}</div>
   <div class="tools">
     <input type="search" id="k-q" placeholder="Buscar dirección, propietario, pisos posibles…" value="${esc(f.q)}">
     <select id="k-zona">${selOpts(zonas,f.zona,"Todas las zonas")}</select>
@@ -756,7 +856,7 @@ function vCenso(){
   const tools=`<div class="tools"><select id="c-zona">${zonas.map(z=>`<option value="${z}"${z===cf.zona?" selected":""}>Zona ${z.charAt(0)+z.slice(1).toLowerCase()}${(S.ajustes.asesores.find(a=>a.zona===z)||{}).nombre?" · "+S.ajustes.asesores.find(a=>a.zona===z).nombre:""}</option>`).join("")}</select>
     <input type="search" id="c-q" placeholder="Buscar calle, número o propietario…" value="${esc(cf.q)}">
     <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="c-ko"${cf.ko?" checked":""}> Solo con KO</label>
-    <button class="btn small${cf.mapa?" primary":""}" type="button" id="c-mapa">${cf.mapa?"Ver lista":"Ver mapa y ruta"}</button>${!cf.mapa?`<button class="btn small" type="button" id="c-tara">Imprimir taraturas</button>`:""}</div>`;
+    <button class="btn small${cf.mapa?" primary":""}" type="button" id="c-mapa">${cf.mapa?"Ver lista":"Ver mapa y ruta"}</button>${!cf.mapa?`<button class="btn small" type="button" id="c-pegar">Pegar notas</button><button class="btn small" type="button" id="c-tara">Imprimir taraturas</button>`:""}</div>`;
   if(cf.mapa&&Z) return tools+vMapa(cf.zona);
   if(!Z) return tools+`<div class="empty">No hay censo de esta zona.</div>`;
   const viv=u=>({...u,...(S.censoEd[u._id]||{})});
@@ -800,7 +900,7 @@ const FORMS={
   contactos:{titulo:"propietario",fields:[
     ["direccion","Dirección del inmueble *","text",{full:1,req:1}],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
     ["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
-    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["motivo","Situación","sel",()=>MOTIVOS],
+    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["viviendaLocalizada","Vivienda localizada aunque no está en el censo (temporal)","check"],["motivo","Situación","sel",()=>MOTIVOS],
     ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],
     ["fechaValoracion","Fecha de valoración","date"],["precioValorado","Precio valorado (€)","number"],["precioPropietario","Precio que pide el propietario (€)","number"],
     ["necesitaSti","Necesita a Stiwhar","check"],["notaSti","Qué necesita de Stiwhar","text",{full:1}],
@@ -936,10 +1036,88 @@ function extraFicha(col,d,id){
     return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="visitaCon">Apuntar visita</button><button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button>${(d.descartados||[]).length?`<button class="btn small" type="button" data-act="descartesFuera">Volver a ver los ${d.descartados.length} descartados</button>`:""}</div>
       ${listaFicha("Inmuebles que le encajan",enc.map(e=>`<div class="row"><span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span><span class="m">${zona(e.zona)}${e.habitaciones?`<span>${esc(e.habitaciones)} hab.</span>`:""}${e.m2?`<span>${esc(e.m2)} m²</span>`:""}<span>${esc(e.asesor||"")}</span>${visitasDe(d,e).length?`<span class="pill ok">Visitado</span>`:""}<button class="btn small" type="button" data-act="verEnc" data-enc="${esc(e.id)}">Ficha</button><button class="btn small" type="button" data-act="visitaCon" data-enc="${esc(e.id)}">Visita</button><button class="btn small" type="button" data-act="descartar" data-enc="${esc(e.id)}">No le encaja</button></span></div>`),"Ningún encargo activo encaja ahora mismo con lo que busca.")}
       ${listaFicha("Sus visitas",vs.map(rowVisita),"Aún no ha visitado nada.")}`}
+  if(col==="captaciones"&&id&&(d.veces>1||(d.pedidas||[]).length)){const P=[...(d.pedidas||[])].sort().reverse();
+    return `<div class="full" style="grid-column:1/-1;font-size:13px"><b>Han pedido valoración ${d.veces||P.length} ${(d.veces||P.length)>1?"veces":"vez"}</b>${P.length?": "+P.slice(0,12).map(t=>fmtF(t.slice(0,10))+(t.slice(11,16)!=="00:00"?" "+t.slice(11,16):"")).join(" · ")+(P.length>12?" …":""):""}</div>`}
   if(col==="encargos"&&id){const vs=visitasDe(null,d).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")),cs=veTodo()?S.compradores.filter(c=>compActivo(c)&&encaja(c,d)):[];
     return `${veTodo()?listaFicha("Compradores que encajan",cs.map(rowComp),"Ningún comprador activo encaja con este inmueble."):""}${listaFicha("Visitas",vs.map(rowVisita),"Aún no hay visitas.")}
       <div class="full" style="grid-column:1/-1"><button class="btn small" type="button" data-act="visitaEnc">Apuntar visita</button></div>`}
   return ""}
+/* ---------- Excel diario de captaciones (Daniel) y registro del mes ---------- */
+const normDir=t=>String(t||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/^\s*(C\/|(CALLE|CL|AVENIDA|AVDA|AV|PLAZA|PZA|PZ|PASEO|PS|URBANIZACION|URB|CAMINO|TRAVESIA|RONDA)\.?\s+)/,"").replace(/\b(DE|DEL|LA|LAS|LOS|EL)\b/g,"").replace(/[^A-Z0-9]/g,"");
+const normTxt=t=>String(t||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+const capFecha=k=>k.ultimaPedida||k.fecha||"";
+const pad2=n=>String(n).padStart(2,"0");
+function cargarXLSX(){return window.XLSX?Promise.resolve(window.XLSX):new Promise((ok,ko)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";s.onload=()=>ok(window.XLSX);s.onerror=()=>ko(new Error("No se ha podido cargar el lector de Excel"));document.head.appendChild(s)})}
+function tsExcel(v){
+  if(typeof v==="number"&&v>20000){const d=new Date(Math.round((v-25569)*864e5));return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`}
+  const s=String(v||"").trim();let m=s.match(/^(\d{4})-(\d\d)-(\d\d)(?:[T ](\d\d):(\d\d)(?::(\d\d))?)?/);if(m)return `${m[1]}-${m[2]}-${m[3]}T${m[4]||"00"}:${m[5]||"00"}:${m[6]||"00"}`;
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,?\s+(\d{1,2}):(\d\d)(?::(\d\d))?)?/);if(m)return `${m[3].length===2?"20"+m[3]:m[3]}-${pad2(m[2])}-${pad2(m[1])}T${pad2(m[4]||0)}:${m[5]||"00"}:${m[6]||"00"}`;
+  return ""}
+const numEs=v=>typeof v==="number"?v:(s=>s?Number(s):null)(String(v??"").split("€")[0].replace(/[^\d,]/g,"").replace(",","."));
+function asesorCap(z,nom){const a=(S.ajustes.asesores.find(x=>x.zona===z)||{}).nombre;if(a)return a;const n=normTxt(nom),al={MARIA:"Mery"};
+  const m=S.ajustes.asesores.find(x=>normTxt(x.nombre)===n);return m?m.nombre:al[n]||""}
+/* Lee todas las hojas con columna «Dirección» y «Fecha»; devuelve filas listas para importar_captaciones */
+async function leerExcelCap(file){const X=await cargarXLSX(),wb=X.read(await file.arrayBuffer(),{cellStyles:true}),out=[];let conColor=false;
+  for(const nom of wb.SheetNames){const ws=wb.Sheets[nom];if(!ws["!ref"])continue;const R=X.utils.decode_range(ws["!ref"]);let hr=-1,H={};
+    for(let r=R.s.r;r<=Math.min(R.e.r,R.s.r+5)&&hr<0;r++){const h={};for(let c=R.s.c;c<=R.e.c;c++){const v=ws[X.utils.encode_cell({r,c})];if(v&&v.v!=null)h[normTxt(v.v)]=c}
+      const kd=Object.keys(h).find(k=>k==="DIRECCION"),kf=Object.keys(h).find(k=>k.startsWith("FECHA"));if(kd&&kf){hr=r;H=h}}
+    if(hr<0)continue;const col=pre=>{const k=Object.keys(H).find(k=>k.startsWith(pre));return k==null?null:H[k]};
+    const C={dir:col("DIRECCION"),f:col("FECHA"),area:col("AREA"),tipo:col("TIPOLOGIA"),vv:col("VALORACION VENTA"),va:col("VALORACION ALQUILER"),rel:col("RELACION"),ve:col("VENDER EN"),z:col("ZONA"),as:col("ASESOR"),enc:col("ENCONTRADO"),pis:col("PISOS POSIBLES"),tr:col("TRAYECTORIA")};
+    for(let r=hr+1;r<=R.e.r;r++){const cel=c=>c==null?null:ws[X.utils.encode_cell({r,c})],val=c=>{const x=cel(c);return x?x.v:null},txt=c=>String(val(c)??"").replace(/ /g," ").trim();
+      const dir=txt(C.dir);if(!dir)continue;const ts=tsExcel(val(C.f));const cd=cel(C.dir),rgb=cd&&cd.s&&cd.s.fgColor&&cd.s.fgColor.rgb||"";if(rgb)conColor=true;
+      const fz=normTxt(val(C.z)),z=zonaDe(dir)||(ZONAS[fz]&&fz!=="BLANCA"?fz:"");
+      out.push({hoja:nom,verde:/C6EFCE/i.test(rgb),direccion:dir,ts,zona:z,asesor:z?asesorCap(z,val(C.as)):"",tipo:txt(C.tipo),m2:txt(C.area).split("\n")[0],valVenta:numEs(val(C.vv)),valAlquiler:txt(C.va),
+        relacion:txt(C.rel),venderEn:txt(C.ve),origen:txt(C.tr),encontrado:txt(C.enc),pisosPosibles:txt(C.pis)})}}
+  return {filas:out,conColor}}
+function abrirSubirCap(){cur={col:"subirCap"};const ult=S.captaciones.map(capFecha).sort().pop()||"";
+  $("#frm").innerHTML=`<div class="dh">Subir Excel de captaciones</div><div class="db">
+    <p class="full" style="grid-column:1/-1;margin:0;color:var(--muted);font-size:13px">Sube el Excel de las valoraciones (el que te descargas o el de ESTIMACIONES). Cada dirección va sola a su zona y a su asesor. Si la dirección ya está en el CRM, no se repite: se le suma una vez más que han pedido valoración. Si subes dos veces el mismo Excel no se duplica nada.</p>
+    <label class="full">Archivo Excel<input id="sc-file" type="file" accept=".xlsx,.xls,.csv"></label>
+    <label>Solo valoraciones desde<input id="sc-desde" type="date" value="${esc(ult)}"></label>
+    <label class="check" id="sc-verde-l" hidden><input type="checkbox" id="sc-verde" checked> Saltar las filas en verde (ya pasadas)</label>
+    <div class="full" id="sc-res" style="grid-column:1/-1"></div></div>
+    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button><button class="btn primary" type="button" data-act="capSubir" disabled id="sc-ok">Subir</button></div></div>`;
+  $("#dlg").showModal()}
+function filasSubirCap(){const L=(cur&&cur.capFilas)||[],desde=$("#sc-desde")?.value||"",sv=$("#sc-verde")?.checked;
+  return L.filter(f=>f.ts&&(!desde||f.ts.slice(0,10)>=desde)&&!(sv&&f.verde))}
+function pintarSubirCap(){const el=$("#sc-res");if(!el||!cur.capFilas)return;const F=filasSubirCap(),ya=new Set(S.captaciones.map(k=>normDir(k.direccion))),sinF=cur.capFilas.filter(f=>!f.ts).length;
+  const nuevas=new Set(F.filter(f=>!ya.has(normDir(f.direccion))).map(f=>normDir(f.direccion))).size,porA={};F.forEach(f=>{const a=f.asesor||(f.zona?"Zona "+f.zona.toLowerCase()+" (sin asesor)":"Fuera de zona");porA[a]=(porA[a]||0)+1});
+  el.innerHTML=`<div class="list"><div class="row"><span class="t">${F.length} valoraciones para subir</span><span class="m"><span>${nuevas} direcciones nuevas</span><span>${F.length-F.filter(f=>!ya.has(normDir(f.direccion))).length} de direcciones que ya están (se suman)</span>${sinF?`<span class="pill warn">${sinF} filas sin fecha: no se suben</span>`:""}</span></div>
+    <div class="row"><span class="m">${Object.entries(porA).sort((a,b)=>b[1]-a[1]).map(([a,n])=>`<span>${esc(a)}: ${n}</span>`).join("")}</span></div></div>`;
+  $("#sc-ok").disabled=!F.length}
+async function subirCap(b){const F=filasSubirCap();if(!F.length)return;if(typeof window.importarCaptaciones!=="function"){toast("Solo se puede subir desde la app del equipo");return}
+  b.disabled=true;b.textContent="Subiendo…";
+  try{const r=await window.importarCaptaciones(F.map(({hoja,verde,...f})=>f));
+    $("#sc-res").innerHTML=`<div class="banner" style="margin:0">Hecho: ${r.nuevas} captaciones nuevas, ${r.sumadas} sumadas a direcciones que ya estaban${r.repetidas?` y ${r.repetidas} que ya se habían subido`:""}.</div>`;b.textContent="Subido";toast("Captaciones subidas")}
+  catch(e){b.disabled=false;b.textContent="Subir";toast("No se ha subido: "+(e.message||e))}}
+function enVentaOtros(k){const kk=portalDir(k.direccion);if(!/\d/.test(kk)||!S.mercado)return null;return S.mercado.L.find(m=>m.calle&&m.numero&&normDir(m.calle+" "+m.numero)===kk&&!m.fechaBaja)||null}
+const portalDir=t=>{const m=String(t||"").match(/^\D*\d+/);return normDir(m?m[0]:t)};
+function encargoDe(k){const kk=portalDir(k.direccion);if(!/\d/.test(kk))return null;return S.encargos.find(e=>portalDir(e.direccion)===kk)||null}
+function registroMes(mes){return S.captaciones.map(k=>{const P=(k.pedidas||[]).filter(t=>t.startsWith(mes));const n=P.length||(!(k.pedidas||[]).length&&(k.fecha||"").startsWith(mes)?1:0);return n?{k,n}:null}).filter(Boolean)
+  .sort((a,b)=>b.n-a.n||capFecha(b.k).localeCompare(capFecha(a.k)))}
+function vRegistroCap(){if(!S.mercado&&!vRegistroCap.pide){vRegistroCap.pide=1;cargarMercado().then(()=>{vRegistroCap.pide=0;if(S.view==="captaciones")render()})}
+  const meses=[...new Set(S.captaciones.flatMap(k=>[...(k.pedidas||[]).map(t=>t.slice(0,7)),(k.fecha||"").slice(0,7)]).filter(Boolean))].sort().reverse();
+  const mes=S.kmes||meses[0]||hoyISO().slice(0,7),R=registroMes(mes),tot=R.reduce((s,x)=>s+x.n,0);
+  const est=e=>R.filter(x=>x.k.estado===e).length,enc=R.filter(x=>encargoDe(x.k)).length,otr=R.filter(x=>!encargoDe(x.k)&&enVentaOtros(x.k)).length;
+  const MES=m=>new Date(m+"-15T12:00").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  return `<section><div class="tools"><select id="k-mes">${meses.map(m=>`<option value="${m}"${m===mes?" selected":""}>${esc(MES(m))}</option>`).join("")}</select><button class="btn small" type="button" data-act2="capRegXlsx">Descargar Excel del mes</button></div>
+  <div class="kpis">${kpi("Valoraciones pedidas",tot,`${R.length} direcciones`)}${kpi("Encontradas",est("Encontrada")+est("Pasada a noticia"),`${est("Pasada a noticia")} pasadas a noticia`)}${kpi("Pendientes",est("Pendiente"),"Sin encontrar todavía")}${kpi("Encargo nuestro",enc,"La dirección ya es encargo")}${kpi("En venta con otros",otr,S.mercado?"Publicadas en idealista y no son nuestras":"Cargando idealista…")}</div>
+  <p style="margin:0 0 8px;color:var(--muted);font-size:13px">Todo lo que han pedido valorar en ${esc(MES(mes))} y qué hemos sacado. «En venta con otros» cruza con los anuncios nuevos de idealista: son captaciones que se nos han escapado.</p>
+  <div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Dirección</th><th>Zona</th><th>Asesor</th><th>Veces en el mes</th><th>Veces en total</th><th>Estado</th><th style="text-align:left">Resultado</th></tr></thead><tbody>
+  ${R.map(({k,n})=>{const e=encargoDe(k),o=!e&&enVentaOtros(k);return `<tr data-open="captaciones" data-id="${esc(k.id)}" style="cursor:pointer"><td style="text-align:left">${esc(k.direccion)}</td><td>${zona(k.zona)}</td><td>${esc(k.asesor||"—")}</td><td>${n}</td><td>${k.veces||1}</td><td>${esc(k.estado||"")}</td><td style="text-align:left">${e?`<span class="pill ok">Encargo nuestro</span>`:o?`<span class="pill bad">En venta con ${esc(o.agencia||(o.particular?"particular":"otra agencia"))}</span>`:k.encontrado?esc(String(k.encontrado).slice(0,40)):""}</td></tr>`}).join("")||`<tr><td colspan="7">No hay valoraciones este mes.</td></tr>`}
+  </tbody></table></div></section>`}
+async function descargarRegistroCap(){const X=await cargarXLSX(),mes=$("#k-mes")?.value||S.kmes,R=registroMes(mes);
+  const filas=R.map(({k,n})=>{const e=encargoDe(k),o=!e&&enVentaOtros(k);return {"Dirección":k.direccion,"Zona":k.zona||"","Asesor":k.asesor||"","Veces en el mes":n,"Veces en total":k.veces||1,"Última valoración":capFecha(k),"Tipología":k.tipo||"","Área":k.m2||"","Valoración venta":k.valVenta||"","Relación":k.relacion||"","Vender en":k.venderEn||"","Estado":k.estado||"","Encontrado":k.encontrado||"","Pisos posibles":k.pisosPosibles||"","Resultado":e?"Encargo nuestro":o?"En venta con "+(o.agencia||(o.particular?"particular":"otra agencia")):""}});
+  const wb=X.utils.book_new();X.utils.book_append_sheet(wb,X.utils.json_to_sheet(filas),mes);X.writeFile(wb,`Captaciones_${mes}.xlsx`)}
+$("#frm").addEventListener("change",async e=>{if(!cur||cur.col!=="subirCap")return;
+  if(e.target.id==="sc-file"){const f=e.target.files[0];if(!f)return;$("#sc-res").innerHTML='<div class="empty">Leyendo el Excel…</div>';
+    try{const r=await leerExcelCap(f);cur.capFilas=r.filas;$("#sc-verde-l").hidden=!r.conColor;if(!r.filas.length){$("#sc-res").innerHTML='<div class="empty">No encuentro filas con «Dirección» y «Fecha» en este Excel.</div>';return}pintarSubirCap()}
+    catch(err){$("#sc-res").innerHTML=`<div class="empty">No se ha podido leer: ${esc(err.message||err)}</div>`}}
+  if(e.target.id==="sc-desde"||e.target.id==="sc-verde")pintarSubirCap()});
+$("#view").addEventListener("change",e=>{if(e.target.id==="k-mes"){S.kmes=e.target.value;render()}});
+$("#view").addEventListener("click",e=>{const b=e.target.closest("[data-act2]");if(!b)return;const a=b.dataset.act2;
+  if(a==="capSubirAbrir")abrirSubirCap();if(a==="capReg"){S.kreg=!S.kreg;render()}if(a==="capRegXlsx")descargarRegistroCap().catch(err=>toast(err.message))});
+
 function abrirNuevo(col,pre){abrir(col);if(!pre)return;for(const [k,v] of Object.entries(pre)){const el=$("#fld-"+k);if(el){if(el.type==="checkbox")el.checked=!!v;else el.value=v}}}
 async function guardarLlamadaVend(){const v=leerForm();if(!v.direccion)return toast("Pon la dirección");
   const zn=zonaDe(v.direccion)||"",as=v.asesor||(S.ajustes.asesores.find(a=>a.zona===zn)||{}).nombre||"Stiwhar";
@@ -960,6 +1138,7 @@ async function antesDeGuardar(data){ /* compradores y visitas: completa datos; d
 async function accionFicha(a,b){
   if(a==="visitaCon"){const enc=b.dataset.enc||"",cid=cur.id;$("#dlg").close();setTimeout(()=>abrirNuevo("visitas",{compradorId:cid,encargoId:enc}),150);return true}
   if(a==="visitaEnc"){const eid=cur.id;$("#dlg").close();setTimeout(()=>abrirNuevo("visitas",{encargoId:eid}),150);return true}
+  if(a==="capSubir"){subirCap(b);return true}
   if(a==="verEnc"){const eid=b.dataset.enc;$("#dlg").close();setTimeout(()=>abrir("encargos",eid),150);return true}
   if(a==="descartar"){const c=S.compradores.find(x=>x.id===cur.id),e=S.encargos.find(x=>x.id===b.dataset.enc);if(!c||!e)return true;
     if(await guardar("compradores",c.id,{descartados:[...new Set([...(c.descartados||[]),e.id])]},"No le encaja: "+e.direccion+".")){b.closest(".row").remove();toast("Apuntado: no le encaja")}return true}
@@ -1088,7 +1267,8 @@ $("#frm").addEventListener("click",async ev=>{
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
   if(a==="cerrar") return $("#dlg").close();
   if(await accionFicha(a,b))return;
-  if(a==="pgRevisar"){const F=pgParse($("#pg-txt").value,cur.pg.U);if(!F.length){toast("Escribe o pega alguna línea");return}pgAnadir(F);$("#pg-txt").value="";return}
+  if(a==="pgRevisar"){pgRevisar();return}
+  if(a==="pgSaltar"){const r=cur&&cur.pg&&cur.pg.resto;if(r)pgSiguiente(r);return}
   if(a==="vivVer"){const id=cur.censoId;$("#dlg").close();setTimeout(()=>abrirViv(id),100);return}
   if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>$("#viv-q")?.focus(),50);return}
   if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
@@ -1281,6 +1461,9 @@ function menu(abrir){const n=$("#tabs");n.classList.toggle("abierto",abrir);$("#
   sb.innerHTML='<button type="button" id="sec-ant" aria-label="Sección anterior">‹</button><b id="sec-nombre"></b><span class="pos" id="sec-pos"></span><button type="button" id="sec-sig" aria-label="Sección siguiente">›</button>';
   h.after(sb);const lu=document.createElement("button");lu.type="button";lu.id="btn-buscar";lu.className="lupa";lu.setAttribute("aria-label","Buscar en todo el CRM");
   lu.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg><span>Buscar</span>';$("#btn-new").before(lu);lu.addEventListener("click",abrirBuscar);
+  const rc=document.createElement("button");rc.type="button";rc.id="btn-recargar";rc.className="recargar";rc.title="Cargar de nuevo";rc.setAttribute("aria-label","Cargar la página de nuevo");
+  rc.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>';lu.before(rc);
+  rc.addEventListener("click",()=>{rc.classList.add("girando");setTimeout(()=>location.reload(),150)});
   document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();abrirBuscar()}if(e.key==="Escape")cerrarBuscar()});const yo=top.querySelector(".yo");if(yo)$("#tabs").appendChild(yo);
   const v=document.createElement("div");v.id="velo";v.className="velo";v.hidden=true;document.body.appendChild(v);v.addEventListener("click",()=>menu(false));
   $("#btn-menu").addEventListener("click",()=>menu(!$("#tabs").classList.contains("abierto")));
@@ -1336,6 +1519,7 @@ document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf
   const cq=e.target.closest("[data-cq]");if(cq){S.cf.mapa=false;S.cf.q=cq.dataset.cq;render();window.scrollTo(0,0);return}
   const rp=e.target.closest("[data-resper]");if(rp){S.resPer=rp.dataset.resper;render();return}
   const pm=e.target.closest("[data-portalmapa]");if(pm){abrirPortal(pm.dataset.portalmapa);return}
+  if(e.target.id==="c-pegar"){abrirPegar(null);return}
   const pgb=e.target.closest("[data-pegar]");if(pgb){abrirPegar(S.cf.zona,+pgb.dataset.pegar);return}
   const tr=e.target.closest("[data-tara]");if(tr){const Z=S.censo&&S.censo[S.cf.zona],b=Z&&Z.edificios[+tr.dataset.tara];if(b)imprimirTaratura([{zona:S.cf.zona,b}]);return}
   if(e.target.id==="c-tara"){const L=S.cf.lista||[];if(!L.length){toast("No hay portales que imprimir");return}

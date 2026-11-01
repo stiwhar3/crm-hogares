@@ -173,3 +173,10 @@ main{gap:18px;padding-block:16px 60px}
   .df{bottom:0}
   nav#tabs{position:fixed;top:auto;left:8px;right:8px;width:auto;bottom:calc(74px + env(safe-area-inset-bottom,0px));max-height:calc(100dvh - 160px)}
 }
+
+/* Botón de cargar de nuevo (sobre todo para la app instalada, que no tiene botón de recargar del navegador) */
+.recargar{margin-left:auto;flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#d6d2ca;display:grid;place-items:center;cursor:pointer}
+.recargar:hover{background:rgba(255,255,255,.16);color:#fff}
+.recargar svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.recargar+.lupa{margin-left:8px}
+@media (prefers-reduced-motion:no-preference){.recargar.girando svg{animation:girar .5s linear infinite}@keyframes girar{to{transform:rotate(360deg)}}}
