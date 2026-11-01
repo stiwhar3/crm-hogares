@@ -196,6 +196,8 @@ header .wrap{position:relative}
 nav#tabs.abierto{display:flex}
 nav#tabs button[data-v]{display:flex;align-items:center;justify-content:space-between;text-align:left;color:var(--fg);font:500 15px var(--body);padding:11px 14px;border-radius:12px;border:0}
 nav#tabs button[data-v][hidden]{display:none}
+.tuts{display:grid;gap:8px}.tut{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:0}.tut summary{cursor:pointer;padding:12px 14px;font-size:15px}.tut video{display:block;width:100%;max-width:360px;margin:0 auto 12px;border-radius:10px;background:#000;aspect-ratio:9/16}
+
 nav#tabs button[data-v]:hover{background:var(--bg);color:var(--fg)}
 nav#tabs button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600;border:0}
 nav .count{border-radius:999px}
@@ -379,6 +381,7 @@ main{gap:18px;padding-block:16px 60px}
       <button data-v="censo" type="button">Censo</button>
       <button data-v="localizar" type="button">Localizar</button>
       <button data-v="equipo" type="button">Equipo</button>
+      <button data-v="tutoriales" type="button">Tutoriales</button>
     </nav>
   </div>
 </header>
@@ -1126,6 +1129,8 @@ function vCenso(){
   <p style="margin:0;color:var(--muted);font-size:13px">Toca una vivienda para añadir contacto, teléfono o notas, o para pasarla a noticia.</p>${q?`<section><h2>Noticias en estos portales <span class="n">${NB.length}</span></h2>${NB.length?`<div class="list">${NB.slice(0,50).map(rowContacto).join("")}</div>`:`<div class="empty">No hay noticias activas en los portales que coinciden.</div>`}</section>`:""}<section><h2>Portales <span class="n">${total}</span></h2>${pgC.ctrl}<div class="list">${E.length?E.map(ed).join(""):`<div class="empty">Ningún portal coincide.</div>`}</div>${pgC.ctrl}</section>
   ${cf.ko&&Z.koSinUbicar.length?`<section><h2>KO sin portal en el censo <span class="n">${Z.koSinUbicar.length}</span></h2><div class="list kos">${Z.koSinUbicar.map(koRow).join("")}</div></section>`:""}`;
 }
+const TUTORIALES=[["00_instalar_app", "Instalar la app en el móvil"], ["01_entrar", "Entrar y cambiar la contraseña"], ["02_moverse", "Moverse por el CRM"], ["03_hoy", "La pestaña Hoy"], ["04_a_quien_llamar", "A quién llamar"], ["05_crear_noticia", "Crear una noticia"], ["06_seguir_noticias", "Seguir tus noticias"], ["07_calendario_informe", "Calendario e informe"], ["08_valoracion_encargo", "De valoración a encargo"], ["09_notas_vendida_borrar", "Notas, vendida y borrar"], ["10_captaciones", "Captaciones"], ["11_encargos", "Encargos"], ["12_visitas", "Visitas"], ["13_avisar_portal", "Avisar a un portal"], ["14_operaciones", "Operaciones"], ["15_censo", "El censo"], ["16_notas_rapidas_buzon", "Notas rápidas y buzón"], ["17_mapa_ruta", "Mapa y ruta"], ["18_taratura", "Taratura"], ["19_localizar", "Localizar"], ["20_resultados", "Tus resultados"]];
+function vTutoriales(){return `<section><h2>Tutoriales</h2><p style="margin:0 0 12px;color:var(--muted);font-size:13px">Vídeos cortos que explican cómo usar cada parte del CRM. Toca uno para verlo.</p><div class="tuts">${TUTORIALES.map(([f,t])=>`<details class="tut"><summary><b>${+f.slice(0,2)}.</b> ${esc(t)}</summary><video controls playsinline preload="none" src="tutoriales/${f}.mp4"></video></details>`).join("")}</div></section>`}
 function render(){
   document.querySelectorAll("#tabs button").forEach(b=>{b.setAttribute("aria-current",b.dataset.v===S.view);
     if(b.dataset.v==="hoy"){const n=esCoord()?compPendientes().length:contactosPendientes().length;b.innerHTML="Hoy"+(n?`<span class="count">${n}</span>`:"")}});
@@ -1134,7 +1139,7 @@ function render(){
     :S.soloLectura?`<div class="banner">No se ha podido guardar (${esc(S.soloLectura)}). Puede que esta vista sea solo de lectura. <button class="btn small" type="button" id="btn-perm">Revisar permisos</button></div>`:"";
   setTimeout(()=>{if(S.view==="censo"&&S.cf.mapa&&$("#mapa"))pintarMapa(S.cf.zona)},0);
   pintarSecbar();setTimeout(()=>{pintarBarra();colorUnico($("#view"))},0);
-  $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,compradores:vCompradores,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo}[S.view])();
+  $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,compradores:vCompradores,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo,tutoriales:vTutoriales}[S.view])();
   if((S.view==="censo"||S.view==="localizar")&&!S.censo&&S.db) cargarCenso();
 }
 
@@ -1773,7 +1778,7 @@ $("#frm").addEventListener("click",e=>{const r=e.target.closest("button[data-ope
 $("#view").addEventListener("click",e=>{const n=e.target.closest("[data-nuevo]");if(n){abrir(n.dataset.nuevo);return}const be=e.target.closest("[data-best]");if(be){S.bf.estado=be.dataset.best;render()}});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id!=="b-q"&&id!=="e-q")return;if(id==="b-q")S.bf.q=e.target.value;else S.eq=e.target.value;clearTimeout(render.t2);render.t2=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)});
 
-try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar")S.view=v}catch(_){}
+try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar"||v==="tutoriales")S.view=v}catch(_){}
 render();
 /* ---------- base de datos: Supabase (cada asesor solo recibe lo suyo; lo filtra el servidor) ---------- */
 const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
