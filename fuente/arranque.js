@@ -30,6 +30,7 @@ const dbSupabase={collection:coleccion,doc:documento};
 
 /* ---------- quién soy ---------- */
 window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=await sb.functions.invoke("leer-buzon",{body:{imagen}});if(r.error){let m=r.error.message;try{const j=await r.error.context.json();m=j.error||m}catch(_){}return {error:m}}return r};
+window.importarCaptaciones=async filas=>{const t={nuevas:0,sumadas:0,repetidas:0,sinDireccion:0};for(let i=0;i<filas.length;i+=200){const {data,error}=await sb.rpc("importar_captaciones",{filas:filas.slice(i,i+200)});if(error)throw fallo(error);for(const k in t)t[k]+=data[k]||0}return t};
 window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.resolve({data:null});
 window.rankingPeriodo=(periodo)=>sb?sb.rpc("ranking_periodo",{periodo}):Promise.resolve({data:null});
 const esResp=()=>S.yo&&S.yo.rol==="responsable";

@@ -766,7 +766,7 @@ function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeou
 
 /* ---------- reglas de negocio ---------- */
 function urgPub(c){
-  if(!c.publicado||c.etapa!=="Desarrollo") return null;
+  if(!c.publicado||c.etapa!=="Desarrollo"||c.censoId||c.viviendaLocalizada) return null; /* viviendaLocalizada: casilla temporal para calles fuera del censo. */ /* con vivienda del censo ya está localizada: sigue en Desarrollo hasta hablar con el propietario */
   const lim=c.publicado==="Particular"?1:2,d0=new Date((c.fechaPublicado||hoyISO())+"T12:00");d0.setDate(d0.getDate()+lim);
   const lv=d0.toISOString().slice(0,10),d=dias(hoyISO(),lv);
   return {limite:lv,d,cls:d<=0?"bad":"warn",txt:d<0?`Publicada sin localizar: venció hace ${-d} d`:d===0?"Publicada: localizar HOY":`Publicada: localizar antes del ${fmtF(lv)}`};
@@ -802,7 +802,7 @@ function rowContacto(c){
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
     <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
     <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
-    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${!c.censoId&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.publicado&&c.etapa==="Desarrollo"&&(c.censoId||c.viviendaLocalizada)?`<span class="pill warn">Publicada · localizada, falta hablar con el propietario</span>`:""}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${!c.censoId&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
   </button>`;
 }
 function rowEncargo(e){
@@ -844,6 +844,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-hoyb]");if
 document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("hb"))return;const k=d.id.slice(3);
   if(d.open)S.hoyAbierto=k;else if(S.hoyAbierto===k||S.hoyAbierto===undefined)S.hoyAbierto=null;
   document.querySelectorAll("[data-hoyb]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.hoyb===S.hoyAbierto))},true);
+const capNuevas=()=>{const d=new Date();d.setDate(d.getDate()-7);const h=iso(d);return S.captaciones.filter(k=>k.estado==="Pendiente"&&capFecha(k)>=h).sort((a,b)=>capFecha(b).localeCompare(capFecha(a)))};
 function vHoy(){
   if(esCoord())return vHoyCoord();
   const pend=contactosPendientes().sort((a,b)=>(a.proxFecha||"").localeCompare(b.proxFecha||""));
@@ -855,8 +856,9 @@ function vHoy(){
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sp=sinPaso().length,cli=clientesAntiguos(),llamar=(()=>{const z=miZonaLlamar();return z&&S.censo?aQuienLlamar(z):[]})();
   const B=[
-    {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza al propietario y pásala a Seguimiento: 2 días si es agencia o portal, 1 si es particular.",html:hoyLista("urg",urg,rowContacto,"")},
+    {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza la vivienda y enlázala a su ficha del censo: 2 días si es agencia o portal, 1 si es particular. Pasa a Seguimiento cuando hables con el propietario.",html:hoyLista("urg",urg,rowContacto,"")},
     {k:"pend",t:"Próximos pasos de hoy",n:pend.length,tono:pend.some(c=>proxEstado(c).cls==="bad")?"bad":"warn",html:hoyLista("pend",pend,rowContacto,"")+(sp?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-go="sinpaso">${sp} sin próximo paso</button></div>`:"")},
+    {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
     {k:"vend",t:"Se han vendido",n:vend.length,tono:"warn",html:hoyLista("vend",vend,rowContacto,"")},
     {k:"borr",t:"Solicitudes de borrado",n:solBorr.length,tono:"warn",html:`<div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
@@ -916,16 +918,18 @@ const EST_CAP=["Pendiente","Encontrada","Pasada a noticia","Descartada"];
 function rowCap(k){
   return `<button class="row" type="button" data-open="captaciones" data-id="${esc(k.id)}">
     <span class="t">${esc(k.direccion)}${k.propietario?` · <span style="font-weight:500">${esc(k.propietario)}</span>`:""}</span><span class="r">${k.valVenta?eur(k.valVenta):""}</span>
-    <span class="m">${zona(k.zona)}<span>${esc(k.asesor||"Sin asesor")}</span><span class="pill ${k.estado==="Pendiente"?"warn":k.estado==="Encontrada"?"acc":k.estado==="Pasada a noticia"?"ok":""}">${esc(k.estado||"")}</span>${[k.tipo,k.m2,k.relacion].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${k.venderEn&&/vender/i.test(k.venderEn)?`<span class="pill ${/urgent/i.test(k.venderEn)?"bad":""}">${esc(k.venderEn)}</span>`:""}${k.fecha?`<span>Valorada ${fmtF(k.fecha)}</span>`:""}</span>
+    <span class="m">${zona(k.zona)}<span>${esc(k.asesor||"Sin asesor")}</span><span class="pill ${k.estado==="Pendiente"?"warn":k.estado==="Encontrada"?"acc":k.estado==="Pasada a noticia"?"ok":""}">${esc(k.estado||"")}</span>${k.veces>1?`<span class="pill ${k.veces>=3?"bad":"warn"}">Pedida ${k.veces} veces</span>`:""}${[k.tipo,k.m2,k.relacion].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${k.venderEn&&/vender/i.test(k.venderEn)?`<span class="pill ${/urgent/i.test(k.venderEn)?"bad":""}">${esc(k.venderEn)}</span>`:""}${k.fecha?`<span>Valorada ${fmtF(k.fecha)}</span>`:""}</span>
   </button>`;
 }
 function vCaptaciones(){
   const f=S.kf,q=f.q.toLowerCase();
   const base=S.captaciones.filter(k=>(!f.zona||k.zona===f.zona)&&(!f.asesor||k.asesor===f.asesor)&&(!q||[k.direccion,k.propietario,k.telefono,k.encontrado,k.pisosPosibles,k.comentario].join(" ").toLowerCase().includes(q)));
-  const L=base.filter(k=>!f.estado||k.estado===f.estado).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const L=base.filter(k=>!f.estado||k.estado===f.estado).sort((a,b)=>capFecha(b).localeCompare(capFecha(a)));
   const zonas=[...new Set(S.captaciones.map(k=>k.zona).filter(Boolean))].sort();
+  const botones=`<div class="tools">${veTodo()?`<button class="btn small primary" type="button" data-act2="capSubirAbrir">Subir Excel de captaciones</button>`:""}<button class="btn small${S.kreg?" primary":""}" type="button" data-act2="capReg">${S.kreg?"Volver a la lista":"Registro del mes"}</button></div>`;
+  if(S.kreg)return botones+vRegistroCap();
   const chips=[...EST_CAP.map(e=>[e,e==="Pendiente"?"Pendientes de encontrar":e==="Encontrada"?"Encontradas":e==="Descartada"?"Descartadas":e]),["","Todas"]];
-  return `<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-kest="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(k=>!v||k.estado===v).length}</span></button>`).join("")}</div>
+  return botones+`<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-kest="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(k=>!v||k.estado===v).length}</span></button>`).join("")}</div>
   <div class="tools">
     <input type="search" id="k-q" placeholder="Buscar dirección, propietario, pisos posibles…" value="${esc(f.q)}">
     <select id="k-zona">${selOpts(zonas,f.zona,"Todas las zonas")}</select>
@@ -1081,7 +1085,7 @@ const FORMS={
   contactos:{titulo:"propietario",fields:[
     ["direccion","Dirección del inmueble *","text",{full:1,req:1}],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
     ["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
-    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["motivo","Situación","sel",()=>MOTIVOS],
+    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["viviendaLocalizada","Vivienda localizada aunque no está en el censo (temporal)","check"],["motivo","Situación","sel",()=>MOTIVOS],
     ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],
     ["fechaValoracion","Fecha de valoración","date"],["precioValorado","Precio valorado (€)","number"],["precioPropietario","Precio que pide el propietario (€)","number"],
     ["necesitaSti","Necesita a Stiwhar","check"],["notaSti","Qué necesita de Stiwhar","text",{full:1}],
@@ -1217,10 +1221,88 @@ function extraFicha(col,d,id){
     return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="visitaCon">Apuntar visita</button><button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button>${(d.descartados||[]).length?`<button class="btn small" type="button" data-act="descartesFuera">Volver a ver los ${d.descartados.length} descartados</button>`:""}</div>
       ${listaFicha("Inmuebles que le encajan",enc.map(e=>`<div class="row"><span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span><span class="m">${zona(e.zona)}${e.habitaciones?`<span>${esc(e.habitaciones)} hab.</span>`:""}${e.m2?`<span>${esc(e.m2)} m²</span>`:""}<span>${esc(e.asesor||"")}</span>${visitasDe(d,e).length?`<span class="pill ok">Visitado</span>`:""}<button class="btn small" type="button" data-act="verEnc" data-enc="${esc(e.id)}">Ficha</button><button class="btn small" type="button" data-act="visitaCon" data-enc="${esc(e.id)}">Visita</button><button class="btn small" type="button" data-act="descartar" data-enc="${esc(e.id)}">No le encaja</button></span></div>`),"Ningún encargo activo encaja ahora mismo con lo que busca.")}
       ${listaFicha("Sus visitas",vs.map(rowVisita),"Aún no ha visitado nada.")}`}
+  if(col==="captaciones"&&id&&(d.veces>1||(d.pedidas||[]).length)){const P=[...(d.pedidas||[])].sort().reverse();
+    return `<div class="full" style="grid-column:1/-1;font-size:13px"><b>Han pedido valoración ${d.veces||P.length} ${(d.veces||P.length)>1?"veces":"vez"}</b>${P.length?": "+P.slice(0,12).map(t=>fmtF(t.slice(0,10))+(t.slice(11,16)!=="00:00"?" "+t.slice(11,16):"")).join(" · ")+(P.length>12?" …":""):""}</div>`}
   if(col==="encargos"&&id){const vs=visitasDe(null,d).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")),cs=veTodo()?S.compradores.filter(c=>compActivo(c)&&encaja(c,d)):[];
     return `${veTodo()?listaFicha("Compradores que encajan",cs.map(rowComp),"Ningún comprador activo encaja con este inmueble."):""}${listaFicha("Visitas",vs.map(rowVisita),"Aún no hay visitas.")}
       <div class="full" style="grid-column:1/-1"><button class="btn small" type="button" data-act="visitaEnc">Apuntar visita</button></div>`}
   return ""}
+/* ---------- Excel diario de captaciones (Daniel) y registro del mes ---------- */
+const normDir=t=>String(t||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/^\s*(C\/|(CALLE|CL|AVENIDA|AVDA|AV|PLAZA|PZA|PZ|PASEO|PS|URBANIZACION|URB|CAMINO|TRAVESIA|RONDA)\.?\s+)/,"").replace(/\b(DE|DEL|LA|LAS|LOS|EL)\b/g,"").replace(/[^A-Z0-9]/g,"");
+const normTxt=t=>String(t||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+const capFecha=k=>k.ultimaPedida||k.fecha||"";
+const pad2=n=>String(n).padStart(2,"0");
+function cargarXLSX(){return window.XLSX?Promise.resolve(window.XLSX):new Promise((ok,ko)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";s.onload=()=>ok(window.XLSX);s.onerror=()=>ko(new Error("No se ha podido cargar el lector de Excel"));document.head.appendChild(s)})}
+function tsExcel(v){
+  if(typeof v==="number"&&v>20000){const d=new Date(Math.round((v-25569)*864e5));return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`}
+  const s=String(v||"").trim();let m=s.match(/^(\d{4})-(\d\d)-(\d\d)(?:[T ](\d\d):(\d\d)(?::(\d\d))?)?/);if(m)return `${m[1]}-${m[2]}-${m[3]}T${m[4]||"00"}:${m[5]||"00"}:${m[6]||"00"}`;
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,?\s+(\d{1,2}):(\d\d)(?::(\d\d))?)?/);if(m)return `${m[3].length===2?"20"+m[3]:m[3]}-${pad2(m[2])}-${pad2(m[1])}T${pad2(m[4]||0)}:${m[5]||"00"}:${m[6]||"00"}`;
+  return ""}
+const numEs=v=>typeof v==="number"?v:(s=>s?Number(s):null)(String(v??"").split("€")[0].replace(/[^\d,]/g,"").replace(",","."));
+function asesorCap(z,nom){const a=(S.ajustes.asesores.find(x=>x.zona===z)||{}).nombre;if(a)return a;const n=normTxt(nom),al={MARIA:"Mery"};
+  const m=S.ajustes.asesores.find(x=>normTxt(x.nombre)===n);return m?m.nombre:al[n]||""}
+/* Lee todas las hojas con columna «Dirección» y «Fecha»; devuelve filas listas para importar_captaciones */
+async function leerExcelCap(file){const X=await cargarXLSX(),wb=X.read(await file.arrayBuffer(),{cellStyles:true}),out=[];let conColor=false;
+  for(const nom of wb.SheetNames){const ws=wb.Sheets[nom];if(!ws["!ref"])continue;const R=X.utils.decode_range(ws["!ref"]);let hr=-1,H={};
+    for(let r=R.s.r;r<=Math.min(R.e.r,R.s.r+5)&&hr<0;r++){const h={};for(let c=R.s.c;c<=R.e.c;c++){const v=ws[X.utils.encode_cell({r,c})];if(v&&v.v!=null)h[normTxt(v.v)]=c}
+      const kd=Object.keys(h).find(k=>k==="DIRECCION"),kf=Object.keys(h).find(k=>k.startsWith("FECHA"));if(kd&&kf){hr=r;H=h}}
+    if(hr<0)continue;const col=pre=>{const k=Object.keys(H).find(k=>k.startsWith(pre));return k==null?null:H[k]};
+    const C={dir:col("DIRECCION"),f:col("FECHA"),area:col("AREA"),tipo:col("TIPOLOGIA"),vv:col("VALORACION VENTA"),va:col("VALORACION ALQUILER"),rel:col("RELACION"),ve:col("VENDER EN"),z:col("ZONA"),as:col("ASESOR"),enc:col("ENCONTRADO"),pis:col("PISOS POSIBLES"),tr:col("TRAYECTORIA")};
+    for(let r=hr+1;r<=R.e.r;r++){const cel=c=>c==null?null:ws[X.utils.encode_cell({r,c})],val=c=>{const x=cel(c);return x?x.v:null},txt=c=>String(val(c)??"").replace(/ /g," ").trim();
+      const dir=txt(C.dir);if(!dir)continue;const ts=tsExcel(val(C.f));const cd=cel(C.dir),rgb=cd&&cd.s&&cd.s.fgColor&&cd.s.fgColor.rgb||"";if(rgb)conColor=true;
+      const fz=normTxt(val(C.z)),z=zonaDe(dir)||(ZONAS[fz]&&fz!=="BLANCA"?fz:"");
+      out.push({hoja:nom,verde:/C6EFCE/i.test(rgb),direccion:dir,ts,zona:z,asesor:z?asesorCap(z,val(C.as)):"",tipo:txt(C.tipo),m2:txt(C.area).split("\n")[0],valVenta:numEs(val(C.vv)),valAlquiler:txt(C.va),
+        relacion:txt(C.rel),venderEn:txt(C.ve),origen:txt(C.tr),encontrado:txt(C.enc),pisosPosibles:txt(C.pis)})}}
+  return {filas:out,conColor}}
+function abrirSubirCap(){cur={col:"subirCap"};const ult=S.captaciones.map(capFecha).sort().pop()||"";
+  $("#frm").innerHTML=`<div class="dh">Subir Excel de captaciones</div><div class="db">
+    <p class="full" style="grid-column:1/-1;margin:0;color:var(--muted);font-size:13px">Sube el Excel de las valoraciones (el que te descargas o el de ESTIMACIONES). Cada dirección va sola a su zona y a su asesor. Si la dirección ya está en el CRM, no se repite: se le suma una vez más que han pedido valoración. Si subes dos veces el mismo Excel no se duplica nada.</p>
+    <label class="full">Archivo Excel<input id="sc-file" type="file" accept=".xlsx,.xls,.csv"></label>
+    <label>Solo valoraciones desde<input id="sc-desde" type="date" value="${esc(ult)}"></label>
+    <label class="check" id="sc-verde-l" hidden><input type="checkbox" id="sc-verde" checked> Saltar las filas en verde (ya pasadas)</label>
+    <div class="full" id="sc-res" style="grid-column:1/-1"></div></div>
+    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button><button class="btn primary" type="button" data-act="capSubir" disabled id="sc-ok">Subir</button></div></div>`;
+  $("#dlg").showModal()}
+function filasSubirCap(){const L=(cur&&cur.capFilas)||[],desde=$("#sc-desde")?.value||"",sv=$("#sc-verde")?.checked;
+  return L.filter(f=>f.ts&&(!desde||f.ts.slice(0,10)>=desde)&&!(sv&&f.verde))}
+function pintarSubirCap(){const el=$("#sc-res");if(!el||!cur.capFilas)return;const F=filasSubirCap(),ya=new Set(S.captaciones.map(k=>normDir(k.direccion))),sinF=cur.capFilas.filter(f=>!f.ts).length;
+  const nuevas=new Set(F.filter(f=>!ya.has(normDir(f.direccion))).map(f=>normDir(f.direccion))).size,porA={};F.forEach(f=>{const a=f.asesor||(f.zona?"Zona "+f.zona.toLowerCase()+" (sin asesor)":"Fuera de zona");porA[a]=(porA[a]||0)+1});
+  el.innerHTML=`<div class="list"><div class="row"><span class="t">${F.length} valoraciones para subir</span><span class="m"><span>${nuevas} direcciones nuevas</span><span>${F.length-F.filter(f=>!ya.has(normDir(f.direccion))).length} de direcciones que ya están (se suman)</span>${sinF?`<span class="pill warn">${sinF} filas sin fecha: no se suben</span>`:""}</span></div>
+    <div class="row"><span class="m">${Object.entries(porA).sort((a,b)=>b[1]-a[1]).map(([a,n])=>`<span>${esc(a)}: ${n}</span>`).join("")}</span></div></div>`;
+  $("#sc-ok").disabled=!F.length}
+async function subirCap(b){const F=filasSubirCap();if(!F.length)return;if(typeof window.importarCaptaciones!=="function"){toast("Solo se puede subir desde la app del equipo");return}
+  b.disabled=true;b.textContent="Subiendo…";
+  try{const r=await window.importarCaptaciones(F.map(({hoja,verde,...f})=>f));
+    $("#sc-res").innerHTML=`<div class="banner" style="margin:0">Hecho: ${r.nuevas} captaciones nuevas, ${r.sumadas} sumadas a direcciones que ya estaban${r.repetidas?` y ${r.repetidas} que ya se habían subido`:""}.</div>`;b.textContent="Subido";toast("Captaciones subidas")}
+  catch(e){b.disabled=false;b.textContent="Subir";toast("No se ha subido: "+(e.message||e))}}
+function enVentaOtros(k){const kk=portalDir(k.direccion);if(!/\d/.test(kk)||!S.mercado)return null;return S.mercado.L.find(m=>m.calle&&m.numero&&normDir(m.calle+" "+m.numero)===kk&&!m.fechaBaja)||null}
+const portalDir=t=>{const m=String(t||"").match(/^\D*\d+/);return normDir(m?m[0]:t)};
+function encargoDe(k){const kk=portalDir(k.direccion);if(!/\d/.test(kk))return null;return S.encargos.find(e=>portalDir(e.direccion)===kk)||null}
+function registroMes(mes){return S.captaciones.map(k=>{const P=(k.pedidas||[]).filter(t=>t.startsWith(mes));const n=P.length||(!(k.pedidas||[]).length&&(k.fecha||"").startsWith(mes)?1:0);return n?{k,n}:null}).filter(Boolean)
+  .sort((a,b)=>b.n-a.n||capFecha(b.k).localeCompare(capFecha(a.k)))}
+function vRegistroCap(){if(!S.mercado&&!vRegistroCap.pide){vRegistroCap.pide=1;cargarMercado().then(()=>{vRegistroCap.pide=0;if(S.view==="captaciones")render()})}
+  const meses=[...new Set(S.captaciones.flatMap(k=>[...(k.pedidas||[]).map(t=>t.slice(0,7)),(k.fecha||"").slice(0,7)]).filter(Boolean))].sort().reverse();
+  const mes=S.kmes||meses[0]||hoyISO().slice(0,7),R=registroMes(mes),tot=R.reduce((s,x)=>s+x.n,0);
+  const est=e=>R.filter(x=>x.k.estado===e).length,enc=R.filter(x=>encargoDe(x.k)).length,otr=R.filter(x=>!encargoDe(x.k)&&enVentaOtros(x.k)).length;
+  const MES=m=>new Date(m+"-15T12:00").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  return `<section><div class="tools"><select id="k-mes">${meses.map(m=>`<option value="${m}"${m===mes?" selected":""}>${esc(MES(m))}</option>`).join("")}</select><button class="btn small" type="button" data-act2="capRegXlsx">Descargar Excel del mes</button></div>
+  <div class="kpis">${kpi("Valoraciones pedidas",tot,`${R.length} direcciones`)}${kpi("Encontradas",est("Encontrada")+est("Pasada a noticia"),`${est("Pasada a noticia")} pasadas a noticia`)}${kpi("Pendientes",est("Pendiente"),"Sin encontrar todavía")}${kpi("Encargo nuestro",enc,"La dirección ya es encargo")}${kpi("En venta con otros",otr,S.mercado?"Publicadas en idealista y no son nuestras":"Cargando idealista…")}</div>
+  <p style="margin:0 0 8px;color:var(--muted);font-size:13px">Todo lo que han pedido valorar en ${esc(MES(mes))} y qué hemos sacado. «En venta con otros» cruza con los anuncios nuevos de idealista: son captaciones que se nos han escapado.</p>
+  <div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Dirección</th><th>Zona</th><th>Asesor</th><th>Veces en el mes</th><th>Veces en total</th><th>Estado</th><th style="text-align:left">Resultado</th></tr></thead><tbody>
+  ${R.map(({k,n})=>{const e=encargoDe(k),o=!e&&enVentaOtros(k);return `<tr data-open="captaciones" data-id="${esc(k.id)}" style="cursor:pointer"><td style="text-align:left">${esc(k.direccion)}</td><td>${zona(k.zona)}</td><td>${esc(k.asesor||"—")}</td><td>${n}</td><td>${k.veces||1}</td><td>${esc(k.estado||"")}</td><td style="text-align:left">${e?`<span class="pill ok">Encargo nuestro</span>`:o?`<span class="pill bad">En venta con ${esc(o.agencia||(o.particular?"particular":"otra agencia"))}</span>`:k.encontrado?esc(String(k.encontrado).slice(0,40)):""}</td></tr>`}).join("")||`<tr><td colspan="7">No hay valoraciones este mes.</td></tr>`}
+  </tbody></table></div></section>`}
+async function descargarRegistroCap(){const X=await cargarXLSX(),mes=$("#k-mes")?.value||S.kmes,R=registroMes(mes);
+  const filas=R.map(({k,n})=>{const e=encargoDe(k),o=!e&&enVentaOtros(k);return {"Dirección":k.direccion,"Zona":k.zona||"","Asesor":k.asesor||"","Veces en el mes":n,"Veces en total":k.veces||1,"Última valoración":capFecha(k),"Tipología":k.tipo||"","Área":k.m2||"","Valoración venta":k.valVenta||"","Relación":k.relacion||"","Vender en":k.venderEn||"","Estado":k.estado||"","Encontrado":k.encontrado||"","Pisos posibles":k.pisosPosibles||"","Resultado":e?"Encargo nuestro":o?"En venta con "+(o.agencia||(o.particular?"particular":"otra agencia")):""}});
+  const wb=X.utils.book_new();X.utils.book_append_sheet(wb,X.utils.json_to_sheet(filas),mes);X.writeFile(wb,`Captaciones_${mes}.xlsx`)}
+$("#frm").addEventListener("change",async e=>{if(!cur||cur.col!=="subirCap")return;
+  if(e.target.id==="sc-file"){const f=e.target.files[0];if(!f)return;$("#sc-res").innerHTML='<div class="empty">Leyendo el Excel…</div>';
+    try{const r=await leerExcelCap(f);cur.capFilas=r.filas;$("#sc-verde-l").hidden=!r.conColor;if(!r.filas.length){$("#sc-res").innerHTML='<div class="empty">No encuentro filas con «Dirección» y «Fecha» en este Excel.</div>';return}pintarSubirCap()}
+    catch(err){$("#sc-res").innerHTML=`<div class="empty">No se ha podido leer: ${esc(err.message||err)}</div>`}}
+  if(e.target.id==="sc-desde"||e.target.id==="sc-verde")pintarSubirCap()});
+$("#view").addEventListener("change",e=>{if(e.target.id==="k-mes"){S.kmes=e.target.value;render()}});
+$("#view").addEventListener("click",e=>{const b=e.target.closest("[data-act2]");if(!b)return;const a=b.dataset.act2;
+  if(a==="capSubirAbrir")abrirSubirCap();if(a==="capReg"){S.kreg=!S.kreg;render()}if(a==="capRegXlsx")descargarRegistroCap().catch(err=>toast(err.message))});
+
 function abrirNuevo(col,pre){abrir(col);if(!pre)return;for(const [k,v] of Object.entries(pre)){const el=$("#fld-"+k);if(el){if(el.type==="checkbox")el.checked=!!v;else el.value=v}}}
 async function guardarLlamadaVend(){const v=leerForm();if(!v.direccion)return toast("Pon la dirección");
   const zn=zonaDe(v.direccion)||"",as=v.asesor||(S.ajustes.asesores.find(a=>a.zona===zn)||{}).nombre||"Stiwhar";
@@ -1241,6 +1323,7 @@ async function antesDeGuardar(data){ /* compradores y visitas: completa datos; d
 async function accionFicha(a,b){
   if(a==="visitaCon"){const enc=b.dataset.enc||"",cid=cur.id;$("#dlg").close();setTimeout(()=>abrirNuevo("visitas",{compradorId:cid,encargoId:enc}),150);return true}
   if(a==="visitaEnc"){const eid=cur.id;$("#dlg").close();setTimeout(()=>abrirNuevo("visitas",{encargoId:eid}),150);return true}
+  if(a==="capSubir"){subirCap(b);return true}
   if(a==="verEnc"){const eid=b.dataset.enc;$("#dlg").close();setTimeout(()=>abrir("encargos",eid),150);return true}
   if(a==="descartar"){const c=S.compradores.find(x=>x.id===cur.id),e=S.encargos.find(x=>x.id===b.dataset.enc);if(!c||!e)return true;
     if(await guardar("compradores",c.id,{descartados:[...new Set([...(c.descartados||[]),e.id])]},"No le encaja: "+e.direccion+".")){b.closest(".row").remove();toast("Apuntado: no le encaja")}return true}
@@ -1665,6 +1748,7 @@ const dbSupabase={collection:coleccion,doc:documento};
 
 /* ---------- quién soy ---------- */
 window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=await sb.functions.invoke("leer-buzon",{body:{imagen}});if(r.error){let m=r.error.message;try{const j=await r.error.context.json();m=j.error||m}catch(_){}return {error:m}}return r};
+window.importarCaptaciones=async filas=>{const t={nuevas:0,sumadas:0,repetidas:0,sinDireccion:0};for(let i=0;i<filas.length;i+=200){const {data,error}=await sb.rpc("importar_captaciones",{filas:filas.slice(i,i+200)});if(error)throw fallo(error);for(const k in t)t[k]+=data[k]||0}return t};
 window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.resolve({data:null});
 window.rankingPeriodo=(periodo)=>sb?sb.rpc("ranking_periodo",{periodo}):Promise.resolve({data:null});
 const esResp=()=>S.yo&&S.yo.rol==="responsable";
