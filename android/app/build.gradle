@@ -1,0 +1,25 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.hogaresfuenlabrada.crm'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.hogaresfuenlabrada.crm'
+        minSdk 24
+        targetSdk 34
+        // Subir versionCode en cada APK nuevo para que se instale encima del anterior.
+        versionCode 1
+        versionName '1.0'
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

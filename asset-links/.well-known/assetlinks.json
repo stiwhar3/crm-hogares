@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.hogaresfuenlabrada.crm",
+      "sha256_cert_fingerprints": [
+        "9A:30:08:FF:41:E5:CB:25:A8:33:DF:CD:CE:67:74:0C:40:72:6D:31:D6:AC:CA:75:5E:A7:71:90:C9:3E:96:B2"
+      ]
+    }
+  }
+]
