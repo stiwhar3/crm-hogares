@@ -45,6 +45,13 @@ Deno.serve(async (req) => {
     headers: { Authorization: auth, apikey: Deno.env.get("SUPABASE_ANON_KEY") ?? "" },
   });
   if (!u.ok) return json({ error: "Inicia sesión en el CRM" }, 401);
+  // Y que esté dado de alta y activo en el CRM (cualquiera puede crearse una cuenta desde la pantalla de acceso)
+  const yo = await u.json();
+  const p = await fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/perfiles?select=activo&id=eq.${yo.id}`, {
+    headers: { Authorization: auth, apikey: Deno.env.get("SUPABASE_ANON_KEY") ?? "" },
+  });
+  const perfil = p.ok ? await p.json() : [];
+  if (!perfil.length || perfil[0].activo === false) return json({ error: "Tu cuenta no está dada de alta en el CRM" }, 403);
 
   if (!Deno.env.get("ANTHROPIC_API_KEY")) return json({ error: "Falta la clave ANTHROPIC_API_KEY en Supabase" }, 503);
 

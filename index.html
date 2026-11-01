@@ -420,7 +420,7 @@ function cargarLeaflet(){return cargarLeaflet.p||(cargarLeaflet.p=new Promise((o
 function portalesMapa(zona){const Z=(S.censo||{})[zona],G=S.geo||{},hoy=Date.now(),out=[];if(!Z)return out;
   for(const b of Z.edificios){const pc=(b.u.find(u=>u.rc&&u.rc.length>=14)||{}).rc;const g=pc&&G[pc.slice(0,14)];if(!g)continue;
     const U=b.u.map(u=>({...u,...(S.censoEd[u._id]||{})}));let ult=null;
-    for(const u of U){const f=fechaTxt(u.ult);if(f&&(!ult||f>ult))ult=f;const e=S.censoEd[u._id];if(e&&e.actualizado){const d=new Date(e.actualizado);if(!ult||d>ult)ult=d}}
+    for(const u of U){const f=fechaTxt(u.ult);if(f&&(!ult||f>ult))ult=f;const hu=ultimoHist(u);if(hu){const d=new Date(hu.f);if(!isNaN(d)&&d<=hoy&&(!ult||d>ult))ult=d}const e=S.censoEd[u._id];if(e&&e.actualizado){const d=new Date(e.actualizado);if(!ult||d>ult)ult=d}}
     const not=b.u.some(u=>notiDe(u._id)),ko=b.ko&&b.ko.length,dd=ult?Math.round((hoy-ult)/864e5):null,tel=U.filter(u=>/\d{9}/.test(String(u.tel||"").replace(/\s/g,""))).length;
     const est=not?"noticia":ko?"ko":dd!=null&&dd<=90?"tocado":"sin";
     out.push({pid:portalId(b),b,lat:g[0],lon:g[1],est,dd,tel,n:b.u.length})}
@@ -937,7 +937,7 @@ function vResultados(){
   const A=S.ajustes,per=S.resPer||"semana",resp=!S.yo||S.yo.rol==="responsable",eq=A.gastosMes/0.7;
   const P={semana:rangoPer("semana"),mes:rangoPer("mes"),trimestre:rangoPer("trimestre")};
   const F={semana:sumFact(P.semana[0],P.semana[1]),mes:sumFact(P.mes[0],P.mes[1]),trimestre:sumFact(P.trimestre[0],P.trimestre[1])},fp=sumFact(A.periodoInicio,A.periodoFin);
-  const O={semana:Math.round(A.objetivoMes*12/52),mes:+A.objetivoMes||0,trimestre:(+A.objetivoMes||0)*3};
+  const O={semana:Math.round(A.objetivoMes*12/52),mes:+A.objetivoMes||0,trimestre:(A.periodoInicio===P.trimestre[0]&&A.periodoFin===P.trimestre[1]&&+A.objetivoPeriodo)?+A.objetivoPeriodo:(+A.objetivoMes||0)*3};
   const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro),act=S.encargos.filter(e=>e.estado==="Activo");
   const M={...DEF_METAS,...(A.metas||{})},pc=(a,b)=>b?Math.round(a/b*100)+" %":"—",fr=([a,b])=>fmtF(a)+" – "+fmtF(b);
   const sel=`<div class="tools">${["semana","mes","trimestre"].map(k=>`<button class="btn small${k===per?" primary":""}" type="button" data-resper="${k}">${k.charAt(0).toUpperCase()+k.slice(1)}</button>`).join("")}</div>`;
@@ -955,7 +955,7 @@ function vResultados(){
     </tbody></table></div>
     <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th style="text-align:left">Metas de actividad por asesor</th><th>Semana</th><th>Mes</th><th>Trimestre</th></tr></thead><tbody>
     ${(m=>METAS_ET.map(([k,t])=>`<tr><td style="text-align:left">${t}</td><td>${m.semana[k]}</td><td>${m.mes[k]}</td><td>${m.trimestre[k]}</td></tr>`).join(""))({semana:metasPer("semana"),mes:metasPer("mes"),trimestre:metasPer("trimestre")})}
-    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">La semana y el trimestre salen del objetivo mensual (×12/52 y ×3). Las metas de actividad se ponen por semana en Ajustes y se escalan al mes y al trimestre.</p></section>`:"";
+    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">La semana sale del objetivo mensual (×12/52); el trimestre, del objetivo del periodo si coincide con él, o del mensual ×3. Las metas de actividad se ponen por semana en Ajustes y se escalan al mes y al trimestre.</p></section>`:"";
   if(esCoord())return fact+sel+vMetasCoord(per);
   const rk=vRanking(per);
   return fact+sel+(rk||`<section><h2>${resp?"Ranking":"Tus objetivos"} ${PER_ET[per][0]}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+(resp?vMetasCoord(per):"")+obj;
@@ -1012,7 +1012,7 @@ function vEncargos(){
 /* Cartera = encargos activos y reservados + operaciones en curso sin aceptar, sin contar dos veces el mismo inmueble */
 function cartera(){const k=t=>claveDir(t).slice(0,14),opsV=S.operaciones.filter(o=>o.estado!=="Caída"),out=[],usadas=new Set();
   for(const e of S.encargos){if(e.estado!=="Activo"&&e.estado!=="Reservado")continue;
-    const m=o=>(o.encId&&o.encId===e.id)||(k(o.inmueble)&&k(o.inmueble)===k(e.direccion)),o=opsV.find(o=>m(o)&&!facturada(o))||(e.estado==="Reservado"&&opsV.find(m));
+    const m=o=>((o.encargoId||o.encId)===e.id)||(k(o.inmueble)&&k(o.inmueble)===k(e.direccion)),o=opsV.find(o=>m(o)&&!facturada(o))||(e.estado==="Reservado"&&opsV.find(m));
     if(o){usadas.add(o.id);if(facturada(o))continue;out.push({t:"op",asesor:o.asesor,h:+o.honorarios||0});continue}
     out.push({t:"enc",asesor:e.asesor,h:+e.honorarioPrevisto||0})}
   for(const o of opsV)if(!usadas.has(o.id)&&!facturada(o))out.push({t:"op",asesor:o.asesor,h:+o.honorarios||0});
@@ -1048,7 +1048,7 @@ function vEquipo(){
     return `<tr><td>${esc(p)} ${zona(z)}</td><td>${eur(sumFact(m0,m1,p))}</td><td>${eur(sumFact(A.periodoInicio,A.periodoFin,p))}</td><td>${val}</td><td>${cap}</td><td>${act}</td><td>${venc?`<span class="pill bad">${venc}</span>`:"0"}</td></tr>`;
   }).join("");
   return `<section><h2>Equipo este mes</h2><div class="tbl-wrap"><table><thead><tr><th>Asesor</th><th>Facturado mes</th><th>Facturado periodo</th><th>Valoraciones</th><th>Captaciones</th><th>Cartera activa</th><th>Vencidos</th></tr></thead><tbody>${rows}</tbody></table></div>
-  <p class="s" style="color:var(--muted);font-size:13px">Valoraciones cuentan por la fecha de valoración del propietario; captaciones por la fecha de captación del encargo. Objetivo de octubre: 2 valoraciones por asesor.</p></section>
+  <p class="s" style="color:var(--muted);font-size:13px">Valoraciones cuentan por la fecha de valoración del propietario; captaciones por la fecha de captación del encargo. Metas de actividad en Ajustes y en Resultados.</p></section>
   <section><h2>Ajustes</h2><button class="btn" type="button" id="btn-ajustes">Editar objetivos y asesores</button></section>`;
 }
 /* ---------- censo (solo lectura, importado de los Excel de zona) ---------- */
@@ -1465,18 +1465,23 @@ function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u03
   .replace(/^\s*(C\/|CL\.?\s|CALLE\s|AVDA\.?\s|AVENIDA\s|AV\.?\s|PZA\.?\s|PZ\.?\s|PLAZA\s|PASEO\s)/,"").replace(/\bESC(ALERA)?\b/g,"").replace(/[^A-Z0-9]/g,"")}
 function etiqueta(col,k){const f=(FORMS[col]?.fields||[]).find(x=>x[0]===k);return f?f[1].replace(" *",""):k}
 function anterior(col,id){if(!id)return null;if(col==="portales")return {...(S.portales[id]||{})};if(col==="censoEdits"){const r=buscarViv(id);return {...(r?r.u:{}),...(S.censoEd[id]||{})}}return S[col].find(x=>x.id===id)||null}
+const VIVAS=["contactos","encargos","operaciones","captaciones","compradores","visitas"];
 async function guardar(col,id,data,nota,extraHist){
   if(!S.db){toast("Sin conexión: no se ha guardado");return null}
-  const ahora=new Date().toISOString(),old=anterior(col,id);
+  const ahora=new Date().toISOString(),old=anterior(col,id);let base=old;
+  /* Si otra persona ha guardado esta ficha mientras la tenías abierta, se aplican solo tus cambios sobre su versión (antes se perdían los suyos). */
+  if(old&&id&&VIVAS.includes(col)&&old.actualizado){try{const srv=await S.db.collection(col).doc(id).leer();
+    if(srv&&srv.actualizado&&srv.actualizado!==old.actualizado){const nv=v=>v==null||v===""||v===false?"":JSON.stringify(v),mios={};for(const k of Object.keys(data))if(nv(old[k])!==nv(data[k]))mios[k]=data[k];data=mios;base=srv}}catch(_){}}
   const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","borrarSolicitado","vendidaVista"].includes(k)&&String(old[k]??"")!==String(data[k]??"")&&!(old[k]==null&&data[k]===false))
     .map(k=>({campo:etiqueta(col,k),antes:String(old[k]??"").slice(0,200),despues:String(data[k]??"").slice(0,200)})):[];
-  const out={...(old||{}),...data}; delete out.id; delete out._id; out.actualizado=ahora;
-  const hist=[...((old&&old.historial)||[])];
+  const out={...(base||{}),...data}; delete out.id; delete out._id; out.actualizado=ahora;
+  const hist=[...((base&&base.historial)||[])];
   if(extraHist&&extraHist.length){hist.push(...extraHist);hist.sort((a,b)=>String(a.f).localeCompare(String(b.f)))}
   if(!old||cambios.length||nota) hist.push({f:ahora,...(old?{}:{alta:true}),...(cambios.length?{c:cambios}:{}),...(nota?{n:nota}:{})});
   out.historial=hist.slice(-300);
-  try{ if(id){await S.db.collection(col).doc(id).set(out);return id}
-       const r=S.db.collection(col).doc(); out.creado=ahora; await r.set(out); return r.id; }
+  const enMemoria=rid=>{const L=S[col];if(!VIVAS.includes(col)||!Array.isArray(L))return;const o={id:rid,...out},i=L.findIndex(x=>x.id===rid);if(i>=0)L[i]=o;else L.push(o)};
+  try{ if(id){await S.db.collection(col).doc(id).set(out);enMemoria(id);return id}
+       const r=S.db.collection(col).doc(); out.creado=ahora; await r.set(out); enMemoria(r.id); return r.id; }
   catch(e){console.error("guardar",col,e);S.soloLectura=e.code||e.message||"error";toast(e.code==="quota_exceeded"?"La base de datos está llena: borra registros antiguos":"No se ha guardado: "+(e.code||"")+" "+(e.message||""));return null}
 }
 $("#frm").addEventListener("submit",async ev=>{
@@ -1579,8 +1584,9 @@ $("#frm").addEventListener("click",async ev=>{
   if(a==="avisoApuntar"){apuntarAviso(cur.aviso);return}
   if(a==="mas7"){const d=new Date();d.setDate(d.getDate()+7);$("#fld-proxFecha").value=new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);return}
   if(a==="revisado"){$("#fld-ultimaRevisionPrecio").value=hoyISO();return}
-  if(a==="aEncargo"){const c=leerForm();c.etapa="Encargo";const id=await guardar("contactos",cur.id,c);if(!id)return;$("#dlg").close();
-    const nid=await guardar("encargos",null,{direccion:c.direccion,asesor:c.asesor,zona:c.zona,precio:c.precioPropietario||c.precioValorado||null,exclusiva:"Sí",estado:"Activo",fechaCaptacion:hoyISO(),honorarioPrevisto:6000,contactoId:cur.id,notas:""});
+  if(a==="aEncargo"){const c=leerForm();c.etapa="Encargo";const cid=cur.id,id=await guardar("contactos",cid,c);if(!id)return;$("#dlg").close();
+    const ya=S.encargos.find(e=>e.contactoId===cid);if(ya){toast("Esta noticia ya tiene encargo: te lo abro");S.view="encargos";render();setTimeout(()=>abrir("encargos",ya.id),300);return}
+    const nid=await guardar("encargos",null,{direccion:c.direccion,asesor:c.asesor,zona:c.zona,precio:c.precioPropietario||c.precioValorado||null,exclusiva:"Sí",estado:"Activo",fechaCaptacion:hoyISO(),honorarioPrevisto:6000,contactoId:cid,notas:""});
     if(nid){S.view="encargos";render();setTimeout(()=>abrir("encargos",nid),300)}return}
   if(a==="aOp"){const e=leerForm(),encId=cur.id;$("#dlg").close();
     const nid=await guardar("operaciones",null,{inmueble:e.direccion,asesor:e.asesor,tipo:"Venta",ladoCobrado:"Ambos",precio:e.precio,honorarios:null,estado:"Reserva",encargoId:encId,notas:""});
@@ -1805,6 +1811,7 @@ function coleccion(nombre){
     doc(id){id=id||nuevoId();return{id,
       async set(d){if(t==="contactos"&&S.yo&&S.yo.rol==="coordinador"){const {error}=await sb.rpc("crear_noticia",{p_id:id,p_d:d});if(error)throw fallo(error);return}
         const {error}=await sb.from(t).upsert(fila(t,id,d));if(error)throw fallo(error)},
+      async leer(){const {data,error}=await sb.from(t).select("d").eq("id",id).maybeSingle();if(error)throw fallo(error);return data?data.d:null},
       async delete(){const {error}=await sb.from(t).delete().eq("id",id);if(error)throw fallo(error)}}}
   };return api}
 function documento(ruta){
@@ -1908,7 +1915,7 @@ $("#view").addEventListener("click",e=>{if(e.target.id==="btn-importar")importar
 let arrancado=false;
 async function arrancar(sesion){
   if(arrancado)return;
-  const {data:yo,error}=await sb.from("perfiles").select("nombre,rol,zona").eq("id",sesion.user.id).maybeSingle();
+  const {data:yo,error}=await sb.from("perfiles").select("nombre,rol,zona,activo").eq("id",sesion.user.id).maybeSingle();
   if(error||!yo||yo.activo===false){verLogin("Tu email ("+sesion.user.email+") no está dado de alta en el CRM. Pídele a Stiwhar que te añada.");$("#l-paso1").hidden=true;
     if(!$("#l-otro")){$("#l-msg").insertAdjacentHTML("afterend",'<button class="btn" type="button" id="l-otro">Entrar con otro email</button>');$("#l-otro").onclick=async()=>{await sb.auth.signOut();location.reload()}}return}
   arrancado=true;$("#login").hidden=true;S.yo=yo;ajustarPorRol();
