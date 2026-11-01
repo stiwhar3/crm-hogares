@@ -33,6 +33,7 @@ header .wrap{position:relative}
 nav#tabs.abierto{display:flex}
 nav#tabs button[data-v]{display:flex;align-items:center;justify-content:space-between;text-align:left;color:var(--fg);font:500 15px var(--body);padding:11px 14px;border-radius:12px;border:0}
 nav#tabs button[data-v][hidden]{display:none}
+.tuts{display:grid;gap:8px}.tut{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:0}.tut summary{cursor:pointer;padding:12px 14px;font-size:15px}.tut video{display:block;width:100%;max-width:360px;margin:0 auto 12px;border-radius:10px;background:#000;aspect-ratio:9/16}
 nav#tabs button[data-v]:hover{background:var(--bg);color:var(--fg)}
 nav#tabs button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600;border:0}
 nav .count{border-radius:999px}
