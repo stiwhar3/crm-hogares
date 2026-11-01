@@ -581,7 +581,7 @@ function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeou
 
 /* ---------- reglas de negocio ---------- */
 function urgPub(c){
-  if(!c.publicado||c.etapa!=="Desarrollo") return null;
+  if(!c.publicado||c.etapa!=="Desarrollo"||c.censoId||c.viviendaLocalizada) return null; /* viviendaLocalizada: casilla temporal para calles fuera del censo. */ /* con vivienda del censo ya está localizada: sigue en Desarrollo hasta hablar con el propietario */
   const lim=c.publicado==="Particular"?1:2,d0=new Date((c.fechaPublicado||hoyISO())+"T12:00");d0.setDate(d0.getDate()+lim);
   const lv=d0.toISOString().slice(0,10),d=dias(hoyISO(),lv);
   return {limite:lv,d,cls:d<=0?"bad":"warn",txt:d<0?`Publicada sin localizar: venció hace ${-d} d`:d===0?"Publicada: localizar HOY":`Publicada: localizar antes del ${fmtF(lv)}`};
@@ -617,7 +617,7 @@ function rowContacto(c){
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
     <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
     <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
-    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${!c.censoId&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.publicado&&c.etapa==="Desarrollo"&&(c.censoId||c.viviendaLocalizada)?`<span class="pill warn">Publicada · localizada, falta hablar con el propietario</span>`:""}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${!c.censoId&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
   </button>`;
 }
 function rowEncargo(e){
@@ -671,7 +671,7 @@ function vHoy(){
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sp=sinPaso().length,cli=clientesAntiguos(),llamar=(()=>{const z=miZonaLlamar();return z&&S.censo?aQuienLlamar(z):[]})();
   const B=[
-    {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza al propietario y pásala a Seguimiento: 2 días si es agencia o portal, 1 si es particular.",html:hoyLista("urg",urg,rowContacto,"")},
+    {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza la vivienda y enlázala a su ficha del censo: 2 días si es agencia o portal, 1 si es particular. Pasa a Seguimiento cuando hables con el propietario.",html:hoyLista("urg",urg,rowContacto,"")},
     {k:"pend",t:"Próximos pasos de hoy",n:pend.length,tono:pend.some(c=>proxEstado(c).cls==="bad")?"bad":"warn",html:hoyLista("pend",pend,rowContacto,"")+(sp?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-go="sinpaso">${sp} sin próximo paso</button></div>`:"")},
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
@@ -900,7 +900,7 @@ const FORMS={
   contactos:{titulo:"propietario",fields:[
     ["direccion","Dirección del inmueble *","text",{full:1,req:1}],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
     ["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
-    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["motivo","Situación","sel",()=>MOTIVOS],
+    ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["viviendaLocalizada","Vivienda localizada aunque no está en el censo (temporal)","check"],["motivo","Situación","sel",()=>MOTIVOS],
     ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],
     ["fechaValoracion","Fecha de valoración","date"],["precioValorado","Precio valorado (€)","number"],["precioPropietario","Precio que pide el propietario (€)","number"],
     ["necesitaSti","Necesita a Stiwhar","check"],["notaSti","Qué necesita de Stiwhar","text",{full:1}],
