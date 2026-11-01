@@ -197,7 +197,6 @@ nav#tabs.abierto{display:flex}
 nav#tabs button[data-v]{display:flex;align-items:center;justify-content:space-between;text-align:left;color:var(--fg);font:500 15px var(--body);padding:11px 14px;border-radius:12px;border:0}
 nav#tabs button[data-v][hidden]{display:none}
 .tuts{display:grid;gap:8px}.tut{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:0}.tut summary{cursor:pointer;padding:12px 14px;font-size:15px}.tut video{display:block;width:100%;max-width:360px;margin:0 auto 12px;border-radius:10px;background:#000;aspect-ratio:9/16}
-
 nav#tabs button[data-v]:hover{background:var(--bg);color:var(--fg)}
 nav#tabs button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600;border:0}
 nav .count{border-radius:999px}
@@ -537,12 +536,13 @@ function vRanking(per){per=per||"semana";pedirRanking(per);const R=(S.rankings||
 
 /* ---------- «A quién llamar hoy»: probabilidad de vender ---------- */
 function fechaTxt(t){let best=null;for(const m of String(t||"").matchAll(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/g)){let y=+m[3];if(y<100)y+=2000;const d=new Date(y,+m[2]-1,+m[1]);if(!isNaN(d)&&d<=new Date()&&(!best||d>best))best=d}return best}
-function puntuarViv(u){let p=0;const M=[],ocu=String(u.ocu||"").toUpperCase(),com=String(u.com||"");
+function puntuarViv(u){let p=0;const M=[],ocu=String(u.ocu||"").toUpperCase(),H=(u.historial||[]).filter(h=>h.n),com=[u.com||"",...H.map(h=>h.n)].join(" \n ");
   if(/VAC/.test(ocu)){p+=30;M.push("Vacía")}else if(/INQUIL|ALQ/.test(ocu)){p+=25;M.push("Alquilada (inversor)")}else if(/FAMILIAR/.test(ocu)){p+=10;M.push("Vive un familiar")}
   if(u.val){p+=25;M.push("Ya se valoró")}
   const em=[...com.matchAll(/\((19\d{2})\)/g)].map(m=>+m[1]);
   if(em.length){const y=Math.min(...em);if(y<=1950){p+=20;M.push("Mayores de 75")}else if(y<=1958){p+=10;M.push("Mayores de 67")}}
-  const f=fechaTxt(u.ult)||fechaTxt(com),dd=f?Math.round((Date.now()-f)/864e5):null;
+  const fh=H.filter(h=>h.deCenso).map(h=>new Date(h.f)).sort((a,b)=>b-a)[0];
+  const f=fechaTxt(u.ult)||fh||fechaTxt(com),dd=f?Math.round((Date.now()-f)/864e5):null;
   if(dd==null){p+=15;M.push("Nunca contactada")}else if(dd>180){p+=10;M.push("Sin contacto hace "+Math.round(dd/30)+" meses")}else if(dd<30){p-=40;M.push("Contactada hace "+dd+" días")}
   if(+u.anio&&+u.anio<1975){p+=5}
   if(/no (quiere|vende|va a vender)|no le (vuelva|llame)|\bko\b|borr(e|ar) su/i.test(com)){p-=50;M.push("Dijo que no")}
@@ -572,6 +572,8 @@ const notiDePortal=b=>notiPorPortal().get(b)||[];
 const plOrden=t=>{const p=zPl(t);if(p==="AT")return 99;if(p==="OD"||p==="")return -2;const n=parseInt(p);return isNaN(n)?-1:n};
 const natCmp=(a,b)=>String(a||"").localeCompare(String(b||""),"es",{numeric:true});
 function ordenTaratura(U){return [...U].sort((x,y)=>natCmp(zPP(x.esc),zPP(y.esc))||plOrden(y.planta)-plOrden(x.planta)||natCmp(zPP(x.puerta),zPP(y.puerta)))}
+function ultimoHist(u){const H=(u.historial||[]).filter(h=>h.n&&h.f);return H.length?H[H.length-1]:null}
+const fmtCorta=iso=>new Date(iso).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});
 function ultimoComentario(u){const H=(u.historial||[]).filter(h=>h.n);const n=H.length?H[H.length-1].n:(u.com||"");return String(n).replace(/\s+/g," ").trim()}
 function pisoTxt(u,conEsc){const pl=zPl(u.planta);const p=/^OD$/.test(u.planta||"")?"Local / otros":pl==="0"?"Bajo":pl==="AT"?"Ático":pl?pl+"º":"";
   return [conEsc&&u.esc&&!/^T$/.test(u.esc)?"Esc "+u.esc:"",p,u.puerta&&!/^OS$/.test(u.puerta)?zPP(u.puerta):""].filter(Boolean).join(" ")}
@@ -582,7 +584,7 @@ function imprimirTaratura(L){if(!L||!L.length)return;
     return `<section class="h"><div class="cab"><img src="${logo}" alt=""><div class="tt"><b>${esc(viaLarga(b.via))} ${esc(b.num)}</b><span>Zona ${esc(zona.charAt(0)+zona.slice(1).toLowerCase())}${as&&as.nombre?" · "+esc(as.nombre):""} · ${b.u.length} viviendas · ${hoy}</span></div></div>
     ${N.length?`<p class="nt">Noticias activas: ${N.map(c=>esc((c.direccion||"").replace(/^.*?\d+\s*,?\s*/,"")||c.direccion)+" ("+esc(c.etapa||"")+(c.asesor?", "+esc(c.asesor):"")+")").join(" · ")}</p>`:""}
     <table><thead><tr><th class="p">Piso</th><th class="n">Nombre</th><th class="t">Teléfono</th><th class="c">Último comentario</th><th class="a">Notas</th></tr></thead><tbody>
-    ${U.map(u=>{const c=ultimoComentario(u),f=u.ult||"";return `<tr><td class="p">${esc(pisoTxt(u,escs.size>1))}</td><td class="n">${esc(u.prop||u.abre||"")}${notiDe(u._id)&&notiActiva(notiDe(u._id))?' <i>noticia</i>':""}</td><td class="t">${esc(u.tel||"")}</td><td class="c">${f?`<b>${esc(f)}</b> `:""}${esc(c.length>140?c.slice(0,137)+"…":c)}</td><td class="a"></td></tr>`}).join("")}
+    ${U.map(u=>{const c=ultimoComentario(u),f=u.ult||(h=>h?fmtCorta(h.f):"")(ultimoHist(u));return `<tr><td class="p">${esc(pisoTxt(u,escs.size>1))}</td><td class="n">${esc(u.prop||u.abre||"")}${notiDe(u._id)&&notiActiva(notiDe(u._id))?' <i>noticia</i>':""}</td><td class="t">${esc(u.tel||"")}</td><td class="c">${f?`<b>${esc(f)}</b> `:""}${esc(c.length>140?c.slice(0,137)+"…":c)}</td><td class="a"></td></tr>`}).join("")}
     </tbody></table></section>`};
   const html=`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Taratura ${esc(L.length===1?L[0].b.via+" "+L[0].b.num:L.length+" portales")}</title><${"style"}>
     @page{size:A4;margin:12mm 10mm}body{font:9.5pt/1.3 Arial,sans-serif;color:#333130;margin:0}
@@ -1113,7 +1115,7 @@ function vCenso(){
   const NB=q?Etodos.flatMap(b=>notiDePortal(b)):[];
   S.cf.lista=Etodos.map(b=>({zona:cf.zona,b}));
   const tel=t=>/\d{6}/.test((t||"").replace(/\s/g,""));
-  const fila=u0=>{const u=viv(u0);return `<tr class="viv${S.censoEd[u0._id]?" ed":""}" data-viv="${esc(u0._id)}" tabindex="0"><td>${esc([u.esc&&("Esc "+u.esc),u.planta,u.puerta].filter(Boolean).join(" · "))}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(u.prop||u.abre||"")}${(n=>n?` <span class="pill acc">Noticia · ${esc(n.etapa||"")}</span>`:"")(notiDe(u0._id))}</td><td>${esc(u.tel||"")}</td><td style="text-align:left">${esc(u.ocu||"")}</td><td>${esc(u.ult||"")}</td><td style="text-align:left;white-space:normal;min-width:220px;color:var(--muted)">${esc((u.com||"").slice(0,180))}</td></tr>`};
+  const fila=u0=>{const u=viv(u0);return `<tr class="viv${S.censoEd[u0._id]?" ed":""}" data-viv="${esc(u0._id)}" tabindex="0"><td>${esc([u.esc&&("Esc "+u.esc),u.planta,u.puerta].filter(Boolean).join(" · "))}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(u.prop||u.abre||"")}${(n=>n?` <span class="pill acc">Noticia · ${esc(n.etapa||"")}</span>`:"")(notiDe(u0._id))}</td><td>${esc(u.tel||"")}</td><td style="text-align:left">${esc(u.ocu||"")}</td><td style="text-align:left;white-space:normal;min-width:160px">${(h=>`${esc(u.ult||(h?fmtCorta(h.f):""))}${h?`<div style="color:var(--muted);font-size:12px">${esc(String(h.n).replace(/\s+/g," ").slice(0,90))}</div>`:""}`)(ultimoHist(u))}</td><td style="text-align:left;white-space:normal;min-width:220px;color:var(--muted)">${esc((u.com||"").slice(0,180))}</td></tr>`};
   const koRow=k=>`<div class="ko"><span class="pill bad">KO${k.estado?" · "+esc(k.estado):""}</span> <b>${esc(k.dir)}</b>${k.prop?" · "+esc(k.prop):""}${k.tel?" · "+esc(k.tel):""}${k.inmo?" · "+esc(k.inmo):""}${k.precio?" · "+esc(k.precio):""}<div class="s">${esc((k.com||"").slice(0,300))}</div></div>`;
   const ed=b=>{const U=b.u.map(viv),nt=U.filter(u=>tel(u.tel)).length,nn=U.filter(u=>u.prop||u.abre).length;
     const RP=resumenPortal(b);
@@ -1452,7 +1454,7 @@ function fmtFH(iso){const d=new Date(iso);return d.toLocaleDateString("es-ES",{d
 function bloqueHist(d,conHist){
   const H=[...((d&&d.historial)||[])].reverse();
   return `<label class="full">Nueva nota (se guarda con fecha en el historial)<textarea id="fld-nuevaNota" placeholder="Qué ha pasado hoy…"></textarea></label>
-  ${conHist?`<div class="full hist"><div class="hl">Historial</div>${H.length?H.map(h=>`<div class="he"><span class="hf">${fmtFH(h.f)}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join(""):`<div class="he" style="color:var(--muted)">Aún no hay cambios guardados desde el CRM.</div>`}</div>`:""}`;
+  ${conHist?`<div class="full hist"><div class="hl">Historial</div>${H.length?H.map(h=>`<div class="he"><span class="hf">${h.d?new Date(h.f).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"}):fmtFH(h.f)}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join(""):`<div class="he" style="color:var(--muted)">Aún no hay cambios guardados desde el CRM.</div>`}</div>`:""}`;
 }
 function leerForm(){
   const F=FORMS[cur.col],o={};
@@ -1463,13 +1465,14 @@ function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u03
   .replace(/^\s*(C\/|CL\.?\s|CALLE\s|AVDA\.?\s|AVENIDA\s|AV\.?\s|PZA\.?\s|PZ\.?\s|PLAZA\s|PASEO\s)/,"").replace(/\bESC(ALERA)?\b/g,"").replace(/[^A-Z0-9]/g,"")}
 function etiqueta(col,k){const f=(FORMS[col]?.fields||[]).find(x=>x[0]===k);return f?f[1].replace(" *",""):k}
 function anterior(col,id){if(!id)return null;if(col==="portales")return {...(S.portales[id]||{})};if(col==="censoEdits"){const r=buscarViv(id);return {...(r?r.u:{}),...(S.censoEd[id]||{})}}return S[col].find(x=>x.id===id)||null}
-async function guardar(col,id,data,nota){
+async function guardar(col,id,data,nota,extraHist){
   if(!S.db){toast("Sin conexión: no se ha guardado");return null}
   const ahora=new Date().toISOString(),old=anterior(col,id);
   const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","borrarSolicitado","vendidaVista"].includes(k)&&String(old[k]??"")!==String(data[k]??"")&&!(old[k]==null&&data[k]===false))
     .map(k=>({campo:etiqueta(col,k),antes:String(old[k]??"").slice(0,200),despues:String(data[k]??"").slice(0,200)})):[];
   const out={...(old||{}),...data}; delete out.id; delete out._id; out.actualizado=ahora;
   const hist=[...((old&&old.historial)||[])];
+  if(extraHist&&extraHist.length){hist.push(...extraHist);hist.sort((a,b)=>String(a.f).localeCompare(String(b.f)))}
   if(!old||cambios.length||nota) hist.push({f:ahora,...(old?{}:{alta:true}),...(cambios.length?{c:cambios}:{}),...(nota?{n:nota}:{})});
   out.historial=hist.slice(-300);
   try{ if(id){await S.db.collection(col).doc(id).set(out);return id}
@@ -1530,8 +1533,9 @@ $("#frm").addEventListener("click",async ev=>{
       if(!S.censo){b.textContent="Cargando censo…";await cargarCenso()}
       const vid=(old.censoId&&buscarViv(old.censoId)?old.censoId:null)||viviendaDeDir(old.direccion);
       if(vid){const ex={...(buscarViv(vid)?.u||{}),...(S.censoEd[vid]||{})};
-        const com=[ex.com,`${fmtF(hoyISO())} Fue noticia y vuelve al censo (${old.borrarSolicitado.motivo||""}).`,[old.nombre,old.telefono].filter(Boolean).length?"Datos de la noticia: "+[old.nombre,old.telefono].filter(Boolean).join(" · "):"",old.notas].filter(Boolean).join("\n").slice(0,4000);
-        const ok=await guardar("censoEdits",vid,{prop:ex.prop||old.nombre||"",tel:ex.tel||old.telefono||"",com,noticia:false},"Vuelve al censo desde la noticia: "+(old.borrarSolicitado.motivo||""));
+        const com=[ex.com,`Fue noticia hasta el ${fmtF(hoyISO())} (${old.borrarSolicitado.motivo||""}).`,[old.nombre,old.telefono].filter(Boolean).length?"Datos de la noticia: "+[old.nombre,old.telefono].filter(Boolean).join(" · "):"",old.notas].filter(Boolean).join("\n").slice(0,4000);
+        const hN=(old.historial||[]).filter(h=>h.n&&h.f&&!h.alta).map(h=>({f:h.f,...(h.d?{d:1}:{}),n:h.n,deNoticia:true}));
+        const ok=await guardar("censoEdits",vid,{prop:ex.prop||old.nombre||"",tel:ex.tel||old.telefono||"",com,noticia:false},"Vuelve al censo desde la noticia: "+(old.borrarSolicitado.motivo||""),hN);
         if(!ok){b.textContent="Aprobar: vuelve al censo";delete b.dataset.sure;return}
         msg="Hecho: ya no es noticia y su información queda en la vivienda del censo"}
       else msg="Ya no es noticia. No he encontrado la vivienda exacta en el censo: sus datos quedan en el registro de borrados"}
@@ -1686,13 +1690,13 @@ function abrirPortal(pid){const r=buscarPortal(pid);if(!r)return;const d=S.porta
     <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal()}
 FORMS.censoEdits={titulo:"vivienda",fields:[["prop","Propietario","text",{full:1}],["abre","Quién abre","text"],["tel","Teléfono","tel"],["ocu","Ocupado por","sel",()=>OCUPA],
-  ["loc","Propietario localizado","sel",()=>["","SI","NO"]],["ult","Último contacto","text"],["tipo","Tipo de contacto","text"],["val","Valorada (fecha y precio)","text"],["com","Comentarios","textarea",{full:1}]]};
+  ["loc","Propietario localizado","sel",()=>["","SI","NO"]],["ult","Último contacto","text"],["tipo","Tipo de contacto","text"],["val","Valorada (fecha y precio)","text"],["com","Comentarios (solo lo reseñable; cada contacto va en «Nueva nota» y queda en el historial)","textarea",{full:1}]]};
 function abrirViv(id){
   const r=buscarViv(id); if(!r) return; const d={...r.u,...(S.censoEd[id]||{})}; cur={col:"censoEdits",id,viv:r};
   const dir=[r.b.via,r.b.num,r.u.esc&&("Esc "+r.u.esc),r.u.planta&&(r.u.planta+"º"),r.u.puerta].filter(Boolean).join(" ");
   $("#frm").innerHTML=`<div class="dh">${esc(dir)}<div style="font:500 13px var(--body);color:var(--muted)">Zona ${esc(r.zona.toLowerCase())}${r.u.m2?" · "+esc(r.u.m2)+" m²":""}${r.u.anio?" · "+esc(r.u.anio):""}${r.u.rc?` · <span style="font-family:ui-monospace,monospace;user-select:all">${esc(r.u.rc)}</span>`:""}</div>${(n=>n?`<div style="margin-top:6px"><span class="pill acc">Es noticia de ${esc(n.asesor||"sin asesor")} · ${esc(n.etapa||"")}</span></div>`:"")(notiDe(id))}</div>
     <div class="db">${FORMS.censoEdits.fields.map(f=>field(f,f[0]==="ocu"&&d.ocu&&!OCUPA.includes(d.ocu)?d.ocu:d[f[0]])).join("")}
-    <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="ctoHoy">+ Contacto hoy</button><button class="btn small" type="button" data-act="informeViv">Informe de mercado</button><button class="btn small" type="button" data-act="aNoticia">${(S.contactos.find(c=>c.censoId===id))?"Abrir su noticia":"Pasar a noticia"}</button></div>${bloqueHist(S.censoEd[id]||{},true)}</div>
+    <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="ctoHoy">+ Contacto hoy</button><button class="btn small" type="button" data-act="informeViv">Informe de mercado</button><button class="btn small" type="button" data-act="aNoticia">${(S.contactos.find(c=>c.censoId===id))?"Abrir su noticia":"Pasar a noticia"}</button></div>${bloqueHist(d,true)}</div>
     <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   const o=$("#fld-ocu"); if(d.ocu&&!OCUPA.includes(d.ocu)){o.insertAdjacentHTML("beforeend",`<option selected>${esc(d.ocu)}</option>`)}
   $("#dlg").showModal();
