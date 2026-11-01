@@ -352,68 +352,125 @@ function imprimirTaratura(L){if(!L||!L.length)return;
   const w=window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})),"_blank");if(!w)toast("Permite las ventanas emergentes para imprimir")}
 
 /* ---------- Notas rápidas del portal (texto pegado o foto del buzón) ---------- */
-const PG_PART=/^(de|del|la|las|los|y|e|da|di|van|von)$/i,PG_NONAME=/^(vac[ií][oa]s?|no|alquilad[oa]s?|inquilin[oa]s?|nadie|cerrad[oa]|okupad[oa]|local)$/i;
+const PG_PART=/^(de|del|la|las|los|y|e|da|di|van|von)$/i,PG_NONAME=/^(vac[ií][oa]s?|no|alquilad[oa]s?|alq|inquilin[oa]s?|inquila|nadie|cerrad[oa]|okupad[oa]s?|ocupad[oa]s?|local|nsnv|ns|nv|ni|nitp|nc|tp|nt|m\??|prop|props)$/i;
+const PG_NOESNOMBRE=new Set("ME MI MIS SE LE LES LO LA LAS EL LOS UN UNA UNOS UNAS YA SI SÍ NI NO MUY MAS MÁS HAY HA HAN HE ES SON ESTA ESTÁ ESTAN ESTÁN ESTABA TIENE TIENEN VIVE VIVEN DICE DICEN HABLO HABLA ABRE ABREN ABRO SALE SALEN VEO ESCUCHO SUENA LLAMO LLAMÓ DEJO DEJA CREO PUEDE PARECE PARECEN QUIERE QUIEREN VENDE VENDIDO VENDIDA ACABA ACABAN COMPRADO REFORMA REFORMANDO OBRAS SEÑORA SEÑOR SEÑORES SEÑORAS CHICA CHICO CHAVAL CHAVALA CHICOS HIJA HIJO HIJOS GENTE MUJER HOMBRE VECINO VECINA VECINOS PAREJA NIÑO NIÑOS NIÑA MAYOR MAYORES JOVEN MAJO MAJA MAJETE MAJETA PERRO GATO PISO CASA BUZÓN BUZON PUERTA TIMBRE MIRILLA CERRADURA CARTA CARTAS TARJETA REVISTA PRESIDENTE PRESIDENTA PROPIETARIO PROPIETARIA DUEÑO DUEÑA EN DE CON POR PARA QUE QUÉ TODO TODOS TAMBIÉN TAMBIEN PERO SIN SOLO SÓLO OTRO OTRA AQUÍ AQUI AHÍ AHI ALLÍ ALLI NADA NUNCA SIEMPRE ANTES DESPUÉS DESPUES HOY AYER MAÑANA TARDE NOCHE LUNES MARTES MIÉRCOLES MIERCOLES JUEVES VIERNES SÁBADO SABADO DOMINGO OJO POSIBLE PUEDE IGUAL CASI ESC ESCALERA PORTAL BLOQUE PLANTA BAJO ÁTICO ATICO VER LLAMAR VOLVER INSISTIR PREGUNTAR PASAR IR".split(" "));
 function pgPuerta(t){t=String(t||"").toUpperCase().replace(/\.$/,"");if(/^IZ/.test(t))return "IZ";if(/^(DCH|DER|DR)/.test(t))return "DR";if(/^CENT/.test(t))return "CN";return zPP(t)}
-function pgUnidad(U,esc,pl,pu){let C=U.filter(u=>zPl(u.planta)===pl&&zPP(u.puerta)===pgPuerta(pu));if(esc){const f=C.filter(u=>zPP(u.esc)===zPP(esc));if(f.length)C=f}return C.length===1?C[0]._id:""}
+function pgEscVal(t){t=zUp(t||"").replace(/[.:\s]/g,"");if(/^(D|DCHA|DCH|DER|DERECHA)$/.test(t))return "D";if(/^(I|IZ|IZQ|IZQDA|IZDA|IZQUIERDA)$/.test(t))return "I";return t}
+function pgUnidad(U,esc,pl,pu){let C=U.filter(u=>zPl(u.planta)===pl&&zPP(u.puerta)===pgPuerta(pu));if(esc){const f=C.filter(u=>zPP(u.esc)===zPP(pgEscVal(esc)));if(f.length)C=f}return C.length===1?C[0]._id:""}
 const PG_MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-const PG_ABR=[[/•/g," NC "],[/\bnsnv\b/gi,"No sabe ni vende"],[/\bnitp\b/gi,"No interesa tras puerta"],[/\bNC\b/g,"No contactado"],[/(^|\s)M(?=\s|[,.;:]|$)/g,"$1Mirilazo"]];
-function pgExpand(t){let x=" "+String(t||"")+" ";for(const [r,v] of PG_ABR)x=x.replace(r,v);x=x.replace(/\s+/g," ").trim();
-  return x.replace(/^(No contactado|Mirilazo|No sabe ni vende|No interesa tras puerta)\s+(?=[a-záéíóúñ])/,"$1, ")}
-const pgSinHablar=c=>/^(No contactado|Mirilazo)\b/.test(c||"");
+const PG_ABR=[[/•/g," NC "],[/\bns\s*[\/\-]?\s*nv\b/gi,"nsnv"],[/\bno sabe,? (?:ni |no )?vende\b/gi,"nsnv"],[/\bnsnv\b/gi,"No sabe ni vende"],[/\bnitp\b/gi,"No interesa tras puerta"],[/\bNC\b/g,"No contactado"],[/(^|\s)M(?=\s|[,.;:?]|$)/g,"$1Mirilazo"],
+  [/^\s*ni(?=\s*$)/i,"No interesa"],[/^\s*ni\s+(?=interesa\b)/i,"No "],[/(^|\s)ns(?=\s|[,.;:]|$)/gi,"$1no sabe"],[/(^|\s)nv(?=\s|[,.;:]|$)/gi,"$1no vende"],[/\balq\b\.?/gi,"alquilado"]];
+function pgExpand(t){let x=" "+String(t||"")+" ";for(const [r,v] of PG_ABR)x=x.replace(r,v);x=x.replace(/\s+/g," ").trim();x=x.replace(/^no (sabe|vende)\b/,(a,b)=>"No "+b);
+  return x.replace(/^(No contactado|Mirilazo\??|No sabe ni vende|No interesa tras puerta|No interesa)\s+(?=[a-záéíóúñ])/,"$1, ")}
+const pgSinHablar=c=>/^(No contactado|Mirilazo)/.test(c||"");
 function pgFecha(l){let m=l.match(/(\d{1,2})\s*(?:de\s+)?([a-záéíóú]+)\s*(?:de\s+|del\s+)?(\d{4})/i),d=null;
   if(m){const k=PG_MESES.findIndex(x=>zUp(x)===zUp(m[2])||zUp(x).slice(0,3)===zUp(m[2]).slice(0,3));if(k>=0)d=[+m[3],k+1,+m[1]]}
   if(!d){m=l.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);if(m)d=[m[3].length===2?2000+ +m[3]:+m[3],+m[2],+m[1]]}
   return d&&d[1]>=1&&d[1]<=12&&d[2]>=1&&d[2]<=31?`${d[0]}-${String(d[1]).padStart(2,"0")}-${String(d[2]).padStart(2,"0")}`:""}
 function pgHora(l){let m=l.match(/\b(\d{1,2})\s*[:.h]\s*(\d{2})\b/i)||l.match(/\b(?:a las|sobre las|hacia las)\s+(\d{1,2})\b/i)||l.match(/\b(\d{1,2})\s*h(?:oras)?\b/i);
   if(!m)return "";let h=+m[1];const mi=m[2]?+m[2]:0;if(/tarde|noche|pm/i.test(l)&&h<12)h+=12;return h<24&&mi<60?String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0"):""}
-const PG_PISO=/^(?:(?:esc(?:alera)?|portal)\.?\s*([0-9a-z]+)\s*[,.\-]?\s*)?(bajo|bj|[áa]tico|at|\d{1,2})\s*[ºª°]?\s*[-\/]?\s*(izq(?:da|uierda)?\.?|dcha\.?|dch\.?|derecha|centro|[a-h]|\d{1,2})(?![a-záéíóúñ0-9:\/])[\s,.:;\-]*(.*)$/i;
-function pgParse(txt,U){const out=[],cab={fecha:"",hora:"",dir:"",nota:""};let enCab=true;
-  for(const raw of String(txt||"").split(/\r?\n/)){const l=raw.replace(/^[\s\-*·]+/,"").trim();if(!l)continue;
-    const f=pgFecha(l),h=pgHora(l);
-    if(enCab&&(f||h)&&!PG_PISO.test(l.replace(/^•\s*/,""))||enCab&&f){if(f&&!cab.fecha)cab.fecha=f;if(h&&!cab.hora)cab.hora=h;continue}
-    const lp=l.replace(/^•\s*/,"");const m=lp.match(PG_PISO);
-    if(!m){if(enCab||!out.length){const d=l.match(/^(.*?[a-záéíóúñ].*?)\s+(?:n[ºª°]?\s*)?(\d{1,4})\b[\s,.\-]*(.*)$/i);
-        if(d&&!cab.dir){cab.dir=(d[1]+" "+d[2]).trim();cab.nota=d[3].trim();if(!cab.hora)cab.hora=pgHora(d[3]);continue}
-        if(enCab){cab.nota=(cab.nota+" "+l).trim();continue}}
-      out[out.length-1].com=pgExpand(out[out.length-1].com+" "+l);continue}
-    enCab=false;
-    const pl=/^b/i.test(m[2])?"0":/^[áa]t/i.test(m[2])?"AT":String(+m[2]);let rest=(lp!==l?"• ":"")+(m[4]||""),tel="",nombre="",com="";
+/* Mensajes copiados o exportados de WhatsApp: «[19/3/26, 11:02:55] Iván: …» o «19/3/26, 11:02 - Iván: …» */
+const PG_WA=/^\[?(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::\d{2})?\]?\s*(?:-\s*)?[^:\n]{1,40}?:\s?/;
+const PG_ABRV="(?:nsnv|nitp|ns|nv|ni|alq|m\\b)";
+const PG_PISO=new RegExp("^(?:(?:esc(?:alera)?|portal|bloque)\\.?\\s*([0-9a-z]+)\\s*[,.\\-]?\\s*)?(bajo|bj|[áa]tico|at|\\d{1,2})\\s*[ºª°]?\\s*[-\\/]?\\s*(izq(?:da|uierda)?\\.?|dcha\\.?|dch\\.?|derecha|centro|[a-l]|\\d{1,2})(?![a-záéíóúñ0-9:\\/])[\\s,.:;\\-]*(.*)$","i");
+const PG_NUM=/^(bajo|bj|b|[áa]tico|at|a|\d{1,2})\s*[,.]\s*(\d{1,2})(?![\d.,ºª°a-z])[\s,.:;\-]*(.*)$/i;
+const PG_BN=/^([ab])\.?(\d{1,2})(?![\d.,ºª°a-z])[\s,.:;\-]*(.*)$/i;
+const PG_LETRA=/^([a-l])(?![a-záéíóúñ0-9])[\s•.:;\-]*(.*)$/i;
+const PG_ESCCAB=/^(?:esc(?:alera)?|portal|bloque|blq)\.?\s*(dcha\.?|dch\.?|derecha|izq(?:da|uierda)?\.?|izda\.?|\d{1,2}|[a-z](?![a-záéíóúñ]))\s*[:.,\-]?\s*/i;
+function pgPlanta(t){return /^b/i.test(t)?"0":/^[áa]t|^a$/i.test(t)?"AT":String(+t)}
+/* Divide «4A •, 3A nv, 2A • no timbre» en una vivienda por trozo */
+function pgTrozos(l){const p=l.split(/\s*,\s*(?=(?:bajo|bj|[áa]tico|\d{1,2})\s*[ºª°]?\s*[a-l](?![a-záéíóúñ0-9]))/i);return p.length>1&&p.every(x=>PG_PISO.test(x))?p:[l]}
+function pgParse(txt,U,op){op=op||{};U=U||[];const out=[],cab={fecha:"",hora:"",dir:"",nota:""};let enCab=true,esc="",run=null,portal=null,resto="";
+  const numPuertas=U.length&&U.every(u=>/^\d+$/.test(zPP(u.puerta)));
+  const L=String(txt||"").replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g,"").split(/\r?\n/),L0=[...L];let kFin=L.length;
+  const nota=t=>{cab.nota=(cab.nota+" "+t).trim()};
+  const plTope=e=>{const P=U.filter(u=>!e||zPP(u.esc)===zPP(pgEscVal(e))).map(u=>zPl(u.planta)).filter(p=>/^\d+$/.test(p)).map(Number);return P.length?Math.max(...P):null};
+  const unidad=(e,pl,pu,rest,ded)=>{let tel="",nombre="",com="";
     const t=rest.match(/(?:\+?34[\s.]?)?([6789](?:[\s.]?\d){8})(?!\d)/);
     let antes=rest,despues="";if(t){tel=t[1].replace(/\D/g,"");antes=rest.slice(0,t.index);despues=rest.slice(t.index+t[0].length)}
     const tk=antes.trim().split(/\s+/).filter(Boolean),N=[];let i=0;
-    for(;i<tk.length;i++){const w=tk[i].replace(/[,:;.\-–]+$/,"");if(/^[A-ZÁÉÍÓÚÑÜ][a-záéíóúñüA-ZÁÉÍÓÚÑÜ]/.test(w)&&!PG_NONAME.test(w)&&!/^(NC|NSNV|NITP)$/i.test(w))N.push(w);else if(N.length&&PG_PART.test(w)&&(j=>{while(tk[j]&&PG_PART.test(tk[j]))j++;return tk[j]&&/^[A-ZÁÉÍÓÚÑÜ]/.test(tk[j])})(i+1))N.push(w);else break;if(/[,:;\-–]$/.test(tk[i])){i++;break}}
+    for(;i<tk.length;i++){const w=tk[i].replace(/[,:;.\-–]+$/,"");
+      if(/^[A-ZÁÉÍÓÚÑÜ][a-záéíóúñüA-ZÁÉÍÓÚÑÜ]/.test(w)&&!PG_NONAME.test(w)&&!PG_NOESNOMBRE.has(zUp(w))&&!PG_NOESNOMBRE.has(w.toUpperCase()))N.push(w);
+      else if(N.length&&PG_PART.test(w)&&(j=>{while(tk[j]&&PG_PART.test(tk[j]))j++;return tk[j]&&/^[A-ZÁÉÍÓÚÑÜ]/.test(tk[j])})(i+1))N.push(w);else break;if(/[,:;\-–]$/.test(tk[i])){i++;break}}
     nombre=N.join(" ");com=pgExpand([tk.slice(i).join(" "),despues].join(" ").replace(/^[\s,.:;\-–]+/,""));
-    out.push({id:pgUnidad(U,m[1],pl,m[3]),piso:[m[1]?"Esc "+m[1]:"",pl==="0"?"Bajo":pl==="AT"?"Ático":pl+"º",pgPuerta(m[3])].filter(Boolean).join(" "),nombre,tel,com})}
-  return {F:out,cab}}
+    const plTxt=pl==="?"?"¿?":pl==="0"?"Bajo":pl==="AT"?"Ático":pl+"º";
+    out.push({id:pl==="?"?"":pgUnidad(U,e,pl,pu),piso:[e?"Esc "+e:"",plTxt,pgPuerta(pu)].filter(Boolean).join(" "),nombre,tel,com,...(ded?{deducida:1,marcada:false}:{})})};
+  for(let k=0;k<L.length;k++){let raw=L[k],wf="",wh="";const w=raw.match(PG_WA);
+    if(w){wf=`${w[3].length===2?"20"+w[3]:w[3]}-${w[2].padStart(2,"0")}-${w[1].padStart(2,"0")}`;wh=w[4].padStart(2,"0")+":"+w[5];raw=raw.slice(w[0].length)}
+    let l=raw.replace(/<\s*(?:se editó este mensaje|this message was edited|adjunto|attached|multimedia omitido|media omitted)[^>]*>/gi,"").replace(/^[\s\-*·]+(?!\d)/,"").trim();
+    if(w&&!out.length&&enCab){if(!cab.fecha)cab.fecha=wf;if(!cab.hora)cab.hora=wh}
+    if(!l)continue;
+    const f=pgFecha(l),h=pgHora(l);
+    if(enCab&&(f||h)&&!PG_PISO.test(l.replace(/^•\s*/,""))&&!PG_NUM.test(l)||enCab&&f&&!/[a-záéíóúñ]{3,}\s+\d/i.test(l)){if(f&&!cab.fecha)cab.fecha=f;if(h&&!cab.hora)cab.hora=h;continue}
+    // Escalera / portal / bloque como cabecera: «Esc 2:», «Esc.3», «Bloque1», «Escalera derecha 12A …»
+    const ei=l.match(/^(izq(?:da|uierda)?|izda|dcha|derecha)\.?\s*(\d{1,2})?\s*:\s*$/i);if(ei){esc=pgEscVal(ei[1])+(ei[2]||"");run=null;enCab=false;continue}
+    const ec=l.match(PG_ESCCAB);
+    if(ec&&!PG_PISO.test(l)){esc=pgEscVal(ec[1]);run=null;l=l.slice(ec[0].length).trim();enCab=false;if(!l)continue}
+    else if(ec&&PG_PISO.test(l)){const m0=l.match(PG_PISO);if(m0&&m0[1]){esc=pgEscVal(m0[1]);run=null}}
+    const bul=/^•/.test(l);let lp=l.replace(/^•\s*/,"").replace(new RegExp("^(\\d{1,2}\\s*[ºª°]?\\s*[a-l]|[ab]\\.?\\d{1,2}|\\d{1,2}[.,]\\d{1,2})(?="+PG_ABRV+")","i"),"$1 ");
+    const pz=pgTrozos(lp);
+    if(pz.length>1){enCab=false;run=null;for(const x of pz){const m=x.match(PG_PISO);unidad(m[1]?pgEscVal(m[1]):esc,pgPlanta(m[2]),m[3],(m[4]||""))}continue}
+    let m=lp.match(PG_PISO),mn=!m&&lp.match(PG_NUM),mb=!m&&!mn&&lp.match(PG_BN);
+    if(mb&&!numPuertas&&U.length){m=[lp,"",mb[2],mb[1],mb[3]];mb=null}
+    if(m){enCab=false;run=null;unidad(m[1]?pgEscVal(m[1]):esc,pgPlanta(m[2]),m[3],(bul?"• ":"")+(m[4]||""));continue}
+    if(mn){enCab=false;run=null;unidad(esc,pgPlanta(mn[1]),mn[2],mn[3]||"");continue}
+    if(mb){enCab=false;run=null;unidad(esc,pgPlanta(mb[1]),mb[2],mb[3]||"");continue}
+    // Solo la letra («A •», «B nsnv»): la planta se deduce por el orden (de arriba abajo)
+    const ml=lp.match(PG_LETRA);
+    if(ml&&(run||/^(•|ns|nv|ni|nitp|nt|m\b|m\?|alq|tp|-|$)/i.test((ml[2]||"").trim())||/^[a-l]\s*•/i.test(lp))&&(!enCab||esc||cab.dir)){
+      enCab=false;const pu=ml[1].toUpperCase();
+      if(!run){const tope=plTope(esc);run={pl:tope,vistas:new Set()}}
+      else if(run.vistas.has(pu)){run.pl=run.pl==null?null:run.pl-1;run.vistas=new Set()}
+      run.vistas.add(pu);const pl=run.pl==null||run.pl<0?"?":run.pl===0?"0":String(run.pl);
+      unidad(esc,pl,pu,(lp.startsWith(ml[1]+"•")||/^[a-l]\s*•/i.test(lp)?"• ":"")+(ml[2]||"").replace(/^•\s*/,""),true);continue}
+    // Dirección del portal
+    const d=l.match(/^(?:(?:c\/|calle|avda\.?|avenida|plaza|pza\.?|paseo|pº)\s*)?([a-záéíóúñü][a-záéíóúñü .'ºª]*?[a-záéíóúñü])\s*,?\s*(?:n[ºª°.]\s*|n[uú]m(?:ero)?\.?\s*)?(\d{1,4})(?!\s*[ºª°]?\s*[a-l](?![a-záéíóúñ]))\b[\s,.:\-]*(.*)$/i);
+    if(d){const dir=(d[1]+" "+d[2]).trim();const bp=op.esPortal?op.esPortal(dir):null;
+      if(enCab||!out.length){if(!cab.dir||bp&&bp!==portal){cab.dir=dir;portal=bp;cab.nota="";esc="";run=null;
+          if(w){cab.fecha=wf;cab.hora=wh}
+          let r=d[3].trim();const e2=r.match(PG_ESCCAB);if(e2){esc=pgEscVal(e2[1]);r=r.slice(e2[0].length).trim()}
+          if(r){const pz2=pgTrozos(r.replace(/^•\s*/,""));if(PG_PISO.test(pz2[0])||PG_NUM.test(pz2[0])){L[k]=r;k--;enCab=false;continue}
+            if(!cab.hora)cab.hora=pgHora(r);nota(r)}
+          continue}}
+      else if(bp&&bp!==portal){resto=L0.slice(k).join("\n");kFin=k;break}}
+    if(enCab||!out.length){nota(l);continue}
+    if(w){nota(l);continue}
+    out[out.length-1].com=pgExpand(out[out.length-1].com+" "+l.replace(/^•\s*/,""))}
+  return {F:out.filter(x=>x.nombre||x.tel||x.com),cab,resto,texto:L0.slice(0,kFin).join("\n")}}
 const pgNorm=t=>zUp(t||"").replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
 function pgFila(x,i,U){const u=x.id?{...U.find(v=>v._id===x.id),...(S.censoEd[x.id]||{})}:null;
   const igual=u&&!x.tel&&!x.com&&x.nombre&&[u.prop,u.abre].some(n=>pgNorm(n)===pgNorm(x.nombre));
   return `<tr class="${x.id?"":"pg-ko"}${igual?" pg-igual":""}"><td><input type="checkbox" data-pg="ok" data-i="${i}"${(x.marcada!==undefined?x.marcada:x.id&&!igual)?" checked":""}></td>
-   <td><select data-pg="id" data-i="${i}"><option value="">— elige vivienda —</option>${U.map(v=>`<option value="${esc(v._id)}"${v._id===x.id?" selected":""}>${esc(pisoTxt(v,new Set(U.map(w=>w.esc||"")).size>1)||"?")}</option>`).join("")}</select>${!x.id?`<div class="pg-m">Escrito: ${esc(x.piso)}</div>`:""}</td>
+   <td><select data-pg="id" data-i="${i}"><option value="">— elige vivienda —</option>${U.map(v=>`<option value="${esc(v._id)}"${v._id===x.id?" selected":""}>${esc(pisoTxt(v,new Set(U.map(w=>w.esc||"")).size>1)||"?")}</option>`).join("")}</select>${!x.id?`<div class="pg-m">Escrito: ${esc(x.piso)}</div>`:x.deducida?`<div class="pg-m">Planta deducida por el orden (${esc(x.piso)}): compruébala</div>`:""}</td>
    <td><input data-pg="nombre" data-i="${i}" value="${esc(x.nombre)}">${u&&(u.prop||u.abre)?`<div class="pg-m">${igual?"Sin cambios":"Antes: "+esc(u.prop||u.abre)}</div>`:""}</td>
    <td><input data-pg="tel" data-i="${i}" inputmode="tel" value="${esc(x.tel)}"></td><td><input data-pg="com" data-i="${i}" value="${esc(x.com)}"><div class="pg-m">${pgSinHablar(x.com)?"No habló con nadie: queda en el historial, no cuenta como último contacto":x.com||x.nombre||x.tel?"Habló: cuenta como último contacto":""}</div></td></tr>`}
 function pgPintar(){const P=cur.pg,U=P.U;const el=$("#pg-prev");if(!el)return;
   el.innerHTML=P.F.length?`<div class="tbl-wrap"><table class="pg"><thead><tr><th></th><th style="text-align:left">Vivienda</th><th style="text-align:left">Nombre</th><th style="text-align:left">Teléfono</th><th style="text-align:left">Comentario</th></tr></thead><tbody>${P.F.map((x,i)=>pgFila(x,i,U)).join("")}</tbody></table></div>
    <p class="pg-m">Se guardan solo las filas marcadas. ${P.F.filter(x=>!x.id).length?"Las filas en rojo no se han reconocido: elige la vivienda a mano o déjalas sin marcar.":""}</p>`:""}
 function abrirPegar(zona,idx){const b=zona!=null?S.censo[zona].edificios[idx]:null;cur={col:"pegar",pg:{zona:b?zona:null,b,U:b?ordenTaratura(b.u):[],F:[],nota:""}};
-  $("#frm").innerHTML=`<div class="dh">Notas rápidas${b?" · "+esc(b.via)+" "+esc(b.num):""}<div style="font:500 13px var(--body);color:var(--muted)">Pega las notas del móvil tal cual: la fecha y la hora de la vuelta, la dirección del portal y una línea por vivienda empezando por el piso. • o NC = no contactado, M = mirilazo, nsnv = no sabe ni vende, nitp = no interesa tras puerta. También puedes hacer una foto a los buzones.</div></div>
+  $("#frm").innerHTML=`<div class="dh">Notas rápidas${b?" · "+esc(b.via)+" "+esc(b.num):""}<div style="font:500 13px var(--body);color:var(--muted)">Pega las notas del móvil o los mensajes de WhatsApp tal cual, aunque sean de varios portales: la dirección del portal y una línea por vivienda empezando por el piso (4B, 4ºB, 5,1, B4, «Esc 2:» para cambiar de escalera). • o NC = no contactado, M = mirilazo, nsnv o ns/nv = no sabe ni vende, nitp = no interesa tras puerta, ni = no interesa, alq = alquilado. También puedes hacer una foto a los buzones.</div></div>
    <div class="db"><label class="full">Notas<textarea id="pg-txt" rows="6" placeholder="23 de septiembre 2026 18:30&#10;Leganés 31 1B presidente&#10;4H no vende, le dejo tarjeta&#10;4G •&#10;4D nitp&#10;3H nsnv señora mayor&#10;1D M"></textarea></label>
    <label>Fecha de la vuelta<input type="date" id="pg-fecha" value="${hoyISO()}"></label><label>Hora de la vuelta *<input type="time" id="pg-hora"></label>
    <div class="full" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="pgRevisar">Revisar notas</button>${b?`<label class="btn small" style="cursor:pointer">Foto del buzón<input type="file" id="pg-foto" accept="image/*" capture="environment" hidden></label>`:""}<span id="pg-est" class="pg-m"></span></div>
    <div class="full" id="pg-cab"></div><div class="full" id="pg-prev"></div></div>
    <div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal()}
+const pgEsPortal=dir=>{const f=portalDeFicha(dir);return f?f.b:null};
 function pgRevisar(){const txt=$("#pg-txt").value;if(!txt.trim()){toast("Escribe o pega alguna línea");return}const P=cur.pg;
-  let r=pgParse(txt,P.U);
+  let t=txt,r;for(;;){r=pgParse(t,P.U,{esPortal:pgEsPortal});if(r.F.length||!r.resto)break;t=r.resto}
+  const seg=r.texto;P.resto=r.resto||"";
   if(r.cab.dir){const f=portalDeFicha(r.cab.dir);
-    if(f&&(!P.b||f.b!==P.b)){if(P.b&&P.F.length){toast("Esas notas son de otro portal: guárdalas por separado");return}P.b=f.b;P.zona=f.zona;P.U=ordenTaratura(f.b.u);r=pgParse(txt,P.U)}
+    if(f&&(!P.b||f.b!==P.b)){if(P.b&&P.F.length){toast("Esas notas son de otro portal: guárdalas por separado");return}P.b=f.b;P.zona=f.zona;P.U=ordenTaratura(f.b.u);r=pgParse(seg,P.U,{esPortal:pgEsPortal})}
     else if(!f&&!P.b){$("#pg-est").textContent=`No encuentro el portal «${r.cab.dir}» en el censo. Ábrelo en Censo y usa su botón «Notas rápidas».`;return}}
   if(!P.b){$("#pg-est").textContent="Pon en una línea la calle y el número del portal (por ejemplo «Leganés 31»).";return}
   if(r.cab.fecha)$("#pg-fecha").value=r.cab.fecha;if(r.cab.hora)$("#pg-hora").value=r.cab.hora;
   if(r.cab.nota)P.nota=(P.nota?P.nota+" ":"")+r.cab.nota;
   $("#pg-cab").innerHTML=`<p class="pg-m" style="font-size:14px"><b>${esc(P.b.via)} ${esc(P.b.num)}</b> · zona ${esc((P.zona||"").toLowerCase())}</p><label>Nota del portal (se guarda en los datos del portal)<input id="pg-np" value="${esc(P.nota)}"></label>`;
-  $("#pg-est").textContent=$("#pg-hora").value?"":"Falta la hora de la vuelta: ponla arriba antes de guardar.";
+  const nRes=P.resto?P.resto.split(/\n/).filter(x=>x.trim()).length:0;
+  $("#pg-est").innerHTML=[$("#pg-hora").value?"":"Falta la hora de la vuelta: ponla arriba antes de guardar.",
+    nRes?`Quedan ${nRes} líneas de otros portales: al guardar este se abren para revisarlas. <button class="btn small" type="button" data-act="pgSaltar">Saltar este portal</button>`:""].filter(Boolean).join(" ");
   pgAnadir(r.F);$("#pg-txt").value=""}
+function pgSiguiente(resto){abrirPegar(null);$("#pg-txt").value=resto;pgRevisar()}
 function pgLeerFilas(){document.querySelectorAll("#pg-prev [data-pg]").forEach(e=>{const x=cur.pg.F[+e.dataset.i];if(!x)return;if(e.dataset.pg==="ok")x.marcada=e.checked;else x[e.dataset.pg]=e.value})}
 function pgAnadir(F){pgLeerFilas();const P=cur.pg;P.F.forEach(x=>{if(x.marcada===undefined)x.marcada=!!x.id});P.F.push(...F);pgPintar()}
 async function pgFoto(file){const est=$("#pg-est");if(!file)return;if(!window.leerBuzon){toast("La lectura de fotos no está disponible sin conexión");return}
@@ -436,7 +493,7 @@ async function guardarPegado(){pgLeerFilas();const P=cur.pg,F=P.F.filter(x=>x.id
   if(np&&P.b){const pid=portalId(P.b),old=S.portales[pid]||{},dp={notasPortal:[old.notasPortal,`[${fTxt} ${ho}] ${np}`].filter(Boolean).join("\n")};
     const pm=np.match(/\b(\d{1,2}\s*º?\s*[a-h])\s+presidente\b|\bpresidente\s+(?:en\s+)?(\d{1,2}\s*º?\s*[a-h])\b/i);if(pm&&!old.presPiso)dp.presPiso=(pm[1]||pm[2]).replace(/\s|º/g,"").toUpperCase();
     await guardar("portales",pid,dp,cuando)}
-  $("#dlg").close();toast(`Guardadas ${n} viviendas${np?" y la nota del portal":""}`);render()}
+  const resto=P.resto;$("#dlg").close();toast(`Guardadas ${n} viviendas${np?" y la nota del portal":""}`);render();if(resto)pgSiguiente(resto)}
 $("#frm").addEventListener("change",e=>{if(e.target.id==="pg-foto"){pgFoto(e.target.files[0]);e.target.value=""}});
 
 /* ---------- «Vendido en tu portal»: avisar a los vecinos ---------- */
@@ -1210,6 +1267,7 @@ $("#frm").addEventListener("click",async ev=>{
   if(a==="cerrar") return $("#dlg").close();
   if(await accionFicha(a,b))return;
   if(a==="pgRevisar"){pgRevisar();return}
+  if(a==="pgSaltar"){const r=cur&&cur.pg&&cur.pg.resto;if(r)pgSiguiente(r);return}
   if(a==="vivVer"){const id=cur.censoId;$("#dlg").close();setTimeout(()=>abrirViv(id),100);return}
   if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>$("#viv-q")?.focus(),50);return}
   if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
