@@ -1393,6 +1393,12 @@ function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnv
 function rowCruce({c,e}){return `<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${prioComp(c)?"★ ":""}${esc(c.nombre)}${c.telefono?" · "+esc(c.telefono):""}</span>
     <span class="r">${e.precio?eur(e.precio):""}</span>
     <span class="m">${zona(e.zona)}<span>${esc(e.direccion)}</span>${e.habitaciones?`<span>${esc(e.habitaciones)} hab.</span>`:""}<span>Busca hasta ${c.precioMax?eur(c.precioMax):"—"}</span>${e.fechaCaptacion&&dias(e.fechaCaptacion,hoyISO())<=15?`<span class="pill ok">Encargo nuevo</span>`:""}</span></button>`}
+/* Cruces agrupados por casa (Stiwhar, 02/11/2026): una línea por encargo con cuántos compradores le encajan; al abrirla, los compradores (Finanhogar primero). */
+function crucesPorCasa(cr){const M=new Map();for(const x of cr){if(!M.has(x.e.id))M.set(x.e.id,{e:x.e,L:[]});M.get(x.e.id).L.push(x.c)}
+  return [...M.values()].map(g=>({...g,L:g.L.sort((a,b)=>prioComp(b)-prioComp(a)||String(b.creado||"").localeCompare(String(a.creado||"")))})).sort((a,b)=>b.L.length-a.L.length)}
+function rowCruceCasa(g){const e=g.e,fin=g.L.filter(prioComp).length;
+  return `<details class="cru-casa" style="border:1px solid var(--line,#ddd);border-radius:10px;margin:0 0 8px;padding:0 10px"><summary style="cursor:pointer;padding:10px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(e.direccion||"")}</b>${e.precio?`<span>${eur(e.precio)}</span>`:""}${e.habitaciones?`<span>${esc(e.habitaciones)} hab.</span>`:""}<span class="pill">${g.L.length} comprador${g.L.length>1?"es":""}</span>${fin?`<span class="pill ok">★ ${fin} Finanhogar</span>`:""}${e.asesor?`<span style="color:var(--muted)">${esc(e.asesor)}</span>`:""}</summary>
+    ${hoyLista("cru-"+e.id,g.L,c=>`<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${prioComp(c)?"★ ":""}${esc(c.nombre||"")}${c.telefono?" · "+esc(c.telefono):""}</span><span class="r">Busca hasta ${c.precioMax?eur(c.precioMax):"—"}</span></button>`,"")}</details>`}
 function vCompradores(){
   const f=S.bf||(S.bf={estado:"activos",q:""}),q=f.q.toLowerCase();
   const base=S.compradores.filter(c=>!q||[c.nombre,c.telefono,c.email,c.dni,c.busca,c.notas].join(" ").toLowerCase().includes(q));
@@ -1407,7 +1413,7 @@ function vCompradores(){
   <section><h2>Próximas visitas <span class="n">${prox.length}</span></h2>${hoyLista("bvprox",prox,rowVisita,"No hay visitas programadas.")}</section>
   <section><h2>Visitas hechas <span class="n">${pas.length}</span></h2>${hoyLista("bvpas",pas,rowVisita,"Aún no hay visitas.")}</section>`}
 function vHoyCoord(){
-  const pend=compPendientes(),cr=cruces(),hoy=hoyISO();
+  const pend=compPendientes(),cr=cruces(),crG=crucesPorCasa(cr),hoy=hoyISO();
   const vis=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")));
   const inf=S.visitas.filter(v=>v.fecha&&v.fecha<hoy&&!v.informeEnviado);
   const capP=S.captaciones.filter(k=>k.estado==="Pendiente").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
@@ -1422,7 +1428,7 @@ function vHoyCoord(){
     {k:"bpend",t:"Seguimientos y consultas de compradores",n:pend.length,tono:pend.some(c=>(pasoComp(c)||{}).cls==="bad")?"bad":"warn",nota:"Visitas sin seguimiento, visitas de hoy y compradores con 3 meses sin visitas a los que hay que preguntar si han comprado.",html:hoyLista("bpend",pend,rowComp,"")},
     {k:"bvis",t:"Visitas de hoy y próximas",n:vis.length,html:hoyLista("bvis",vis,rowVisita,"")},
     {k:"binf",t:"Informes al vendedor pendientes",n:inf.length,tono:"warn",html:hoyLista("binf",inf,rowVisita,"")},
-    {k:"cruces",t:"Cruces: casas que encajan con compradores",n:cr.length,nota:"Compradores a los que les encaja un encargo activo que aún no han visitado. Si no le interesa, márcalo en su ficha con «No le encaja».",html:hoyLista("cruces",cr,rowCruce,"")},
+    {k:"cruces",t:"Cruces: casas que encajan con compradores",n:crG.length,nota:`Cada casa en venta con los compradores a los que les encaja y aún no la han visitado (${cr.length} en total). Ábrela para ver la lista. Si a un comprador no le interesa, márcalo en su ficha con «No le encaja».`,html:listOr(crG.map(rowCruceCasa),"")},
     {k:"bsinf",t:"Visitas sin ficha de comprador",n:sinF.length,nota:"Abre la visita y pulsa «Dar de alta como comprador».",html:hoyLista("bsinf",sinF,rowVisita,"")},
     {k:"bofi",t:"Noticias para pasar a otra oficina",n:ofi.length,tono:"warn",nota:"Compradores que tienen que vender o alquilar su casa (o viven de alquiler) fuera de nuestras zonas. Pásala a la oficina que corresponda y márcalo en su ficha.",html:hoyLista("bofi",ofi,rowOfi,"")},
     {k:"bcap",t:"Captaciones pendientes de encontrar",n:capP.length,html:hoyLista("bcap",capP,rowCap,"")},
