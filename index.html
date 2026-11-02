@@ -893,7 +893,7 @@ const listOr=(rows,vacio)=>`<div class="list">${rows.length?rows.join(""):`<div 
 function kpi(l,v,s,pct){return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:""}${pct!=null?`<div class="bar"><i style="width:${Math.min(100,Math.max(0,pct))}%"></i></div>`:""}</div>`}
 
 /* Hoy, versión sencilla: un saludo, un resumen en casillas y cada apartado plegado. Solo se ven los apartados con algo pendiente. */
-function hoyBloques(B,vacios){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
+function hoyBloques(B,vacios,tras){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const abierto=ab===undefined?(vis.find(b=>b.tono==="bad")||vis[0]||{}).k:ab;
   const nom=S.yo&&S.yo.nombre?S.yo.nombre:"",h=new Date().getHours(),sal=h<14?"Buenos días":h<21?"Buenas tardes":"Buenas noches";
   const tot=vis.filter(b=>!b.info).reduce((t,b)=>t+b.n,0);
@@ -901,7 +901,7 @@ function hoyBloques(B,vacios){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const movil=window.matchMedia&&matchMedia("(max-width:700px)").matches,ag=movil?vis.find(b=>b.k==="agenda"):null;if(ag)vis.splice(vis.indexOf(ag),1);
   const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${b.nota?`<p class="nota">${b.nota}</p>`:""}${b.html}</div></details>`;
   return `${ag?bloque(ag):""}<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Mensaje" style="float:right">Enviar mensaje</button><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
-  <div class="hoy-bloques">${vis.map(bloque).join("")}</div>
+  ${tras||""}<div class="hoy-bloques">${vis.map(bloque).join("")}</div>
   ${vacios.length?`<p class="aldia"><b>Al día:</b> ${vacios.join(" · ")}</p>`:""}`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-hoyb]");if(!t)return;const k=t.dataset.hoyb;S.hoyAbierto=S.hoyAbierto===k?null:k;render();const d=$("#hb-"+k);if(d)d.scrollIntoView({block:"nearest",behavior:"smooth"})});
 document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("hb"))return;const k=d.id.slice(3);
@@ -1413,18 +1413,21 @@ function vHoyCoord(){
   const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
   const ofi=S.compradores.filter(compOtraOficina),sinF=S.visitas.filter(v=>v.fecha&&v.fecha<=hoy&&visSinFicha(v)).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const av=misAvisos(),al=alertasPend();
-  return `${av.length+al.length?`<section class="avisos-hoy"><h2>Lo primero: avisos para ti <span class="n">${av.length+al.length}</span></h2>${bloqueAvisos(av,al)}</section>`:""}${vAgenda()}
-  <section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Mensaje">Enviar mensaje</button><button class="btn small" type="button" data-nuevo="aviso" data-tipo="Llamada de comprador">Pasar llamada de comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>
-  ${cr.length?`<section><h2>Cruces: inmuebles que encajan con compradores <span class="n">${cr.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Compradores buscando a los que les encaja un encargo activo que aún no han visitado. Si no le interesa, márcalo en su ficha con «No le encaja».</p>${hoyLista("cruces",cr,rowCruce,"")}</section>`:""}
-  <div class="grid2">
-    ${sinF.length?`<section><h2>Visitas sin ficha de comprador <span class="n">${sinF.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">No es obligatorio, pero después de la visita conviene darle de alta como comprador: abre la visita y pulsa «Dar de alta como comprador».</p>${hoyLista("bsinf",sinF,rowVisita,"")}</section>`:""}
-    <section><h2>Compradores: seguimientos y consultas pendientes <span class="n">${pend.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Visitas sin seguimiento, visitas de hoy y compradores con 3 meses sin visitas a los que hay que preguntar si han comprado.</p>${hoyLista("bpend",pend,rowComp,"No hay seguimientos pendientes.")}</section>
-    ${ofi.length?`<section><h2>Noticias para pasar a otra oficina <span class="n">${ofi.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Compradores que tienen que vender o alquilar su casa (o viven de alquiler) fuera de nuestras zonas. Pásala a la oficina que corresponda y márcalo en su ficha.</p>${hoyLista("bofi",ofi,c=>`<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${esc(c.nombre||"")}</span><span class="r">${esc(c.oficinaDestino||"")}</span><span class="m"><span>${esc(c.direccionActual||"")}</span><span class="pill warn">${esc(c.viveEn==="De alquiler"?"Vive de alquiler":(c.necesitaVender||"")+" su casa")}</span></span></button>`,"")}</section>`:""}
-    <section><h2>Visitas de hoy y próximas <span class="n">${vis.length}</span></h2>${hoyLista("bvis",vis,rowVisita,"No hay visitas programadas.")}</section>
-    <section><h2>Informes al vendedor pendientes <span class="n">${inf.length}</span></h2>${hoyLista("binf",inf,rowVisita,"Todas las visitas tienen su informe enviado.")}</section>
-    <section><h2>Captaciones pendientes de encontrar <span class="n">${capP.length}</span></h2>${hoyLista("bcap",capP,rowCap,"No hay captaciones pendientes.")}</section>
-    <section><h2>Reservas en negociación <span class="n">${reservas.length}</span></h2>${hoyLista("res",reservas,rowOp,"No hay reservas abiertas.")}</section>
-  </div>`}
+  const P=t=>`<p class="nota">${t}</p>`;
+  const tools=`<section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="aviso" data-tipo="Llamada de comprador">Pasar llamada de comprador</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>`;
+  const rowOfi=c=>`<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${esc(c.nombre||"")}</span><span class="r">${esc(c.oficinaDestino||"")}</span><span class="m"><span>${esc(c.direccionActual||"")}</span><span class="pill warn">${esc(c.viveEn==="De alquiler"?"Vive de alquiler":(c.necesitaVender||"")+" su casa")}</span></span></button>`;
+  const B=[
+    {k:"avisos",t:"Lo primero: avisos para ti",n:av.length+al.length,tono:"bad",nota:"Mensajes y llamadas que te han pasado y avisos automáticos. Pulsa «Hecho» o «Visto» cuando lo hayas atendido.",html:bloqueAvisos(av,al)},
+    {k:"bpend",t:"Seguimientos y consultas de compradores",n:pend.length,tono:pend.some(c=>(pasoComp(c)||{}).cls==="bad")?"bad":"warn",nota:"Visitas sin seguimiento, visitas de hoy y compradores con 3 meses sin visitas a los que hay que preguntar si han comprado.",html:hoyLista("bpend",pend,rowComp,"")},
+    {k:"bvis",t:"Visitas de hoy y próximas",n:vis.length,html:hoyLista("bvis",vis,rowVisita,"")},
+    {k:"binf",t:"Informes al vendedor pendientes",n:inf.length,tono:"warn",html:hoyLista("binf",inf,rowVisita,"")},
+    {k:"cruces",t:"Cruces: casas que encajan con compradores",n:cr.length,nota:"Compradores a los que les encaja un encargo activo que aún no han visitado. Si no le interesa, márcalo en su ficha con «No le encaja».",html:hoyLista("cruces",cr,rowCruce,"")},
+    {k:"bsinf",t:"Visitas sin ficha de comprador",n:sinF.length,nota:"Abre la visita y pulsa «Dar de alta como comprador».",html:hoyLista("bsinf",sinF,rowVisita,"")},
+    {k:"bofi",t:"Noticias para pasar a otra oficina",n:ofi.length,tono:"warn",nota:"Compradores que tienen que vender o alquilar su casa (o viven de alquiler) fuera de nuestras zonas. Pásala a la oficina que corresponda y márcalo en su ficha.",html:hoyLista("bofi",ofi,rowOfi,"")},
+    {k:"bcap",t:"Captaciones pendientes de encontrar",n:capP.length,html:hoyLista("bcap",capP,rowCap,"")},
+    {k:"res",t:"Reservas en negociación",n:reservas.length,html:hoyLista("res",reservas,rowOp,"")}];
+  if(S.ajustes.calendarioId)B.push({k:"agenda",t:"Agenda de la oficina",n:"Ver",info:1,html:vAgenda()});
+  return hoyBloques(B,B.filter(b=>!b.n).map(b=>b.t),tools)}
 function metasCoordPer(per){const M={...DEF_METAS_COORD,...(S.ajustes.metasCoord||{})},f=rangoPer(per)[2]/7,o={};for(const k in M)o[k]=M[k]?Math.max(1,Math.round(M[k]*f)):0;return o}
 function vMetasCoord(per){const [a,b]=rangoPer(per),M=metasCoordPer(per),[et,desde]=PER_ET[per],en=f=>f&&f.slice(0,10)>=a&&f.slice(0,10)<=b;
   const R={compradores:S.compradores.filter(c=>en(c.creado)).length,visitas:S.visitas.filter(v=>en(v.fecha)).length,reservas:S.compradores.filter(c=>en(c.fechaReserva)).length};
