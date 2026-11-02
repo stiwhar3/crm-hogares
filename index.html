@@ -900,7 +900,7 @@ function hoyBloques(B,vacios){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const fecha=new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
   const movil=window.matchMedia&&matchMedia("(max-width:700px)").matches,ag=movil?vis.find(b=>b.k==="agenda"):null;if(ag)vis.splice(vis.indexOf(ag),1);
   const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${b.nota?`<p class="nota">${b.nota}</p>`:""}${b.html}</div></details>`;
-  return `${ag?bloque(ag):""}<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
+  return `${ag?bloque(ag):""}<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Mensaje" style="float:right">Enviar mensaje</button><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
   <div class="hoy-bloques">${vis.map(bloque).join("")}</div>
   ${vacios.length?`<p class="aldia"><b>Al día:</b> ${vacios.join(" · ")}</p>`:""}`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-hoyb]");if(!t)return;const k=t.dataset.hoyb;S.hoyAbierto=S.hoyAbierto===k?null:k;render();const d=$("#hb-"+k);if(d)d.scrollIntoView({block:"nearest",behavior:"smooth"})});
@@ -1239,13 +1239,13 @@ FORMS.llamadaVend={titulo:"noticia de un vendedor",fields:[
     ["direccion","Dirección del inmueble *","compdir"],["censoId","","hid"],["zonaCenso","","hid"],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
     ["asesor","Para el asesor","sel",()=>["",...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar"]],["notas","Qué ha contado","textarea",{full:1}]]};
 /* Avisos: una persona le pasa a otra una llamada o una petición. Salen los primeros en «Hoy» y, con la app abierta, como notificación. */
-const TIPOS_AVISO=["Llamada de comprador","Crear ficha de comprador","Llamada de vendedor","Otro"];
+const TIPOS_AVISO=["Mensaje","Llamada de comprador","Crear ficha de comprador","Llamada de vendedor","Otro"];
 const genteAvisos=()=>[...new Set([...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","Daniel"])].filter(n=>n&&(!S.yo||n!==S.yo.nombre));
 FORMS.aviso={titulo:"aviso",fields:[
-    ["para","Para *","sel",()=>["",...genteAvisos(),...(S.yo&&S.yo.nombre!=="Stiwhar"&&S.yo.nombre!=="Daniel"?["Daniel y Stiwhar"]:[])]],["tipo","Qué es","sel",()=>TIPOS_AVISO],
+    ["para","Para *","sel",()=>["",...genteAvisos(),"Todo el equipo",...(S.yo&&S.yo.nombre!=="Stiwhar"&&S.yo.nombre!=="Daniel"?["Daniel y Stiwhar"]:[])]],["tipo","Qué es","sel",()=>TIPOS_AVISO],
     ["compradorId","Comprador (si ya tiene ficha)","selkv",()=>[["","—"],...S.compradores.filter(c=>c.estado!=="Baja").map(c=>[c.id,c.nombre+(c.telefono?" · "+c.telefono:"")])]],
-    ["nombre","Nombre","text"],["telefono","Teléfono","tel"],["texto","Qué ha pasado / qué hay que hacer *","textarea",{full:1}]]};
-DEFAULTS.aviso=()=>({tipo:"Llamada de comprador"});
+    ["nombre","Nombre (si va sobre alguien)","text"],["telefono","Teléfono","tel"],["texto","Mensaje *","textarea",{full:1}]]};
+DEFAULTS.aviso=()=>({tipo:"Mensaje"});
 const soloLeeComp=()=>!!(S.yo&&S.yo.rol==="asesor");
 const avisoPre=tipo=>tipo==="Crear ficha de comprador"?{tipo,para:"Daniel y Stiwhar"}:{tipo};
 const misAvisos=()=>{const yo=S.yo&&S.yo.nombre;if(!yo)return[];return S.avisos.filter(a=>!a.hecho&&(a.para===yo||(a.cc||[]).includes(yo))).sort((a,b)=>String(b.creado||"").localeCompare(String(a.creado||"")))};
@@ -1256,21 +1256,24 @@ function rowAviso(a){const c=a.compradorId&&S.compradores.find(x=>x.id===a.compr
   const abrirB=a.col==="contactos"&&a.refId&&S.contactos.find(x=>x.id===a.refId)?`<button class="btn small" type="button" data-open="contactos" data-id="${esc(a.refId)}">Abrir la noticia</button>`
     :c?`<button class="btn small" type="button" data-open="compradores" data-id="${esc(c.id)}">Abrir su ficha</button>`
     :a.tipo==="Crear ficha de comprador"&&!soloLeeComp()?`<button class="btn small primary" type="button" data-avficha="${esc(a.id)}">Crear la ficha</button>`:"";
-  return `<div class="row aviso"><span class="t">${esc(a.tipo||"Aviso")}: ${esc([a.direccion,a.nombre||(c&&c.nombre)].filter(Boolean).join(" · "))}</span>
+  const sobre=[a.direccion,a.nombre||(c&&c.nombre)].filter(Boolean).join(" · ");
+  return `<div class="row aviso"><span class="t">${esc(a.tipo||"Aviso")}${sobre?": "+esc(sobre):""}</span>
     <span class="r"><span class="pill bad">De ${esc(a.de||"?")}</span></span>
     <span class="m">${esc(cuando)}${tel?` · <a href="tel:${esc(String(tel).replace(/\s/g,""))}">${esc(tel)}</a>`:""}</span>
     ${a.texto?`<span class="m" style="white-space:pre-wrap">${esc(a.texto)}</span>`:""}
-    <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${abrirB}<button class="btn small" type="button" data-avhecho="${esc(a.id)}">Hecho</button></span></div>`}
+    <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${abrirB}${a.de&&a.de!==(S.yo&&S.yo.nombre)?`<button class="btn small" type="button" data-avresp="${esc(a.de)}">Responder</button>`:""}<button class="btn small" type="button" data-avhecho="${esc(a.id)}">Hecho</button></span></div>`}
 function bloqueAvisos(L,A){const perm=typeof Notification!=="undefined"&&Notification.permission==="default";
   return hoyLista("avisos",[...L.map(a=>({a})),...(A||[]).map(x=>({x}))],o=>o.a?rowAviso(o.a):rowAlerta(o.x),"")+(perm?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-avperm>Avisarme también con una notificación en este dispositivo</button></div>`:"")}
 async function guardarAviso(){const v=leerForm();if(!v.para)return toast("Elige para quién es");if(!v.texto&&!v.telefono&&!v.compradorId)return toast("Cuenta qué ha pasado");
   const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);
   const a={tipo:v.tipo,compradorId:v.compradorId||"",nombre:v.nombre||(c?c.nombre:""),telefono:v.telefono||(c?c.telefono:""),texto:v.texto||""};
+  if(v.para==="Todo el equipo"){let n=0;for(const p of genteAvisos())if(await enviarAviso({...a,para:p}))n++;if(n){$("#dlg").close();toast(`Mensaje enviado a ${n} persona${n>1?"s":""}`)}return}
   if(v.para==="Daniel y Stiwhar"){a.para="Daniel";a.cc=["Stiwhar"]}else a.para=v.para;
   const id=await enviarAviso(a);
   if(id){if(c&&!soloLeeComp())await guardar("compradores",c.id,{},"Aviso a "+v.para+": "+(v.texto||v.tipo));$("#dlg").close();toast("Aviso enviado a "+v.para)}}
 document.addEventListener("click",async e=>{
   const h=e.target.closest("[data-avhecho]");if(h){e.preventDefault();if(await guardar("avisos",h.dataset.avhecho,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:""},"Hecho."))toast("Aviso marcado como hecho");render();return}
+  const r=e.target.closest("[data-avresp]");if(r){e.preventDefault();if($("#dlg").open)$("#dlg").close();abrirNuevo("aviso",{tipo:"Mensaje",para:r.dataset.avresp});return}
   const f=e.target.closest("[data-avficha]");if(f){e.preventDefault();const a=S.avisos.find(x=>x.id===f.dataset.avficha);if(!a)return;abrirNuevo("compradores",{nombre:a.nombre||"",telefono:a.telefono||"",notas:a.texto?"Pedida por "+(a.de||"")+": "+a.texto:""});cur.avisoId=a.id;return}
   if(e.target.closest("[data-avperm]")){try{await Notification.requestPermission()}catch(_){}render()}});
 /* Aviso nuevo con la app abierta: mensaje y, si se ha permitido, notificación del sistema. */
@@ -1411,7 +1414,7 @@ function vHoyCoord(){
   const ofi=S.compradores.filter(compOtraOficina),sinF=S.visitas.filter(v=>v.fecha&&v.fecha<=hoy&&visSinFicha(v)).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const av=misAvisos(),al=alertasPend();
   return `${av.length+al.length?`<section class="avisos-hoy"><h2>Lo primero: avisos para ti <span class="n">${av.length+al.length}</span></h2>${bloqueAvisos(av,al)}</section>`:""}${vAgenda()}
-  <section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small" type="button" data-nuevo="aviso">Pasar llamada de comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>
+  <section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Mensaje">Enviar mensaje</button><button class="btn small" type="button" data-nuevo="aviso" data-tipo="Llamada de comprador">Pasar llamada de comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>
   ${cr.length?`<section><h2>Cruces: inmuebles que encajan con compradores <span class="n">${cr.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Compradores buscando a los que les encaja un encargo activo que aún no han visitado. Si no le interesa, márcalo en su ficha con «No le encaja».</p>${hoyLista("cruces",cr,rowCruce,"")}</section>`:""}
   <div class="grid2">
     ${sinF.length?`<section><h2>Visitas sin ficha de comprador <span class="n">${sinF.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">No es obligatorio, pero después de la visita conviene darle de alta como comprador: abre la visita y pulsa «Dar de alta como comprador».</p>${hoyLista("bsinf",sinF,rowVisita,"")}</section>`:""}
