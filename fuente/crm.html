@@ -628,7 +628,7 @@ function rowEncargo(e){
   const al=alertaEncargo(e); const dm=e.fechaCaptacion&&e.estado==="Activo"?dias(e.fechaCaptacion,hoyISO())+" días":"";
   return `<button class="row" type="button" data-open="encargos" data-id="${esc(e.id)}">
     <span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span>
-    <span class="m">${zona(e.zona)}<span>${esc(e.asesor||"")}</span><span class="pill ${e.estado==="Activo"?"acc":e.estado==="Reservado"?"ok":""}">${esc(e.estado)}</span>${dm?`<span>${dm} en mercado</span>`:""}${al.map(a=>`<span class="pill ${a.cls}">${esc(a.txt)}</span>`).join("")}${e.riesgo?`<span class="pill bad">${esc(e.riesgo)}</span>`:""}</span>
+    <span class="m">${zona(e.zona)}<span>${esc(e.asesor||"")}</span><span class="pill ${e.estado==="Activo"?"acc":e.estado==="Reservado"?"ok":""}">${esc(e.estado)}</span>${dm?`<span>${dm} en mercado</span>`:""}${veTodo()&&e.estado==="Activo"&&!e.cp&&!encMun(e)?`<span class="pill warn">Falta el código postal</span>`:""}${al.map(a=>`<span class="pill ${a.cls}">${esc(a.txt)}</span>`).join("")}${e.riesgo?`<span class="pill bad">${esc(e.riesgo)}</span>`:""}</span>
   </button>`;
 }
 function rowOp(o){
@@ -944,12 +944,18 @@ const FIN_COMP=["","Hipoteca preaprobada","Hipoteca en estudio","Necesita hipote
 const URG_COMP=["","Ya (menos de 1 mes)","1 a 3 meses","3 a 6 meses","Más de 6 meses","Sin prisa"];
 const IMP=["","Imprescindible","Mejor sí","Le da igual"],SINO=["","Sí","No"];
 const DEF_METAS_COORD={compradores:5,visitas:6,reservas:1};
+/* Los compradores buscan por barrios de Fuenlabrada (por código postal, decidido por Stiwhar) y por municipios de la Comunidad de Madrid. */
+const BARRIOS_CP=[["28941","La Serna"],["28942","Loranca, Vivero, Universidad, Hospital"],["28943","Parque Europa / El Molino"],["28944","El Arroyo / La Fuente"],["28945","La Avanzada / La Cueva"],["28946","Zona Industrial"],["28947","Cobo Calleja"]];
+const MUNICIPIOS_MAD="La Acebeda|Ajalvir|Alameda del Valle|El Álamo|Alcalá de Henares|Alcobendas|Alcorcón|Aldea del Fresno|Algete|Alpedrete|Ambite|Anchuelo|Aranjuez|Arganda del Rey|Arroyomolinos|El Atazar|Batres|Becerril de la Sierra|Belmonte de Tajo|El Berrueco|Berzosa del Lozoya|Boadilla del Monte|El Boalo|Braojos|Brea de Tajo|Brunete|Buitrago del Lozoya|Bustarviejo|Cabanillas de la Sierra|La Cabrera|Cadalso de los Vidrios|Camarma de Esteruelas|Campo Real|Canencia|Carabaña|Casarrubuelos|Cenicientos|Cercedilla|Cervera de Buitrago|Chapinería|Chinchón|Ciempozuelos|Cobeña|Collado Mediano|Collado Villalba|Colmenar de Oreja|Colmenar del Arroyo|Colmenar Viejo|Colmenarejo|Corpa|Coslada|Cubas de la Sagra|Daganzo de Arriba|El Escorial|Estremera|Fresnedillas de la Oliva|Fresno de Torote|Fuente el Saz de Jarama|Fuentidueña de Tajo|Galapagar|Garganta de los Montes|Gargantilla del Lozoya y Pinilla de Buitrago|Gascones|Getafe|Griñón|Guadalix de la Sierra|Guadarrama|La Hiruela|Horcajo de la Sierra-Aoslos|Horcajuelo de la Sierra|Hoyo de Manzanares|Humanes de Madrid|Leganés|Loeches|Lozoya|Lozoyuela-Navas-Sieteiglesias|Madarcos|Madrid|Majadahonda|Manzanares el Real|Meco|Mejorada del Campo|Miraflores de la Sierra|El Molar|Los Molinos|Montejo de la Sierra|Moraleja de Enmedio|Moralzarzal|Morata de Tajuña|Móstoles|Navacerrada|Navalafuente|Navalagamella|Navalcarnero|Navarredonda y San Mamés|Navas del Rey|Nuevo Baztán|Olmeda de las Fuentes|Orusco de Tajuña|Paracuellos de Jarama|Parla|Patones|Pedrezuela|Pelayos de la Presa|Perales de Tajuña|Pezuela de las Torres|Pinilla del Valle|Pinto|Piñuécar-Gandullas|Pozuelo de Alarcón|Pozuelo del Rey|Prádena del Rincón|Puebla de la Sierra|Puentes Viejas|Quijorna|Rascafría|Redueña|Ribatejada|Rivas-Vaciamadrid|Robledillo de la Jara|Robledo de Chavela|Robregordo|Las Rozas de Madrid|Rozas de Puerto Real|San Agustín del Guadalix|San Fernando de Henares|San Lorenzo de El Escorial|San Martín de la Vega|San Martín de Valdeiglesias|San Sebastián de los Reyes|Santa María de la Alameda|Santorcaz|Los Santos de la Humosa|La Serna del Monte|Serranillos del Valle|Sevilla la Nueva|Somosierra|Soto del Real|Talamanca de Jarama|Tielmes|Titulcia|Torrejón de Ardoz|Torrejón de la Calzada|Torrejón de Velasco|Torrelaguna|Torrelodones|Torremocha de Jarama|Torres de la Alameda|Tres Cantos|Valdaracete|Valdeavero|Valdelaguna|Valdemanco|Valdemaqueda|Valdemorillo|Valdemoro|Valdeolmos-Alalpardo|Valdepiélagos|Valdetorres de Jarama|Valdilecha|Valverde de Alcalá|Velilla de San Antonio|El Vellón|Venturada|Villa del Prado|Villaconejos|Villalbilla|Villamanrique de Tajo|Villamanta|Villamantilla|Villanueva de la Cañada|Villanueva de Perales|Villanueva del Pardillo|Villar del Olmo|Villarejo de Salvanés|Villaviciosa de Odón|Villavieja del Lozoya|Zarzalejo".split("|");
+const barrioCP=cp=>{const b=BARRIOS_CP.find(x=>x[0]===String(cp||"").trim());return b?b[1]:""};
+const encMun=e=>e.municipio&&e.municipio!=="Fuenlabrada"?e.municipio:"";
+const buscaEn=c=>[...(c.barrios||[]).map(cp=>barrioCP(cp)||cp),...(c.municipios||[])];
 const METAS_COORD_ET=[["compradores","Compradores nuevos"],["visitas","Visitas"],["reservas","Reservas"]];
 FORMS.compradores={titulo:"comprador",fields:[
     ["nombre","Nombre *","text",{req:1}],["telefono","Teléfono","tel"],["email","Email","email"],["dni","DNI / NIE","text"],
     ["origen","Origen","sel",()=>ORIG_COMP],["estado","Estado","sel",()=>EST_COMP],
     ["h1","Qué busca","h"],
-    ["zonas","Zonas","multi",()=>Object.keys(ZONAS).filter(z=>z!=="BLANCA")],
+    ["barrios","Barrios de Fuenlabrada","multikv",()=>BARRIOS_CP.map(([cp,n])=>[cp,n+" ("+cp+")"])],["municipios","Otros municipios de Madrid","chips",()=>MUNICIPIOS_MAD],
     ["precioMax","Precio máximo (€)","number"],["tipoVivienda","Tipo (piso, ático, chalet…)","text"],["habMin","Habitaciones (mínimo)","number"],["banosMin","Baños (mínimo)","number"],
     ["ascensor","Ascensor","sel",()=>IMP],["terraza","Terraza","sel",()=>IMP],["garaje","Garaje","sel",()=>IMP],
     ["busca","Otros detalles de lo que busca","textarea",{full:1}],
@@ -973,6 +979,7 @@ DEFAULTS.visitas=()=>({fecha:hoyISO()});
 DEFAULTS.llamadaVend=()=>({});
 FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo"),0,
     ["h3","Ficha para las llamadas de compradores","h"],
+    ["municipio","Municipio","selkv",()=>[["","Fuenlabrada"],...MUNICIPIOS_MAD.map(m=>[m,m])]],["cp","Código postal (barrio, para cruzar con compradores)","selkv",()=>[["","—"],...BARRIOS_CP.map(([cp,n])=>[cp,cp+" · "+n])]],
     ["m2","Superficie (m²)","number"],["habitaciones","Habitaciones","number"],["banos","Baños","number"],["planta","Planta","text"],
     ["ascensor","Ascensor","sel",()=>SINO],["terraza","Terraza","sel",()=>SINO],["garaje","Garaje","sel",()=>SINO],
     ["ibi","IBI al año (€)","number"],["comunidad","Comunidad al mes (€)","number"],["derramas","Derramas (cuáles y cuánto)","text",{full:1}],
@@ -980,7 +987,7 @@ FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo")
     ["llamada","Lo importante que hay que decir al comprador","textarea",{full:1}]);
 const compActivo=c=>c.estado==="Activo"||c.estado==="Visitando";
 function encaja(c,e){if(e.estado!=="Activo")return false;
-  if(Array.isArray(c.zonas)&&c.zonas.length&&!c.zonas.includes(e.zona))return false;
+  if((c.barrios||[]).length||(c.municipios||[]).length){const m=encMun(e);if(m?!(c.municipios||[]).includes(m):!(c.barrios||[]).includes(String(e.cp||"")))return false}
   if(c.precioMax&&e.precio&&+e.precio>+c.precioMax*1.05)return false;
   if(c.habMin&&e.habitaciones&&+e.habitaciones<+c.habMin)return false;
   if(c.banosMin&&e.banos&&+e.banos<+c.banosMin)return false;
@@ -997,7 +1004,7 @@ const estCls=e=>e==="Activo"?"acc":e==="Visitando"?"warn":e==="Reservado"||e==="
 function rowComp(c){const p=pasoComp(c),n=compActivo(c)?S.encargos.filter(e=>encaja(c,e)&&!descartado(c,e)).length:0;
   return `<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}">
     <span class="t">${esc(c.nombre||"")}${c.telefono?` · <span style="font-weight:500">${esc(c.telefono)}</span>`:""}</span><span class="r">${c.precioMax?"hasta "+eur(c.precioMax):""}</span>
-    <span class="m"><span class="pill ${estCls(c.estado)}">${esc(c.estado||"")}</span>${(c.zonas||[]).map(zona).join("")}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${n?`<span class="pill ok">${n} encaja${n>1?"n":""}</span>`:""}${p?`<span class="pill ${p.cls}">${esc(c.proxAccion?c.proxAccion.slice(0,40)+" · ":"")}${esc(p.txt)}</span>`:""}</span>
+    <span class="m"><span class="pill ${estCls(c.estado)}">${esc(c.estado||"")}</span>${buscaEn(c).slice(0,3).map(b=>`<span>${esc(b)}</span>`).join("")}${buscaEn(c).length>3?`<span>+${buscaEn(c).length-3}</span>`:""}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${n?`<span class="pill ok">${n} encaja${n>1?"n":""}</span>`:""}${p?`<span class="pill ${p.cls}">${esc(c.proxAccion?c.proxAccion.slice(0,40)+" · ":"")}${esc(p.txt)}</span>`:""}</span>
   </button>`}
 function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnviado;
   return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}">
@@ -1162,6 +1169,8 @@ function field([k,l,t,opt],v){
   const o=typeof opt==="object"?opt:{}; const cls=o.full?"full":t==="check"?"check":"";
   if(t==="check") return `<label class="check"><input type="checkbox" id="fld-${k}" name="${k}"${v?" checked":""}> ${l}</label>`;
   if(t==="h") return `<div class="full" style="grid-column:1/-1;font-weight:600;border-top:1px solid var(--line);padding-top:8px;margin-top:4px">${l}</div>`;
+  if(t==="multikv"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div style="display:flex;gap:6px 14px;flex-wrap:wrap">${opt().map(([val,lab])=>`<label class="check"><input type="checkbox" name="${k}" value="${esc(val)}"${A.includes(val)?" checked":""}> ${esc(lab)}</label>`).join("")}</div></div>`}
+  if(t==="chips"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div id="chips-${k}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${A.map(chipHTML).join("")}</div><input id="chipin-${k}" data-chips="${k}" list="dl-${k}" placeholder="Escribe un municipio y elígelo" autocomplete="off"><datalist id="dl-${k}">${opt().map(x=>`<option value="${esc(x)}">`).join("")}</datalist></div>`}
   if(t==="multi"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div style="display:flex;gap:6px 14px;flex-wrap:wrap">${opt().map(x=>`<label class="check"><input type="checkbox" name="${k}" value="${esc(x)}"${A.includes(x)?" checked":""}> ${esc(x.charAt(0)+x.slice(1).toLowerCase())}</label>`).join("")}</div></div>`}
   if(t==="selkv") return `<label class="${cls}">${l}<select id="fld-${k}" name="${k}">${opt().map(([a,b])=>`<option value="${esc(a)}"${a===(v??"")?" selected":""}>${esc(b)}</option>`).join("")}</select></label>`;
   let inp;
@@ -1252,7 +1261,7 @@ function bloqueHist(d,conHist){
 }
 function leerForm(){
   const F=FORMS[cur.col],o={};
-  for(const [k,,t] of F.fields){if(t==="h")continue;if(t==="multi"){o[k]=[...document.querySelectorAll(`#frm input[name="${k}"]:checked`)].map(e=>e.value);continue}const el=$("#fld-"+k); if(t==="check") o[k]=el.checked; else if(t==="number") o[k]=el.value===""?null:Number(el.value); else o[k]=el.value.trim();}
+  for(const [k,,t] of F.fields){if(t==="h")continue;if(t==="multi"||t==="multikv"){o[k]=[...document.querySelectorAll(`#frm input[name="${k}"]:checked`)].map(e=>e.value);continue}if(t==="chips"){o[k]=[...document.querySelectorAll(`#chips-${k} [data-v]`)].map(e=>e.dataset.v);continue}const el=$("#fld-"+k); if(t==="check") o[k]=el.checked; else if(t==="number") o[k]=el.value===""?null:Number(el.value); else o[k]=el.value.trim();}
   return o;
 }
 function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()
@@ -1294,6 +1303,12 @@ $("#frm").addEventListener("submit",async ev=>{
     if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
   if(await guardar(cur.col,cur.id,data,nota)){$("#dlg").close();toast("Guardado");if(cur.col==="contactos")sincronizarCenso(data)}
 });
+const chipHTML=x=>`<span class="pill" data-v="${esc(x)}">${esc(x)} <button type="button" class="chipx" data-chipx aria-label="Quitar" style="border:0;background:none;cursor:pointer;padding:0 2px">×</button></span>`;
+const chipAdd=e=>{const k=e.target.dataset&&e.target.dataset.chips;if(!k)return;const v=e.target.value.trim(),F=FORMS[cur&&cur.col],fd=F&&F.fields.find(f=>f[0]===k);
+  const ok=fd&&fd[3]().find(x=>zUp(x)===zUp(v));if(ok){const box=$("#chips-"+k);if(![...box.querySelectorAll("[data-v]")].some(c=>c.dataset.v===ok))box.insertAdjacentHTML("beforeend",chipHTML(ok));e.target.value=""}};
+$("#frm").addEventListener("change",chipAdd);$("#frm").addEventListener("input",chipAdd);
+$("#frm").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.dataset&&e.target.dataset.chips){e.preventDefault();chipAdd(e)}});
+$("#frm").addEventListener("click",e=>{const x=e.target.closest("[data-chipx]");if(x){e.preventDefault();x.parentElement.remove()}});
 $("#frm").addEventListener("input",e=>{if(e.target.id==="fld-direccion")pistaZona();if(e.target.id==="viv-q"){clearTimeout(pintarVivRes.t);pintarVivRes.t=setTimeout(pintarVivRes,200)}});
 $("#frm").addEventListener("change",e=>{if(e.target.id==="viv-manual"){cur.manual=e.target.checked;cur.vq=$("#viv-q")?.value;pintarVivBox();if(cur.manual)$("#fld-direccion").focus()}});
 function reglasVivienda(data){ /* devuelve texto de error o "" y completa data */
