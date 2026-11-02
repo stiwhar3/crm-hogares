@@ -5,7 +5,7 @@
 <title>CRM Hogares Fuenlabrada</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
-<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icono-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="CRM Hogares"><meta name="apple-mobile-web-app-status-bar-style" content="black"><script src="instalar.js" defer></script><meta name="theme-color" content="#333130"><style>
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icono-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#333130"><style>
 /* Layout: barra de pestañas fija arriba, una columna de listas operativas; "Hoy" primero porque el CRM existe para que nada se quede sin próximo paso. */
 :root{
   --bg:#f5f7f6; --surface:#ffffff; --fg:#17211f; --muted:#5d6b68; --line:#dfe5e3;
@@ -1201,7 +1201,9 @@ FORMS.compradores={titulo:"comprador",fields:[
     ["financiacion","Financiación","sel",()=>FIN_COMP],["entrada","Ahorro para la entrada (€)","number"],["urgencia","Urgencia","sel",()=>URG_COMP],
     ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],["fechaReserva","Fecha de reserva","date"],
     ["notas","Notas","textarea",{full:1}]]};
-const encOpts=()=>[["","Elige el inmueble"],...[...S.encargos].sort((a,b)=>(a.estado==="Activo"?0:1)-(b.estado==="Activo"?0:1)||String(a.direccion).localeCompare(String(b.direccion))).map(e=>[e.id,e.direccion+(e.estado!=="Activo"?" ("+e.estado+")":"")])];
+const encSinVisitas=e=>e&&(e.estado==="Vendido"||e.estado==="Reservado");
+const encOpts=()=>{const v=cur&&cur.col==="visitas"&&cur.id&&S.visitas.find(x=>x.id===cur.id),ya=v&&v.encargoId;
+  return [["","Elige el inmueble"],...[...S.encargos].filter(e=>!encSinVisitas(e)||e.id===ya).sort((a,b)=>(a.estado==="Activo"?0:1)-(b.estado==="Activo"?0:1)||String(a.direccion).localeCompare(String(b.direccion))).map(e=>[e.id,e.direccion+(e.estado!=="Activo"?" ("+e.estado+")":"")])]};
 FORMS.visitas={titulo:"visita",fields:[
     ["encargoId","Inmueble (encargo) *","selkv",encOpts],["compradorId","Comprador","selkv",()=>[["",S.compradores.length?"Elige el comprador":"—"],...S.compradores.filter(c=>c.estado!=="Baja").map(c=>[c.id,c.nombre+(c.telefono?" · "+c.telefono:"")])]],
     ["compradorNombre","Comprador (si no está en la lista)","text"],["fecha","Fecha","date"],["hora","Hora","time"],
@@ -1294,7 +1296,7 @@ function extraFicha(col,d,id){
     return `<div class="full" style="grid-column:1/-1;font-size:13px"><b>Han pedido valoración ${d.veces||P.length} ${(d.veces||P.length)>1?"veces":"vez"}</b>${P.length?": "+P.slice(0,12).map(t=>fmtF(t.slice(0,10))+(t.slice(11,16)!=="00:00"?" "+t.slice(11,16):"")).join(" · ")+(P.length>12?" …":""):""}</div>`}
   if(col==="encargos"&&id){const vs=visitasDe(null,d).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")),cs=veTodo()?S.compradores.filter(c=>compActivo(c)&&encaja(c,d)):[];
     return `${veTodo()?listaFicha("Compradores que encajan",cs.map(rowComp),"Ningún comprador activo encaja con este inmueble."):""}${listaFicha("Visitas",vs.map(rowVisita),"Aún no hay visitas.")}
-      <div class="full" style="grid-column:1/-1"><button class="btn small" type="button" data-act="visitaEnc">Apuntar visita</button></div>`}
+      <div class="full" style="grid-column:1/-1">${encSinVisitas(d)?`<span class="pg-m">${esc(d.estado)}: ya no se apuntan visitas.</span>`:`<button class="btn small" type="button" data-act="visitaEnc">Apuntar visita</button>`}</div>`}
   return ""}
 /* ---------- Excel diario de captaciones (Daniel) y registro del mes ---------- */
 const normDir=t=>String(t||"").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/^\s*(C\/|(CALLE|CL|AVENIDA|AVDA|AV|PLAZA|PZA|PZ|PASEO|PS|URBANIZACION|URB|CAMINO|TRAVESIA|RONDA)\.?\s+)/,"").replace(/\b(DE|DEL|LA|LAS|LOS|EL)\b/g,"").replace(/[^A-Z0-9]/g,"");
@@ -1384,6 +1386,7 @@ async function antesDeGuardar(data){ /* compradores y visitas: completa datos; d
       if(dup){$("#dlg").close();toast("Ese teléfono ya es un comprador: te abro su ficha");setTimeout(()=>abrir("compradores",dup.id),150);return false}}
     if(old&&old.descartados)data.descartados=old.descartados}
   if(cur.col==="visitas"){const e=S.encargos.find(x=>x.id===data.encargoId);if(!e){toast("Elige el inmueble");$("#fld-encargoId").focus();return false}
+    const vAnt=cur.id&&S.visitas.find(x=>x.id===cur.id);if(encSinVisitas(e)&&(!vAnt||vAnt.encargoId!==e.id)){toast(`Ese inmueble está ${e.estado.toLowerCase()}: no se pueden apuntar visitas`);return false}
     const c=S.compradores.find(x=>x.id===data.compradorId);data.direccion=e.direccion;data.asesor=e.asesor||"";
     if(c){data.compradorNombre=c.nombre;data.telComprador=c.telefono||""}
     if(!data.compradorNombre){toast("Elige el comprador o escribe su nombre");return false}
