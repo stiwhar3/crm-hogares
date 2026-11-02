@@ -968,7 +968,7 @@ FORMS.compradores={titulo:"comprador",fields:[
     ["busca","Otros detalles de lo que busca","textarea",{full:1}],
     ["h2","Financiación y seguimiento","h"],
     ["financiacion","Financiación","sel",()=>FIN_COMP],["entrada","Ahorro para la entrada (€)","number"],["urgencia","Urgencia","sel",()=>URG_COMP],
-    ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],["fechaReserva","Fecha de reserva","date"],
+    ["fechaReserva","Fecha de reserva","date"],
     ["notas","Notas","textarea",{full:1}]]};
 const encSinVisitas=e=>e&&(e.estado==="Vendido"||e.estado==="Reservado");
 const encOpts=()=>{const v=cur&&cur.col==="visitas"&&cur.id&&S.visitas.find(x=>x.id===cur.id),ya=v&&v.encargoId;
@@ -977,11 +977,12 @@ FORMS.visitas={titulo:"visita",fields:[
     ["encargoId","Inmueble (encargo) *","selkv",encOpts],["compradorId","Comprador","selkv",()=>[["",S.compradores.length?"Elige el comprador":"—"],...S.compradores.filter(c=>c.estado!=="Baja").map(c=>[c.id,c.nombre+(c.telefono?" · "+c.telefono:"")])]],
     ["compradorNombre","Comprador (si no está en la lista)","text"],["fecha","Fecha","date"],["hora","Hora","time"],
     ["interes","Interés","sel",()=>["","Mucho","Algo","Nada"]],["informeEnviado","Informe enviado al vendedor","check"],
-    ["opinion","Qué le ha parecido (pegas, precio que ofrecería…)","textarea",{full:1}]]};
+    ["opinion","Qué le ha parecido (pegas, precio que ofrecería…)","textarea",{full:1}],
+    ["seguimiento","Seguimiento de la visita hecho el","date"],["seguimientoNota","Qué ha dicho en el seguimiento","textarea",{full:1}]]};
 FORMS.llamadaVend={titulo:"noticia de un vendedor",fields:[
     ["direccion","Dirección del inmueble *","text",{full:1,req:1}],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
     ["asesor","Para el asesor","sel",()=>["",...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar"]],["notas","Qué ha contado","textarea",{full:1}]]};
-DEFAULTS.compradores=()=>({estado:"Activo",proxFecha:hoyISO()});
+DEFAULTS.compradores=()=>({estado:"Activo"});
 DEFAULTS.visitas=()=>({fecha:hoyISO()});
 DEFAULTS.llamadaVend=()=>({});
 FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo"),0,
@@ -1004,19 +1005,29 @@ const visitasDe=(c,e)=>S.visitas.filter(v=>(!c||v.compradorId===c.id)&&(!e||v.en
 const descartado=(c,e)=>(c.descartados||[]).includes(e.id);
 function cruces(){const out=[];for(const c of S.compradores){if(!compActivo(c))continue;for(const e of S.encargos)if(encaja(c,e)&&!descartado(c,e)&&!visitasDe(c,e).length)out.push({c,e})}
   return out.sort((a,b)=>(b.e.fechaCaptacion||"").localeCompare(a.e.fechaCaptacion||""))}
-function pasoComp(c){if(!compActivo(c)&&c.estado!=="Reservado")return null;if(!c.proxFecha)return {cls:"warn",txt:"Sin próximo paso"};const d=dias(hoyISO(),c.proxFecha);
-  return d<0?{cls:"bad",txt:`Vencido hace ${-d} d`}:d===0?{cls:"warn",txt:"Hoy"}:{cls:"",txt:fmtF(c.proxFecha)}}
-const compPendientes=()=>S.compradores.filter(c=>{const p=pasoComp(c);return p&&(p.cls==="bad"||p.cls==="warn")});
+/* Con compradores no hay «próximo paso» (Stiwhar): hay visita, seguimiento de la visita hecha y, tras 3 meses sin visitas, preguntar si ha comprado. */
+const DIAS_CONSULTA=90;
+const visSinSeg=v=>v.fecha&&v.fecha<hoyISO()&&!v.seguimiento;
+function pasoComp(c){if(!compActivo(c))return null;const hoy=hoyISO(),V=visitasDe(c);
+  const fut=V.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")))[0];
+  const sin=V.filter(visSinSeg).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
+  if(sin)return {cls:"bad",txt:`Seguimiento de la visita del ${fmtF(sin.fecha)}`,orden:sin.fecha};
+  if(fut)return {cls:fut.fecha===hoy?"warn":"",txt:`Visita ${fut.fecha===hoy?"hoy":fmtF(fut.fecha)}${fut.hora?" "+fut.hora:""}`,orden:fut.fecha};
+  const ult=[...V.map(v=>v.seguimiento||v.fecha),c.consultado,(c.creado||"").slice(0,10)].filter(Boolean).sort().pop();
+  const d=ult?dias(ult,hoy):0;
+  if(d>=DIAS_CONSULTA)return {cls:"warn",txt:`${Math.floor(d/30)} meses sin visitas: preguntar si ha comprado`,orden:ult};
+  return {cls:"",txt:ult?`Último contacto ${fmtF(ult)}`:"",orden:"9"}}
+const compPendientes=()=>S.compradores.filter(c=>{const p=pasoComp(c);return p&&(p.cls==="bad"||p.cls==="warn")}).sort((a,b)=>{const x=pasoComp(a),y=pasoComp(b);return (x.cls==="bad"?0:1)-(y.cls==="bad"?0:1)||x.orden.localeCompare(y.orden)});
 const estCls=e=>e==="Activo"?"acc":e==="Visitando"?"warn":e==="Reservado"||e==="Comprado"?"ok":e==="Baja"?"bad":"";
 function rowComp(c){const p=pasoComp(c),n=compActivo(c)?S.encargos.filter(e=>encaja(c,e)&&!descartado(c,e)).length:0;
   return `<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}">
     <span class="t">${esc(c.nombre||"")}${c.telefono?` · <span style="font-weight:500">${esc(c.telefono)}</span>`:""}</span><span class="r">${c.precioMax?"hasta "+eur(c.precioMax):""}</span>
-    <span class="m"><span class="pill ${estCls(c.estado)}">${esc(c.estado||"")}</span>${buscaEn(c).slice(0,3).map(b=>`<span>${esc(b)}</span>`).join("")}${buscaEn(c).length>3?`<span>+${buscaEn(c).length-3}</span>`:""}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${n?`<span class="pill ok">${n} encaja${n>1?"n":""}</span>`:""}${p?`<span class="pill ${p.cls}">${esc(c.proxAccion?c.proxAccion.slice(0,40)+" · ":"")}${esc(p.txt)}</span>`:""}</span>
+    <span class="m"><span class="pill ${estCls(c.estado)}">${esc(c.estado||"")}</span>${buscaEn(c).slice(0,3).map(b=>`<span>${esc(b)}</span>`).join("")}${buscaEn(c).length>3?`<span>+${buscaEn(c).length-3}</span>`:""}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${n?`<span class="pill ok">${n} encaja${n>1?"n":""}</span>`:""}${p&&p.txt?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:""}</span>
   </button>`}
 function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnviado;
   return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}">
     <span class="t">${esc(v.direccion||"")}${v.compradorNombre?` · <span style="font-weight:500">${esc(v.compradorNombre)}</span>`:""}</span><span class="r">${fmtF(v.fecha)}${v.hora?" "+esc(v.hora):""}</span>
-    <span class="m"><span>${esc(v.asesor||"")}</span>${v.interes?`<span class="pill ${v.interes==="Mucho"?"ok":v.interes==="Nada"?"bad":"warn"}">Interés: ${esc(v.interes)}</span>`:""}${inf?`<span class="pill bad">Falta el informe al vendedor</span>`:v.informeEnviado?`<span class="pill ok">Informe enviado</span>`:""}${v.opinion?`<span>${esc(v.opinion.slice(0,80))}</span>`:""}</span>
+    <span class="m"><span>${esc(v.asesor||"")}</span>${v.interes?`<span class="pill ${v.interes==="Mucho"?"ok":v.interes==="Nada"?"bad":"warn"}">Interés: ${esc(v.interes)}</span>`:""}${visSinSeg(v)?`<span class="pill bad">Falta el seguimiento</span>`:""}${inf?`<span class="pill bad">Falta el informe al vendedor</span>`:v.informeEnviado?`<span class="pill ok">Informe enviado</span>`:""}${v.opinion?`<span>${esc(v.opinion.slice(0,80))}</span>`:""}</span>
   </button>`}
 function rowCruce({c,e}){return `<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${esc(c.nombre)}${c.telefono?" · "+esc(c.telefono):""}</span>
     <span class="r">${e.precio?eur(e.precio):""}</span>
@@ -1025,7 +1036,7 @@ function vCompradores(){
   const f=S.bf||(S.bf={estado:"activos",q:""}),q=f.q.toLowerCase();
   const base=S.compradores.filter(c=>!q||[c.nombre,c.telefono,c.email,c.dni,c.busca,c.notas].join(" ").toLowerCase().includes(q));
   const pasa=(c,v)=>v==="activos"?compActivo(c):!v||c.estado===v;
-  const L=base.filter(c=>pasa(c,f.estado)).sort((a,b)=>(a.proxFecha||"9").localeCompare(b.proxFecha||"9"));
+  const L=base.filter(c=>pasa(c,f.estado)).sort((a,b)=>((pasoComp(a)||{}).orden||"9").localeCompare((pasoComp(b)||{}).orden||"9"));
   const chips=[["activos","Buscando"],...EST_COMP.filter(e=>e!=="Activo"&&e!=="Visitando").map(e=>[e,e]),["","Todos"]];
   const hoy=hoyISO(),prox=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||""))),
     pas=S.visitas.filter(v=>v.fecha<hoy).sort((a,b)=>b.fecha.localeCompare(a.fecha));
@@ -1035,7 +1046,7 @@ function vCompradores(){
   <section><h2>Próximas visitas <span class="n">${prox.length}</span></h2>${hoyLista("bvprox",prox,rowVisita,"No hay visitas programadas.")}</section>
   <section><h2>Visitas hechas <span class="n">${pas.length}</span></h2>${hoyLista("bvpas",pas,rowVisita,"Aún no hay visitas.")}</section>`}
 function vHoyCoord(){
-  const pend=compPendientes().sort((a,b)=>(a.proxFecha||"").localeCompare(b.proxFecha||"")),cr=cruces(),hoy=hoyISO();
+  const pend=compPendientes(),cr=cruces(),hoy=hoyISO();
   const vis=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")));
   const inf=S.visitas.filter(v=>v.fecha&&v.fecha<hoy&&!v.informeEnviado);
   const capP=S.captaciones.filter(k=>k.estado==="Pendiente").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
@@ -1044,7 +1055,7 @@ function vHoyCoord(){
   <section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>
   ${cr.length?`<section><h2>Cruces: inmuebles que encajan con compradores <span class="n">${cr.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Compradores buscando a los que les encaja un encargo activo que aún no han visitado. Si no le interesa, márcalo en su ficha con «No le encaja».</p>${hoyLista("cruces",cr,rowCruce,"")}</section>`:""}
   <div class="grid2">
-    <section><h2>Compradores: próximos pasos vencidos o de hoy <span class="n">${pend.length}</span></h2>${hoyLista("bpend",pend,rowComp,"Todos los compradores tienen su próximo paso en fecha.")}</section>
+    <section><h2>Compradores: seguimientos y consultas pendientes <span class="n">${pend.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Visitas sin seguimiento, visitas de hoy y compradores con 3 meses sin visitas a los que hay que preguntar si han comprado.</p>${hoyLista("bpend",pend,rowComp,"No hay seguimientos pendientes.")}</section>
     <section><h2>Visitas de hoy y próximas <span class="n">${vis.length}</span></h2>${hoyLista("bvis",vis,rowVisita,"No hay visitas programadas.")}</section>
     <section><h2>Informes al vendedor pendientes <span class="n">${inf.length}</span></h2>${hoyLista("binf",inf,rowVisita,"Todas las visitas tienen su informe enviado.")}</section>
     <section><h2>Captaciones pendientes de encontrar <span class="n">${capP.length}</span></h2>${hoyLista("bcap",capP,rowCap,"No hay captaciones pendientes.")}</section>
@@ -1059,7 +1070,7 @@ function vMetasCoord(per){const [a,b]=rangoPer(per),M=metasCoordPer(per),[et,des
 function listaFicha(t,rows,vacio){return `<div class="full" style="grid-column:1/-1"><div class="hl" style="font-weight:600;margin:6px 0 4px">${t}</div><div class="list">${rows.length?rows.join(""):`<div class="empty">${vacio}</div>`}</div></div>`}
 function extraFicha(col,d,id){
   if(col==="compradores"&&id){const enc=S.encargos.filter(e=>encaja(d,e)&&!descartado(d,e)),vs=visitasDe(d).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
-    return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="visitaCon">Apuntar visita</button><button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button>${(d.descartados||[]).length?`<button class="btn small" type="button" data-act="descartesFuera">Volver a ver los ${d.descartados.length} descartados</button>`:""}</div>
+    return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="visitaCon">Apuntar visita</button>${compActivo(d)?`<button class="btn small" type="button" data-act="compConsultado">Le he preguntado: sigue buscando</button>`:""}${(d.descartados||[]).length?`<button class="btn small" type="button" data-act="descartesFuera">Volver a ver los ${d.descartados.length} descartados</button>`:""}</div>
       ${listaFicha("Inmuebles que le encajan",enc.map(e=>`<div class="row"><span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span><span class="m">${zona(e.zona)}${e.habitaciones?`<span>${esc(e.habitaciones)} hab.</span>`:""}${e.m2?`<span>${esc(e.m2)} m²</span>`:""}<span>${esc(e.asesor||"")}</span>${visitasDe(d,e).length?`<span class="pill ok">Visitado</span>`:""}<button class="btn small" type="button" data-act="verEnc" data-enc="${esc(e.id)}">Ficha</button><button class="btn small" type="button" data-act="visitaCon" data-enc="${esc(e.id)}">Visita</button><button class="btn small" type="button" data-act="descartar" data-enc="${esc(e.id)}">No le encaja</button></span></div>`),"Ningún encargo activo encaja ahora mismo con lo que busca.")}
       ${listaFicha("Sus visitas",vs.map(rowVisita),"Aún no ha visitado nada.")}`}
   if(col==="captaciones"&&id&&(d.veces>1||(d.pedidas||[]).length)){const P=[...(d.pedidas||[])].sort().reverse();
@@ -1399,6 +1410,7 @@ $("#frm").addEventListener("click",async ev=>{
   if(a==="felicitadoHoy"){$("#fld-ultimaFelicitacion").value=hoyISO();toast("Pulsa Guardar para apuntarlo");return}
   if(a==="avisoImprimir"){imprimirCartas(cur.aviso);return}
   if(a==="avisoApuntar"){apuntarAviso(cur.aviso);return}
+  if(a==="compConsultado"){const id=cur.id;if(await guardar("compradores",id,{consultado:hoyISO()},"Consultado: sigue buscando")){toast("Apuntado: sigue buscando. Se volverá a avisar en 3 meses sin visitas");$("#dlg").close();render()}return}
   if(a==="mas7"){const d=new Date();d.setDate(d.getDate()+7);$("#fld-proxFecha").value=new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);return}
   if(a==="revisado"){$("#fld-ultimaRevisionPrecio").value=hoyISO();return}
   if(a==="aEncargo"){const c=leerForm();c.etapa="Encargo";const cid=cur.id,id=await guardar("contactos",cid,c);if(!id)return;$("#dlg").close();
