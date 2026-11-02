@@ -1804,13 +1804,31 @@ function fallo(error){const e=new Error(error.message||"error");e.code=error.cod
 async function leerTabla(t,filtro){let out=[];for(let from=0;;from+=500){let q=sb.from(t).select("id,d").range(from,from+499);if(filtro)q=filtro(q);const {data,error}=await q;if(error)throw fallo(error);out=out.concat(data);if(data.length<500)break}return out}
 const snapCol=rows=>({docs:rows.map(r=>({id:r.id,data:()=>r.d}))});
 const snapDoc=r=>({exists:!!r,data:()=>r?r.d:undefined});
-function enVivo(t,recargar){let tm=null;sb.channel("rt-"+t+"-"+nuevoId()).on("postgres_changes",{event:"*",schema:"public",table:t},()=>{clearTimeout(tm);tm=setTimeout(recargar,400)}).subscribe()}
+/* Tiempo real: cada cambio trae la ficha cambiada y se aplica sola, sin volver a descargar la tabla entera.
+   Si un aviso llega sin la ficha, o la conexión se corta y vuelve, o la app vuelve a primer plano tras un rato, se recarga la tabla completa. */
+const RECARGAS=new Set();let ocultoDesde=0;
+document.addEventListener("visibilitychange",()=>{if(document.hidden){ocultoDesde=Date.now();return}
+  if(ocultoDesde&&Date.now()-ocultoDesde>60000)RECARGAS.forEach(f=>f());ocultoDesde=0});
+function enVivo(t,recargar,aplicar){let tm=null,conectado=false;RECARGAS.add(recargar);
+  sb.channel("rt-"+t+"-"+nuevoId()).on("postgres_changes",{event:"*",schema:"public",table:t},p=>{
+    if(aplicar&&p&&!(p.errors&&p.errors.length)&&aplicar(p))return;
+    clearTimeout(tm);tm=setTimeout(recargar,400)}).subscribe(st=>{
+    if(st==="SUBSCRIBED"){if(conectado)recargar();conectado=true}})}
 function coleccion(nombre){
   const t=TABLA[nombre];
   const api={
     limit(){return api},
     async get(){return snapCol(await leerTabla(t))},
-    onSnapshot(cb,err){const go=()=>leerTabla(t).then(r=>cb(snapCol(r))).catch(e=>err&&err(e));go();enVivo(t,go);return()=>{}},
+    onSnapshot(cb,err){
+      // M: copia local de la tabla. Mientras se recarga entera, los cambios que lleguen se guardan y se aplican encima al terminar.
+      let M=new Map(),cargando=0,pend=[],tm=null;
+      const emitir=()=>{clearTimeout(tm);tm=setTimeout(()=>cb(snapCol([...M].map(([id,d])=>({id,d})))),120)};
+      const uno=p=>{if(p.eventType==="DELETE"){const id=p.old&&p.old.id;if(id==null)return false;M.delete(id);return true}
+        const n=p.new;if(!n||n.id==null||n.d==null)return false;M.set(n.id,n.d);return true};
+      const go=()=>{const yo=++cargando;pend=[];leerTabla(t).then(r=>{if(yo!==cargando)return;M=new Map(r.map(x=>[x.id,x.d]));
+          const pp=pend;pend=[];cargando=0;if(!pp.every(uno))return go();cb(snapCol(r.length===M.size&&!pp.length?r:[...M].map(([id,d])=>({id,d}))))})
+        .catch(e=>{if(yo===cargando)cargando=0;err&&err(e)})};
+      go();enVivo(t,go,p=>{if(cargando){pend.push(p);return true}if(!uno(p))return false;emitir();return true});return()=>{}},
     doc(id){id=id||nuevoId();return{id,
       async set(d){if(t==="contactos"&&S.yo&&S.yo.rol==="coordinador"){const {error}=await sb.rpc("crear_noticia",{p_id:id,p_d:d});if(error)throw fallo(error);return}
         const {error}=await sb.from(t).upsert(fila(t,id,d));if(error)throw fallo(error)},
@@ -1820,7 +1838,10 @@ function coleccion(nombre){
 function documento(ruta){
   const id=DOCS[ruta];
   const leer=async()=>{const {data,error}=await sb.from("ajustes").select("id,d").eq("id",id).maybeSingle();if(error)throw fallo(error);return data};
-  return{onSnapshot(cb,err){const go=()=>leer().then(r=>cb(snapDoc(r))).catch(e=>err&&err(e));go();enVivo("ajustes",go);return()=>{}},
+  return{onSnapshot(cb,err){const go=()=>leer().then(r=>cb(snapDoc(r))).catch(e=>err&&err(e));go();
+      // Un cambio en otra fila de ajustes (por ejemplo el índice de zonas) no obliga a descargar esta
+      enVivo("ajustes",go,p=>{const r=p.eventType==="DELETE"?p.old:p.new;if(!r||r.id==null)return false;if(r.id!==id)return true;
+        if(p.eventType==="DELETE"){cb(snapDoc(null));return true}if(r.d==null)return false;cb(snapDoc({id,d:r.d}));return true});return()=>{}},
     async set(d){const {error}=await sb.from("ajustes").upsert({id,d});if(error)throw fallo(error)}}}
 const dbSupabase={collection:coleccion,doc:documento};
 
