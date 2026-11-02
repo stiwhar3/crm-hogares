@@ -398,7 +398,7 @@ main{gap:18px;padding-block:16px 60px}
 const ZONAS = {VERDE:"#3a9a4a",AZUL:"#2f6fd0",AMARILLA:"#e3b300",ROJA:"#cf3b30",ROSA:"#e57ab0",NARANJA:"#ee8a2a",MORADA:"#7d4fc4",MARRON:"#8a5a35",BLANCA:"#f2f2f2"};
 const ETAPAS = ["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo","KO"];
 const ETAPA_ANTIGUA = {"Noticia":"Desarrollo","En seguimiento":"Seguimiento"};
-const ORIGENES = ["Lead central (con contacto)","Consulta de valor (solo dirección)","Otra oficina Hogares","Puerta fría / buzoneo","Llamada a oficina","Particular que vende solo","Con otra agencia","Base de datos antigua","Recomendación","Otro"];
+const ORIGENES = ["Lead central (con contacto)","Consulta de valor (solo dirección)","Otra oficina Hogares","Puerta fría / buzoneo","Llamada a oficina","Particular que vende solo","Con otra agencia","Base de datos antigua","Recomendación","Idealista","Otro"];
 const MOTIVOS = ["","Herencia","Divorcio","Extinción de condominio","Cambio de vivienda","Inversor","Vacío","Alquilado","Otro"];
 const EST_ENC = ["Activo","Reservado","Vendido","Retirado","Devuelto"];
 const EST_OP = ["Reserva","Aceptada","Arras","Escriturada","Caída"];
@@ -969,9 +969,10 @@ function vContactos(){
   const pasoOk=c=>{const p=proxEstado(c);return !f.paso||(f.paso==="vencidos"?!!(p&&c.proxFecha&&p.cls):!!(p&&!c.proxFecha))};
   const base=S.contactos.filter(c=>(!f.asesor||(f.asesor==="__none"?!c.asesor:c.asesor===f.asesor))&&pasoOk(c)&&(!q||[c.direccion,c.nombre,c.telefono,c.notas,c.proxAccion].join(" ").toLowerCase().includes(q)));
   const enCurso=c=>c.etapa!=="KO"&&c.etapa!=="Encargo";
-  let L=base.filter(c=>f.etapa==="activos"?enCurso(c):f.etapa==="__urg"?!!urgPub(c):c.etapa===f.etapa);
+  const esPub=c=>!!c.publicado&&c.etapa!=="KO";
+  let L=base.filter(c=>f.etapa==="activos"?enCurso(c):f.etapa==="__urg"?!!urgPub(c):f.etapa==="__pub"?esPub(c):c.etapa===f.etapa);
   L.sort((a,b)=>(a.proxFecha||"0").localeCompare(b.proxFecha||"0"));
-  const chips=[["activos","Todas en curso",base.filter(enCurso).length],...["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo"].map(e=>[e,e==="Valorada"?"Valoradas":e==="Paralizado"?"Paralizados":e,base.filter(c=>c.etapa===e).length]),["__urg","Publicadas sin localizar",base.filter(urgPub).length]];
+  const chips=[["activos","Todas en curso",base.filter(enCurso).length],...["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo"].map(e=>[e,e==="Valorada"?"Valoradas":e==="Paralizado"?"Paralizados":e,base.filter(c=>c.etapa===e).length]),["__pub","Todas las publicadas",base.filter(esPub).length],["__urg","Publicadas sin localizar",base.filter(urgPub).length]];
   return `<section><div class="chips" role="tablist">${chips.map(([v,l,n])=>`<button type="button" class="chip" data-etapa="${esc(v)}" aria-pressed="${f.etapa===v}">${esc(l)} <span>${n}</span></button>`).join("")}</div>
   <div class="tools">
     <input type="search" id="f-q" placeholder="Buscar dirección, nombre, teléfono, nota…" value="${esc(f.q)}">
@@ -1418,7 +1419,7 @@ function abrir(col,id){
   const extraEnc=col==="encargos"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
   const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button><button class="btn small" type="button" data-act="resenaHoy">Reseña pedida hoy</button><button class="btn small" type="button" data-act="felicitadoHoy">Aniversario felicitado hoy</button>`:"";
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
-    <div class="db">${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>':""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
+    <div class="db">${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">Solicitar borrado</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal(); pistaZona();
   if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
@@ -1437,7 +1438,7 @@ async function pintarVivBox(){
       <div class="vb-s">${[r.u.m2&&r.u.m2+" m²",r.u.anio&&"año "+r.u.anio,v.ocu,r.u.rc].filter(Boolean).map(esc).join(" · ")}</div>
       ${v.prop||v.abre||v.tel?`<div class="vb-s">En el censo: ${esc([v.prop||v.abre,v.tel].filter(Boolean).join(" · "))}</div>`:""}
       ${v.com?`<div class="vb-c">${esc(String(v.com).slice(0,500))}</div>`:""}
-      ${otra.length?`<div class="vb-s" style="color:var(--bad)">Ojo: esta vivienda tiene otra noticia (${otra.map(c=>esc(c.asesor||"sin asesor")).join(", ")}). Hay que unirlas.</div>`:""}
+      ${otra.length?`<div class="vb-s" style="color:var(--bad)">Ojo: esta vivienda tiene otra noticia (${otra.map(c=>esc(c.asesor||"sin asesor")).join(", ")}). Hay que unirlas.</div>${filaFusion(otra,"")}`:""}
       <div class="vb-b"><button class="btn small" type="button" data-act="vivVer">Ver en el censo</button><button class="btn small" type="button" data-act="vivCambiar">Cambiar vivienda</button></div>`;
     return}
   di.readOnly=!cur.manual;
@@ -1453,6 +1454,37 @@ function pintarVivRes(){const el=$("#viv-res"),qi=$("#viv-q");if(!el||!qi)return
   const R=candidatosViv(q,true),U=R.u.slice(0,40);
   el.innerHTML=U.length?U.map(x=>{const v={...x.u,...(S.censoEd[x.u._id]||{})},n=notiDe(x.u._id);return `<button type="button" class="vb-o" data-vivsel="${esc(x.u._id)}"><b>${esc(dirViv(x))}</b> <span>${esc([v.prop||v.abre,v.ocu].filter(Boolean).join(" · "))}</span>${n&&n.id!==cur.id?` <span class="pill warn">ya es noticia</span>`:""}</button>`}).join("")+(R.u.length>40?`<div class="vb-s">Hay ${R.u.length}: añade piso y puerta para afinar.</div>`:"")
    :`<div class="vb-s">${R.edificios?"Ese piso no aparece en ese portal del censo.":"No encuentro esa calle en el censo."} Si aún no sabes qué piso es, marca la casilla de abajo.</div>`}
+/* ---------- Fusionar noticias repetidas (la misma vivienda apuntada dos veces) ---------- */
+const calleDe=t=>normDir(String(t||"").replace(/\([^)]*\)/g," ").split(/\d/)[0]);
+const numDe=t=>(String(t||"").replace(/\([^)]*\)/g," ").match(/\d+/)||[""])[0];
+function repetidasDe(d){const k=calleDe(d.direccion);if(!k||k.length<3)return [];const n=numDe(d.direccion);
+  return S.contactos.filter(c=>c.id!==d.id&&calleDe(c.direccion)===k&&(!n||!numDe(c.direccion)||numDe(c.direccion)===n||(d.censoId&&c.censoId===d.censoId)))
+    .sort((a,b)=>(a.etapa==="KO")-(b.etapa==="KO")||(b.publicado?1:0)-(a.publicado?1:0)).slice(0,8)}
+function filaFusion(L,titulo){return (titulo?`<div class="vb-s">${esc(titulo)}</div>`:"")+L.map(c=>`<div class="vb-o" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;cursor:default"><b>${esc(c.direccion||"")}</b> <span>${esc([c.nombre,c.asesor||"sin asesor",c.etapa,c.publicado&&("publicada: "+c.publicado),c.precioPropietario&&(Number(c.precioPropietario).toLocaleString("es-ES")+" €")].filter(Boolean).join(" · "))}</span><button class="btn small" type="button" data-act="fusionar" data-con="${esc(c.id)}" style="margin-left:auto">Fusionar con esta</button></div>`).join("")}
+function cajaFusion(d){const L=repetidasDe(d);if(!L.length)return "";
+  return `<div class="full vivbox" id="fusbox" style="grid-column:1/-1"><div class="vb-h">¿Ya estaba? <span class="pill warn">${L.length} en la misma calle</span></div>${filaFusion(L,numDe(d.direccion)?"Otras noticias en este portal. Si es el mismo piso, fusiónalas: esta se une a la otra y desaparece.":"Otras noticias en esta calle. Si es el mismo piso, fusiónalas: esta se une a la otra y desaparece.")}</div>`}
+/* Une la noticia abierta (dup) a la que ya estaba (dest): rellena lo que le falte, junta notas e historial y borra la repetida.
+   El asesor no puede borrar: su repetida queda con «Borrado solicitado» para que Stiwhar lo apruebe en Hoy. */
+async function fusionar(dupId,destId){
+  const dest=S.contactos.find(c=>c.id===destId),old=S.contactos.find(c=>c.id===dupId);if(!dest||!old)return toast("No encuentro la otra noticia");
+  const dup={...old,...leerForm()},nueva=($("#fld-nuevaNota")?.value||"").trim(),ch={};
+  for(const k of ["nombre","telefono","publicado","fechaPublicado","precioPropietario","precioValorado","fechaValoracion","origen","referidoPor","motivo","idealistaId","idealistaUrl","censoId"])
+    if((dest[k]==null||dest[k]===""||dest[k]===false)&&dup[k]!=null&&dup[k]!==""&&dup[k]!==false)ch[k]=dup[k];
+  if(ch.censoId&&S.contactos.some(c=>c.censoId===ch.censoId&&c.id!==dupId&&c.id!==destId))delete ch.censoId;
+  if(dest.publicado&&dup.publicado&&dup.fechaPublicado&&(!dest.fechaPublicado||dup.fechaPublicado>dest.fechaPublicado))ch.fechaPublicado=dup.fechaPublicado;
+  if(dup.necesitaSti&&!dest.necesitaSti){ch.necesitaSti=true;ch.notaSti=dup.notaSti||dest.notaSti||""}
+  const otras=[dup.precioPropietario&&dest.precioPropietario&&Number(dup.precioPropietario)!==Number(dest.precioPropietario)?"precio "+Number(dup.precioPropietario).toLocaleString("es-ES")+" €":"",dup.telefono&&dest.telefono&&dup.telefono!==dest.telefono?"tel. "+dup.telefono:"",dup.nombre&&dest.nombre&&dup.nombre!==dest.nombre?"nombre "+dup.nombre:""].filter(Boolean).join(", ");
+  if(dup.notas||otras)ch.notas=[dest.notas,`--- Unida con la noticia repetida «${dup.direccion}» (${dup.asesor||"sin asesor"}, ${fmtF(hoyISO())})${otras?": "+otras:""}`,dup.notas].filter(Boolean).join("\n").slice(0,8000);
+  const hist=(dup.historial||[]).filter(h=>!h.alta&&h.f).map(h=>({...h,n:"[De la repetida] "+(h.n||"")}));
+  const ok=await guardar("contactos",destId,ch,"Fusionada con la noticia repetida «"+dup.direccion+"»."+(nueva?" "+nueva:""),hist);
+  if(!ok)return;
+  const motivo="Repetida: unida con «"+dest.direccion+"»";let msg="Fusionadas: queda solo la que ya estaba";
+  if(typeof esResp!=="function"||esResp()){
+    try{await S.db.collection("borrados").doc().set({col:"contactos",docId:dupId,f:new Date().toISOString(),motivo,datos:JSON.parse(JSON.stringify(old))});
+      await S.db.collection("contactos").doc(dupId).delete();const i=S.contactos.findIndex(c=>c.id===dupId);if(i>=0)S.contactos.splice(i,1)}
+    catch(e){await guardar("contactos",dupId,{borrarSolicitado:{f:new Date().toISOString(),motivo}},motivo);msg="Datos unidos. La repetida queda pendiente de borrar en Hoy"}}
+  else{await guardar("contactos",dupId,{borrarSolicitado:{f:new Date().toISOString(),motivo}},motivo);msg="Datos unidos. Stiwhar borrará la repetida desde Hoy"}
+  $("#dlg").close();toast(msg);render();setTimeout(()=>abrir("contactos",destId),200)}
 function fmtFH(iso){const d=new Date(iso);return d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}
 function bloqueHist(d,conHist){
   const H=[...((d&&d.historial)||[])].reverse();
@@ -1519,12 +1551,13 @@ async function sincronizarCenso(data){const cid=data.censoId,r=cid&&buscarViv(ci
 $("#frm").addEventListener("click",async ev=>{
   const vs=ev.target.closest("[data-vivsel]");
   if(vs){const id=vs.dataset.vivsel,n=notiDe(id);
-    if(n&&n.id!==cur.id){if(!cur.id){$("#dlg").close();toast("Esa vivienda ya tiene noticia: te la abro");setTimeout(()=>abrir("contactos",n.id),150)}else toast("Esa vivienda ya es otra noticia ("+(n.asesor||"sin asesor")+"). Pide a Stiwhar que las una.");return}
+    if(n&&n.id!==cur.id){if(!cur.id){$("#dlg").close();toast("Esa vivienda ya tiene noticia: te la abro");setTimeout(()=>abrir("contactos",n.id),150)}else{const bx=$("#fusbox")||(()=>{$("#vivbox").insertAdjacentHTML("afterend",'<div class="full vivbox" id="fusbox" style="grid-column:1/-1"></div>');return $("#fusbox")})();bx.innerHTML=filaFusion([n],"Esa vivienda ya es otra noticia. Si es el mismo piso, fusiónalas:");bx.scrollIntoView({block:"nearest"})}return}
     const r=buscarViv(id),v={...r.u,...(S.censoEd[id]||{})};cur.censoId=id;cur.manual=false;
     if(!$("#fld-nombre").value&&(v.prop||v.abre))$("#fld-nombre").value=v.prop||v.abre;if(!$("#fld-telefono").value&&v.tel)$("#fld-telefono").value=v.tel;
     pintarVivBox();return}
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
   if(a==="cerrar") return $("#dlg").close();
+  if(a==="fusionar"){if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para fusionar";return}b.disabled=true;await fusionar(cur.id,b.dataset.con);return}
   if(await accionFicha(a,b))return;
   if(a==="pgRevisar"){pgRevisar();return}
   if(a==="pgSaltar"){const r=cur&&cur.pg&&cur.pg.resto;if(r)pgSiguiente(r);return}
