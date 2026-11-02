@@ -19,6 +19,7 @@ function coleccion(nombre){
     doc(id){id=id||nuevoId();return{id,
       async set(d){if(t==="contactos"&&S.yo&&S.yo.rol==="coordinador"){const {error}=await sb.rpc("crear_noticia",{p_id:id,p_d:d});if(error)throw fallo(error);return}
         const {error}=await sb.from(t).upsert(fila(t,id,d));if(error)throw fallo(error)},
+      async leer(){const {data,error}=await sb.from(t).select("d").eq("id",id).maybeSingle();if(error)throw fallo(error);return data?data.d:null},
       async delete(){const {error}=await sb.from(t).delete().eq("id",id);if(error)throw fallo(error)}}}
   };return api}
 function documento(ruta){
@@ -122,7 +123,7 @@ $("#view").addEventListener("click",e=>{if(e.target.id==="btn-importar")importar
 let arrancado=false;
 async function arrancar(sesion){
   if(arrancado)return;
-  const {data:yo,error}=await sb.from("perfiles").select("nombre,rol,zona").eq("id",sesion.user.id).maybeSingle();
+  const {data:yo,error}=await sb.from("perfiles").select("nombre,rol,zona,activo").eq("id",sesion.user.id).maybeSingle();
   if(error||!yo||yo.activo===false){verLogin("Tu email ("+sesion.user.email+") no está dado de alta en el CRM. Pídele a Stiwhar que te añada.");$("#l-paso1").hidden=true;
     if(!$("#l-otro")){$("#l-msg").insertAdjacentHTML("afterend",'<button class="btn" type="button" id="l-otro">Entrar con otro email</button>');$("#l-otro").onclick=async()=>{await sb.auth.signOut();location.reload()}}return}
   arrancado=true;$("#login").hidden=true;S.yo=yo;ajustarPorRol();
