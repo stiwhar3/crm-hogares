@@ -1196,13 +1196,17 @@ const encMun=e=>e.municipio&&e.municipio!=="Fuenlabrada"?e.municipio:"";
 /* Código postal por zona (Stiwhar): azul, naranja, verde y amarilla = 28945; el resto = 28942. El cp puesto en la ficha manda. */
 const CP_ZONA={AZUL:"28945",NARANJA:"28945",VERDE:"28945",AMARILLA:"28945",ROJA:"28942",ROSA:"28942",MORADA:"28942",MARRON:"28942"};
 const cpEnc=e=>String(e.cp||CP_ZONA[String(e.zona||"").toUpperCase()]||"");
-const buscaEn=c=>[...(c.barrios||[]).map(cp=>barrioCP(cp)||cp),...(c.municipios||[])];
+/* Un solo buscador: «Fuenlabrada · barrio (cp)» o un municipio de Madrid. */
+const ZONAS_BUSCA=()=>[...BARRIOS_CP.map(([cp,n])=>`Fuenlabrada · ${n} (${cp})`),...MUNICIPIOS_MAD];
+const cpsBusca=c=>[...(c.barrios||[]),...(c.zonasBusca||[]).map(z=>(z.match(/^Fuenlabrada · .*\((\d{5})\)$/)||[])[1]).filter(Boolean)];
+const munsBusca=c=>[...(c.municipios||[]),...(c.zonasBusca||[]).filter(z=>!/^Fuenlabrada · /.test(z))];
+const buscaEn=c=>[...(c.zonasBusca||[]).map(z=>z.replace(/^Fuenlabrada · /,"").replace(/ \(\d{5}\)$/,"")),...(c.barrios||[]).map(cp=>barrioCP(cp)||cp),...(c.municipios||[])];
 const METAS_COORD_ET=[["compradores","Compradores nuevos"],["visitas","Visitas"],["reservas","Reservas"]];
 FORMS.compradores={titulo:"comprador",fields:[
     ["nombre","Nombre *","text",{req:1}],["telefono","Teléfono","tel"],["email","Email","email"],["dni","DNI / NIE","text"],
     ["origen","Origen","sel",()=>ORIG_COMP],["estado","Estado","sel",()=>EST_COMP],
     ["h1","Qué busca","h"],
-    ["barrios","Barrios de Fuenlabrada","multikv",()=>BARRIOS_CP.map(([cp,n])=>[cp,n+" ("+cp+")"])],["municipios","Otros municipios de Madrid","chips",()=>MUNICIPIOS_MAD],
+    ["zonasBusca","Dónde busca (Fuenlabrada por barrio u otro municipio de Madrid)","chips",ZONAS_BUSCA],
     ["precioMax","Precio máximo (€)","number"],["tipoVivienda","Tipo (piso, ático, chalet…)","text"],["habMin","Habitaciones (mínimo)","number"],["banosMin","Baños (mínimo)","number"],
     ["ascensor","Ascensor","sel",()=>IMP],["terraza","Terraza","sel",()=>IMP],["garaje","Garaje","sel",()=>IMP],
     ["busca","Otros detalles de lo que busca","textarea",{full:1}],
@@ -1234,7 +1238,7 @@ FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo")
     ["llamada","Lo importante que hay que decir al comprador","textarea",{full:1}]);
 const compActivo=c=>c.estado==="Activo"||c.estado==="Visitando";
 function encaja(c,e){if(e.estado!=="Activo")return false;
-  if((c.barrios||[]).length||(c.municipios||[]).length){const m=encMun(e);if(m?!(c.municipios||[]).includes(m):!(c.barrios||[]).includes(cpEnc(e)))return false}
+  const cps=cpsBusca(c),muns=munsBusca(c);if(cps.length||muns.length){const m=encMun(e);if(m?!muns.includes(m):!cps.includes(cpEnc(e)))return false}
   if(c.precioMax&&e.precio&&+e.precio>+c.precioMax*1.05)return false;
   if(c.habMin&&e.habitaciones&&+e.habitaciones<+c.habMin)return false;
   if(c.banosMin&&e.banos&&+e.banos<+c.banosMin)return false;
@@ -1417,7 +1421,7 @@ function field([k,l,t,opt],v){
   if(t==="check") return `<label class="check"><input type="checkbox" id="fld-${k}" name="${k}"${v?" checked":""}> ${l}</label>`;
   if(t==="h") return `<div class="full" style="grid-column:1/-1;font-weight:600;border-top:1px solid var(--line);padding-top:8px;margin-top:4px">${l}</div>`;
   if(t==="multikv"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div style="display:flex;gap:6px 14px;flex-wrap:wrap">${opt().map(([val,lab])=>`<label class="check"><input type="checkbox" name="${k}" value="${esc(val)}"${A.includes(val)?" checked":""}> ${esc(lab)}</label>`).join("")}</div></div>`}
-  if(t==="chips"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div id="chips-${k}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${A.map(chipHTML).join("")}</div><input id="chipin-${k}" data-chips="${k}" list="dl-${k}" placeholder="Escribe un municipio y elígelo" autocomplete="off"><datalist id="dl-${k}">${opt().map(x=>`<option value="${esc(x)}">`).join("")}</datalist></div>`}
+  if(t==="chips"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div id="chips-${k}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${A.map(chipHTML).join("")}</div><input id="chipin-${k}" data-chips="${k}" list="dl-${k}" placeholder="Barrio de Fuenlabrada o municipio" autocomplete="off"><datalist id="dl-${k}">${opt().map(x=>`<option value="${esc(x)}">`).join("")}</datalist></div>`}
   if(t==="multi"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div style="display:flex;gap:6px 14px;flex-wrap:wrap">${opt().map(x=>`<label class="check"><input type="checkbox" name="${k}" value="${esc(x)}"${A.includes(x)?" checked":""}> ${esc(x.charAt(0)+x.slice(1).toLowerCase())}</label>`).join("")}</div></div>`}
   if(t==="selkv") return `<label class="${cls}">${l}<select id="fld-${k}" name="${k}">${opt().map(([a,b])=>`<option value="${esc(a)}"${a===(v??"")?" selected":""}>${esc(b)}</option>`).join("")}</select></label>`;
   let inp;
