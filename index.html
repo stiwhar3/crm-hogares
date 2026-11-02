@@ -2074,6 +2074,8 @@ function coleccion(nombre){
       go();enVivo(t,go,p=>{if(cargando){pend.push(p);return true}if(!uno(p))return false;emitir();return true});return()=>{}},
     doc(id){id=id||nuevoId();return{id,
       async set(d){if(t==="contactos"&&S.yo&&S.yo.rol==="coordinador"){const {data,error}=await sb.rpc("crear_noticia",{p_id:id,p_d:d});if(error)throw fallo(error);return data}
+        /* avisos: quien lo recibe no puede «insertar» un aviso firmado por otro, así que primero se intenta actualizar */
+        if(t==="avisos"){const u=await sb.from(t).update({d}).eq("id",id).select("id");if(u.error)throw fallo(u.error);if(u.data&&u.data.length)return}
         const {error}=await sb.from(t).upsert(fila(t,id,d));if(error)throw fallo(error)},
       async leer(){const {data,error}=await sb.from(t).select("d").eq("id",id).maybeSingle();if(error)throw fallo(error);return data?data.d:null},
       async delete(){const {error}=await sb.from(t).delete().eq("id",id);if(error)throw fallo(error)}}}
