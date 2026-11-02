@@ -628,7 +628,7 @@ function rowEncargo(e){
   const al=alertaEncargo(e); const dm=e.fechaCaptacion&&e.estado==="Activo"?dias(e.fechaCaptacion,hoyISO())+" días":"";
   return `<button class="row" type="button" data-open="encargos" data-id="${esc(e.id)}">
     <span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span>
-    <span class="m">${zona(e.zona)}<span>${esc(e.asesor||"")}</span><span class="pill ${e.estado==="Activo"?"acc":e.estado==="Reservado"?"ok":""}">${esc(e.estado)}</span>${dm?`<span>${dm} en mercado</span>`:""}${al.map(a=>`<span class="pill ${a.cls}">${esc(a.txt)}</span>`).join("")}${e.riesgo?`<span class="pill bad">${esc(e.riesgo)}</span>`:""}</span>
+    <span class="m">${zona(e.zona)}<span>${esc(e.asesor||"")}</span><span class="pill ${e.estado==="Activo"?"acc":e.estado==="Reservado"?"ok":""}">${esc(e.estado)}</span>${dm?`<span>${dm} en mercado</span>`:""}${veTodo()&&e.estado==="Activo"&&!e.barrio?`<span class="pill warn">Falta el barrio</span>`:""}${al.map(a=>`<span class="pill ${a.cls}">${esc(a.txt)}</span>`).join("")}${e.riesgo?`<span class="pill bad">${esc(e.riesgo)}</span>`:""}</span>
   </button>`;
 }
 function rowOp(o){
@@ -944,12 +944,17 @@ const FIN_COMP=["","Hipoteca preaprobada","Hipoteca en estudio","Necesita hipote
 const URG_COMP=["","Ya (menos de 1 mes)","1 a 3 meses","3 a 6 meses","Más de 6 meses","Sin prisa"];
 const IMP=["","Imprescindible","Mejor sí","Le da igual"],SINO=["","Sí","No"];
 const DEF_METAS_COORD={compradores:5,visitas:6,reservas:1};
+/* Los compradores buscan por barrios de Fuenlabrada y zonas de Madrid, no por nuestras zonas de colores. Listas editables en Ajustes. */
+const DEF_BARRIOS=["Centro","El Naranjo","La Serna","El Arroyo - La Fuente","La Avanzada - La Cueva","Cerro - El Molino","Universidad - Hospital","Loranca","Nuevo Versalles","Parque Miraflores"];
+const DEF_ZONAS_MAD=["Madrid capital","Móstoles","Alcorcón","Leganés","Getafe","Parla","Humanes de Madrid","Moraleja de Enmedio","Griñón","Arroyomolinos","Pinto","Navalcarnero"];
+const barriosFuenla=()=>(S.ajustes.barrios&&S.ajustes.barrios.length?S.ajustes.barrios:DEF_BARRIOS),zonasMadrid=()=>(S.ajustes.zonasMadrid&&S.ajustes.zonasMadrid.length?S.ajustes.zonasMadrid:DEF_ZONAS_MAD);
+const buscaEn=c=>[...(c.barrios||[]),...(c.zonasMad||[])];
 const METAS_COORD_ET=[["compradores","Compradores nuevos"],["visitas","Visitas"],["reservas","Reservas"]];
 FORMS.compradores={titulo:"comprador",fields:[
     ["nombre","Nombre *","text",{req:1}],["telefono","Teléfono","tel"],["email","Email","email"],["dni","DNI / NIE","text"],
     ["origen","Origen","sel",()=>ORIG_COMP],["estado","Estado","sel",()=>EST_COMP],
     ["h1","Qué busca","h"],
-    ["zonas","Zonas","multi",()=>Object.keys(ZONAS).filter(z=>z!=="BLANCA")],
+    ["barrios","Barrios de Fuenlabrada","multi",()=>barriosFuenla()],["zonasMad","Otras zonas de Madrid","multi",()=>zonasMadrid()],
     ["precioMax","Precio máximo (€)","number"],["tipoVivienda","Tipo (piso, ático, chalet…)","text"],["habMin","Habitaciones (mínimo)","number"],["banosMin","Baños (mínimo)","number"],
     ["ascensor","Ascensor","sel",()=>IMP],["terraza","Terraza","sel",()=>IMP],["garaje","Garaje","sel",()=>IMP],
     ["busca","Otros detalles de lo que busca","textarea",{full:1}],
@@ -973,6 +978,7 @@ DEFAULTS.visitas=()=>({fecha:hoyISO()});
 DEFAULTS.llamadaVend=()=>({});
 FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo"),0,
     ["h3","Ficha para las llamadas de compradores","h"],
+    ["barrio","Barrio (para cruzar con compradores)","sel",()=>["",...barriosFuenla(),...zonasMadrid()]],
     ["m2","Superficie (m²)","number"],["habitaciones","Habitaciones","number"],["banos","Baños","number"],["planta","Planta","text"],
     ["ascensor","Ascensor","sel",()=>SINO],["terraza","Terraza","sel",()=>SINO],["garaje","Garaje","sel",()=>SINO],
     ["ibi","IBI al año (€)","number"],["comunidad","Comunidad al mes (€)","number"],["derramas","Derramas (cuáles y cuánto)","text",{full:1}],
@@ -980,7 +986,7 @@ FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo")
     ["llamada","Lo importante que hay que decir al comprador","textarea",{full:1}]);
 const compActivo=c=>c.estado==="Activo"||c.estado==="Visitando";
 function encaja(c,e){if(e.estado!=="Activo")return false;
-  if(Array.isArray(c.zonas)&&c.zonas.length&&!c.zonas.includes(e.zona))return false;
+  const B=buscaEn(c);if(B.length&&!B.includes(e.barrio))return false;
   if(c.precioMax&&e.precio&&+e.precio>+c.precioMax*1.05)return false;
   if(c.habMin&&e.habitaciones&&+e.habitaciones<+c.habMin)return false;
   if(c.banosMin&&e.banos&&+e.banos<+c.banosMin)return false;
@@ -997,7 +1003,7 @@ const estCls=e=>e==="Activo"?"acc":e==="Visitando"?"warn":e==="Reservado"||e==="
 function rowComp(c){const p=pasoComp(c),n=compActivo(c)?S.encargos.filter(e=>encaja(c,e)&&!descartado(c,e)).length:0;
   return `<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}">
     <span class="t">${esc(c.nombre||"")}${c.telefono?` · <span style="font-weight:500">${esc(c.telefono)}</span>`:""}</span><span class="r">${c.precioMax?"hasta "+eur(c.precioMax):""}</span>
-    <span class="m"><span class="pill ${estCls(c.estado)}">${esc(c.estado||"")}</span>${(c.zonas||[]).map(zona).join("")}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${n?`<span class="pill ok">${n} encaja${n>1?"n":""}</span>`:""}${p?`<span class="pill ${p.cls}">${esc(c.proxAccion?c.proxAccion.slice(0,40)+" · ":"")}${esc(p.txt)}</span>`:""}</span>
+    <span class="m"><span class="pill ${estCls(c.estado)}">${esc(c.estado||"")}</span>${buscaEn(c).slice(0,3).map(b=>`<span>${esc(b)}</span>`).join("")}${buscaEn(c).length>3?`<span>+${buscaEn(c).length-3}</span>`:""}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${n?`<span class="pill ok">${n} encaja${n>1?"n":""}</span>`:""}${p?`<span class="pill ${p.cls}">${esc(c.proxAccion?c.proxAccion.slice(0,40)+" · ":"")}${esc(p.txt)}</span>`:""}</span>
   </button>`}
 function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnviado;
   return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}">
@@ -1400,6 +1406,8 @@ function abrirAjustes(){
    <label class="full">Metas semanales por asesor (noticias, gestiones, censo, valoraciones, captaciones)<input id="aj-metas" type="text" value="${esc(METAS_ET.map(([k])=>({...DEF_METAS,...(A.metas||{})})[k]).join(", "))}"></label>
    <label class="full">Metas semanales del coordinador (compradores nuevos, visitas, reservas)<input id="aj-metasc" type="text" value="${esc(METAS_COORD_ET.map(([k])=>({...DEF_METAS_COORD,...(A.metasCoord||{})})[k]).join(", "))}"></label>
    <label class="full">Google Calendar compartido (ID del calendario)<input id="aj-cal" type="text" placeholder="...@group.calendar.google.com" value="${esc(A.calendarioId||"")}"></label>
+   <label class="full">Barrios de Fuenlabrada (uno por línea, para compradores)<textarea id="aj-barrios">${esc(barriosFuenla().join("\n"))}</textarea></label>
+   <label class="full">Otras zonas de Madrid (una por línea, para compradores)<textarea id="aj-zmad">${esc(zonasMadrid().join("\n"))}</textarea></label>
    <label class="full">Asesores (uno por línea: Nombre, ZONA)<textarea id="aj-ase">${esc(A.asesores.map(a=>a.nombre+(a.zona?", "+a.zona:"")).join("\n"))}</textarea></label>
   </div><div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal();
@@ -1408,6 +1416,7 @@ async function guardarAjustes(){
   const n=id=>Number($(id).value)||0;
   const A={objetivoMes:n("#aj-mes"),objetivosMes:Object.fromEntries(($("#aj-objmes")?.value||"").split(",").map(t=>t.trim().match(/^(\d{4}-\d{2})\s*[=:]\s*([\d.]+)$/)).filter(Boolean).map(m=>[m[1],Number(m[2].replace(/\./g,""))])),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
     metasCoord:(v=>Object.fromEntries(METAS_COORD_ET.map(([k],i)=>[k,v[i]!==undefined&&v[i].trim()!==""&&Number(v[i])>=0?Number(v[i]):DEF_METAS_COORD[k]])))($("#aj-metasc").value.split(",")),
+    barrios:$("#aj-barrios").value.split("\n").map(t=>t.trim()).filter(Boolean),zonasMadrid:$("#aj-zmad").value.split("\n").map(t=>t.trim()).filter(Boolean),
     asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()}))};
   if(!S.db) return toast("No se puede guardar fuera de claude.ai");
   try{await S.db.doc("ajustes/general").set({...S.ajustes,...A});$("#dlg").close();toast("Ajustes guardados")}catch(e){toast("No se han guardado los ajustes")}
