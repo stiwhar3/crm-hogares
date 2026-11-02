@@ -145,6 +145,19 @@ $("#btn-pass").addEventListener("click",()=>{cur={col:"__pass"};
 $("#btn-salir").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
 $("#view").addEventListener("click",e=>{if(e.target.id==="btn-importar")importar()});
 
+/* Notificaciones push: este dispositivo se apunta para recibir avisos aunque el CRM esté cerrado. */
+const VAPID_PUB="BENyYxD2VpiiK4V7qXG0Hcps8otXBafDYGQV2eEJRSb7SlPXP8jDRoq8shbzjzyAYLLK3tKlOjjQymuxNG7j4FA";
+window.pushSoportado=()=>"serviceWorker" in navigator&&"PushManager" in window&&typeof Notification!=="undefined";
+window.pushActivo=()=>{try{return localStorage.getItem("crm-push-ok")==="1"&&Notification.permission==="granted"}catch(_){return false}};
+const b64u=s=>{const p="=".repeat((4-s.length%4)%4),r=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(r,c=>c.charCodeAt(0))};
+window.activarPush=async(preguntar)=>{if(!window.pushSoportado()||!S.yo)return false;
+  try{if(preguntar&&Notification.permission==="default")await Notification.requestPermission();if(Notification.permission!=="granted")return false;
+    const reg=await navigator.serviceWorker.register("sw.js").then(()=>navigator.serviceWorker.ready);
+    let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VAPID_PUB)});
+    const j=sub.toJSON(),buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(j.endpoint)),id="p_"+[...new Uint8Array(buf)].slice(0,12).map(b=>b.toString(16).padStart(2,"0")).join("");
+    const {error}=await sb.from("push_subs").upsert({id,d:{nombre:S.yo.nombre,sub:j,ua:navigator.userAgent.slice(0,160),fecha:new Date().toISOString()}});
+    if(error)throw error;localStorage.setItem("crm-push-ok","1");return true}catch(e){console.warn("push",e);return false}};
+
 let arrancado=false;
 async function arrancar(sesion){
   if(arrancado)return;
@@ -160,6 +173,7 @@ async function arrancar(sesion){
   db.doc("zonas/indice").onSnapshot(s=>{if(!s.exists)return;const d=s.data(),I={};for(const [c,v] of Object.entries(d.calles||{})){const P={};for(const t of String(v).split(",")){const m=t.match(/^(\d+[A-Z]?)([A-Z])$/);if(m)P[m[1]]=(d.codigos||{})[m[2]]||""}I[c]=P}S.zidx=I},()=>{});
   db.doc("ajustes/general").onSnapshot(s=>{S.ajustes=s.exists?{...DEF_AJUSTES,...s.data()}:DEF_AJUSTES;render()},()=>{});
   render();
+  setTimeout(()=>{if(window.pushSoportado()&&Notification.permission==="granted")window.activarPush(false)},3000);
 }
 (async()=>{
   if(!sb){S.dbIntentado=true;return render()}
