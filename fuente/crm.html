@@ -674,9 +674,9 @@ function vHoy(){
   const urg=urgentes(),vend=S.contactos.filter(c=>c.vendida&&!c.vendidaVista);
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sp=sinPaso().length,cli=clientesAntiguos(),llamar=(()=>{const z=miZonaLlamar();return z&&S.censo?aQuienLlamar(z):[]})();
-  const av=misAvisos();
+  const av=misAvisos(),al=alertasPend();
   const B=[
-    {k:"avisos",t:"Lo primero: avisos para ti",n:av.length,tono:"bad",nota:"Llamadas y peticiones que te han pasado. Cuando lo hayas resuelto, pulsa «Hecho».",html:bloqueAvisos(av)},
+    {k:"avisos",t:"Lo primero: avisos para ti",n:av.length+al.length,tono:"bad",nota:"Llamadas que te han pasado y avisos automáticos. Pulsa «Hecho» o «Visto» cuando lo hayas atendido.",html:bloqueAvisos(av,al)},
     {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza la vivienda y enlázala a su ficha del censo: 2 días si es agencia o portal, 1 si es particular. Pasa a Seguimiento cuando hables con el propietario.",html:hoyLista("urg",urg,rowContacto,"")},
     {k:"pend",t:"Próximos pasos de hoy",n:pend.length,tono:pend.some(c=>proxEstado(c).cls==="bad")?"bad":"warn",html:hoyLista("pend",pend,rowContacto,"")+(sp?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-go="sinpaso">${sp} sin próximo paso</button></div>`:"")},
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
@@ -895,7 +895,7 @@ function vCenso(){
 }
 const TUTORIALES=[["00_instalar_app", "Instalar la app en el móvil"], ["01_entrar", "Entrar y cambiar la contraseña"], ["02_moverse", "Moverse por el CRM"], ["03_hoy", "La pestaña Hoy"], ["04_a_quien_llamar", "A quién llamar"], ["05_crear_noticia", "Crear una noticia"], ["06_seguir_noticias", "Seguir tus noticias"], ["07_calendario_informe", "Calendario e informe"], ["08_valoracion_encargo", "De valoración a encargo"], ["09_notas_vendida_borrar", "Notas, vendida y borrar"], ["10_captaciones", "Captaciones"], ["11_encargos", "Encargos"], ["12_visitas", "Visitas"], ["13_avisar_portal", "Avisar a un portal"], ["14_operaciones", "Operaciones"], ["15_censo", "El censo"], ["16_notas_rapidas_buzon", "Notas rápidas y buzón"], ["17_mapa_ruta", "Mapa y ruta"], ["18_taratura", "Taratura"], ["19_localizar", "Localizar"], ["20_resultados", "Tus resultados"]];
 function vTutoriales(){return `<section><h2>Tutoriales</h2><p style="margin:0 0 12px;color:var(--muted);font-size:13px">Vídeos cortos que explican cómo usar cada parte del CRM. Toca uno para verlo.</p><div class="tuts">${TUTORIALES.map(([f,t])=>`<details class="tut"><summary><b>${+f.slice(0,2)}.</b> ${esc(t)}</summary><video controls playsinline preload="none" src="tutoriales/${f}.mp4"></video></details>`).join("")}</div></section>`}
-function render(){
+function render(){clearTimeout(render.t);render.t=setTimeout(()=>{try{revisarAlertas()}catch(e){console.error(e)}},1500);
   document.querySelectorAll("#tabs button").forEach(b=>{b.setAttribute("aria-current",b.dataset.v===S.view);
     if(b.dataset.v==="hoy"){const n=esCoord()?compPendientes().length:contactosPendientes().length;b.innerHTML="Hoy"+(n?`<span class="count">${n}</span>`:"")}});
   const ban=!S.db?`<div class="banner">${S.dbIntentado?"Esta vista no tiene acceso a la base de datos, así que no se puede guardar ni cargar nada. Ábrela en el navegador en claude.ai con tu sesión iniciada.":"Conectando con la base de datos…"}</div>`
@@ -1017,8 +1017,8 @@ function rowAviso(a){const c=a.compradorId&&S.compradores.find(x=>x.id===a.compr
     <span class="m">${esc(cuando)}${tel?` · <a href="tel:${esc(String(tel).replace(/\s/g,""))}">${esc(tel)}</a>`:""}</span>
     ${a.texto?`<span class="m" style="white-space:pre-wrap">${esc(a.texto)}</span>`:""}
     <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${abrirB}<button class="btn small" type="button" data-avhecho="${esc(a.id)}">Hecho</button></span></div>`}
-function bloqueAvisos(L){const perm=typeof Notification!=="undefined"&&Notification.permission==="default";
-  return hoyLista("avisos",L,rowAviso,"")+(perm?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-avperm>Avisarme también con una notificación en este dispositivo</button></div>`:"")}
+function bloqueAvisos(L,A){const perm=typeof Notification!=="undefined"&&Notification.permission==="default";
+  return hoyLista("avisos",[...L.map(a=>({a})),...(A||[]).map(x=>({x}))],o=>o.a?rowAviso(o.a):rowAlerta(o.x),"")+(perm?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-avperm>Avisarme también con una notificación en este dispositivo</button></div>`:"")}
 async function guardarAviso(){const v=leerForm();if(!v.para)return toast("Elige para quién es");if(!v.texto&&!v.telefono&&!v.compradorId)return toast("Cuenta qué ha pasado");
   const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);
   const a={tipo:v.tipo,compradorId:v.compradorId||"",nombre:v.nombre||(c?c.nombre:""),telefono:v.telefono||(c?c.telefono:""),texto:v.texto||""};
@@ -1033,6 +1033,62 @@ document.addEventListener("click",async e=>{
 function avisosNuevos(prev,L){if(!prev||!S.yo)return;const yo=S.yo.nombre,nuevos=L.filter(a=>!prev.has(a.id)&&!a.hecho&&(a.para===yo||(a.cc||[]).includes(yo))&&a.de!==yo);
   for(const a of nuevos){const t=(a.tipo||"Aviso")+" de "+(a.de||"?"),b=[a.direccion,a.nombre,a.telefono,a.texto].filter(Boolean).join(" · ");toast(t+(b?": "+b.slice(0,80):""));
     try{if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(t,{body:b.slice(0,200),tag:"aviso-"+a.id})}catch(_){}}}
+/* ---------- Avisos automáticos: los calcula cada dispositivo con los datos que ya ve. Cada uno avisa una sola vez (notificación) y sigue en «Hoy» hasta que se resuelve o se pulsa «Visto». ---------- */
+const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||"{}")}catch(_){return{}}},lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
+const haceH=h=>new Date(Date.now()-h*3600e3).toISOString();
+const masDias=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d)};
+function alertasAuto(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const rol=S.yo.rol,resp=rol==="responsable",coord=rol==="coordinador",out=[];
+  const hoy=hoyISO(),ayer=masDias(-1),man=masDias(1),now=new Date(),hm=now.getHours()*60+now.getMinutes();
+  const mio=x=>resp?(!x.asesor||x.asesor===yo):x.asesor===yo,add=(k,t,txt,open,cls)=>out.push({k,t,txt:txt||"",open,cls:cls||"warn"});
+  const encMio=S.encargos.filter(e=>!coord&&mio(e)),encIds=new Set(encMio.map(e=>e.id)),vMias=S.visitas.filter(v=>encIds.has(v.encargoId));
+  const nomV=v=>{const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);return (c&&c.nombre)||v.compradorNombre||"comprador"};
+  if(!coord){
+    // Visita nueva en una de sus casas (y si el comprador es de Finanhogar, prioridad 1)
+    for(const v of vMias)if(!/^imp_/.test(v.id)&&v.creado>=haceH(48)&&(v.fecha||"")>=hoy){const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId),fin=prioComp(c);
+      add("vis:"+v.id,fin?"Visita nueva · Finanhogar, prioridad 1":"Visita nueva en tu casa",`${v.direccion||""} · ${fmtF(v.fecha)}${v.hora?" "+v.hora:""} · ${nomV(v)}`,["visitas",v.id],fin?"bad":"warn")}
+    // Visita de mañana (desde las 17:00)
+    if(hm>=17*60)for(const v of vMias)if(v.fecha===man)add("vm:"+v.id,"Mañana tienes visita",`${v.hora||""} · ${v.direccion||""} · ${nomV(v)}${v.telComprador?" · "+v.telComprador:""}`,["visitas",v.id]);
+    // Informe al vendedor pendiente (visitas de los últimos 3 días)
+    for(const v of vMias)if(v.fecha&&v.fecha<hoy&&v.fecha>=masDias(-3)&&!v.informeEnviado)add("inf:"+v.id,"Informe al vendedor pendiente",`Visita del ${fmtF(v.fecha)} · ${v.direccion||""} · ${nomV(v)}`,["visitas",v.id]);
+    const cMios=S.contactos.filter(mio);
+    // Desarrollos pendientes desde las 12:00, seguimientos desde las 18:30
+    const venc=et=>cMios.filter(c=>c.etapa===et&&c.proxFecha&&c.proxFecha<=hoy);
+    if(hm>=12*60){const L=venc("Desarrollo");if(L.length)add("des:"+hoy,`Tienes ${L.length} desarrollo${L.length>1?"s":""} pendiente${L.length>1?"s":""}`,L.slice(0,3).map(c=>c.direccion).join(" · "),["hoy","pend"],"bad")}
+    if(hm>=18*60+30){const L=venc("Seguimiento");if(L.length)add("seg:"+hoy,`Tienes ${L.length} seguimiento${L.length>1?"s":""} por hacer`,L.slice(0,3).map(c=>c.direccion).join(" · "),["hoy","pend"],"bad")}
+    // Publicada sin localizar: vence hoy o ya ha vencido
+    for(const c of cMios){const u=urgPub(c);if(u&&u.d<=0)add("pub:"+c.id+":"+hoy,"Publicada sin localizar",`${c.direccion||""} · ${u.txt}`,["contactos",c.id],"bad")}
+    // Captación nueva en su zona (2 últimos días)
+    for(const k of capNuevas())if(capFecha(k)>=masDias(-2)&&(!k.asesor||k.asesor===yo||resp))add("cap:"+k.id,"Captación nueva en tu zona",k.direccion||k.dir||"",["captaciones",k.id]);
+    // Comprador nuevo que encaja con una de sus casas
+    for(const c of S.compradores)if(compActivo(c)&&!/^imp_/.test(c.id)&&c.creado>=haceH(72))for(const e of encMio)if(encaja(c,e)&&!descartado(c,e))add("cru:"+c.id+":"+e.id,"Comprador nuevo para tu casa",`${c.nombre||""} busca algo como ${e.direccion||""}`,["compradores",c.id]);
+    // Exclusiva a punto de vencer o precio sin revisar
+    for(const e of encMio)for(const a of alertaEncargo(e))if(a.cls==="bad"||a.txt.startsWith("Exclusiva"))add("enc:"+e.id+":"+a.txt.replace(/\d+/g,"#"),a.txt,e.direccion||"",["encargos",e.id]);
+    // Se ha vendido
+    for(const c of cMios)if(c.vendida&&!c.vendidaVista)add("vend:"+c.id,"Se ha vendido con otra agencia",c.direccion||"",["contactos",c.id]);
+  }
+  if(resp){
+    for(const c of S.contactos)if(c.necesitaSti&&c.etapa!=="KO")add("sti:"+c.id,"Te espera una noticia",`${c.asesor||""} · ${c.direccion||""}${c.notaSti?" · "+c.notaSti:""}`,["contactos",c.id]);
+    for(const o of S.operaciones)if(o.estado&&o.estado!=="Escriturada"&&(o.actualizado||o.creado||"")>=haceH(48))add("op:"+o.id+":"+o.estado,`Operación: ${o.estado}`,`${o.inmueble||o.direccion||""}${o.asesor?" · "+o.asesor:""}`,["operaciones",o.id]);
+    if(now.getDay()===5&&hm>=16*60){const P=rangoPer("semana"),f=sumFact(P[0],P[1]),ob=Math.round(objMes(P[0])*12/52);add("obj:"+hoy,"Resumen de la semana",`Facturado ${eur(f)} de ${eur(ob)} (${ob?Math.round(f/ob*100):0} %)`,["resultados",""],f>=ob?"ok":"warn")}
+  }
+  if(coord||resp){
+    for(const c of S.compradores)if(c.webPendiente)add("web:"+c.id,"Comprador apuntado en la web",`${c.nombre||""}${c.telefono?" · "+c.telefono:""}`,["compradores",c.id],"bad");
+    for(const v of S.visitas)if(v.fecha===hoy&&visSinFicha(v))add("vsf:"+v.id,"Visita de hoy sin ficha de comprador",`${v.compradorNombre||""} · ${v.direccion||""}`,["visitas",v.id]);
+  }
+  return out}
+const alertasPend=()=>{const vis=lsGet("crm-al-visto");return alertasAuto().filter(a=>!vis[a.k])};
+function rowAlerta(x){return `<div class="row aviso"><span class="t">${esc(x.t)}</span><span class="r"><span class="pill ${x.cls}">Automático</span></span>${x.txt?`<span class="m">${esc(x.txt)}</span>`:""}
+  <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${x.open&&x.open[0]!=="hoy"&&x.open[0]!=="resultados"?`<button class="btn small" type="button" data-open="${esc(x.open[0])}" data-id="${esc(x.open[1])}">Abrir</button>`:x.open&&x.open[0]==="resultados"?`<button class="btn small" type="button" data-alver="resultados">Ver resultados</button>`:x.open?`<button class="btn small" type="button" data-alver="pend">Ver la lista</button>`:""}<button class="btn small" type="button" data-alvisto="${esc(x.k)}">Visto</button></span></div>`}
+function revisarAlertas(){if(!S.yo||!S.db)return;const N=lsGet("crm-al-notif"),hoy=hoyISO(),L=alertasPend();let cambio=false;
+  const prim=!N._ini;
+  for(const a of L)if(!N[a.k]){N[a.k]=hoy;cambio=true;if(prim)continue;toast(a.t+(a.txt?": "+a.txt.slice(0,80):""));
+    try{if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(a.t,{body:a.txt.slice(0,200),tag:a.k})}catch(_){}}
+  if(prim){N._ini=hoy;cambio=true}
+  const lim=masDias(-30);for(const k of Object.keys(N))if(k!=="_ini"&&N[k]<lim){delete N[k];cambio=true}
+  if(cambio)lsSet("crm-al-notif",N)}
+document.addEventListener("click",e=>{const v=e.target.closest("[data-alvisto]");if(v){const V=lsGet("crm-al-visto");V[v.dataset.alvisto]=hoyISO();const lim=masDias(-30);for(const k of Object.keys(V))if(V[k]<lim)delete V[k];lsSet("crm-al-visto",V);render();return}
+  const g=e.target.closest("[data-alver]");if(g){if(g.dataset.alver==="resultados"){S.view="resultados"}else{S.view="hoy";S.hoyAbierto="pend"}render()}});
+setInterval(()=>{if(S.yo&&S.db&&S.view==="hoy"&&!$("#dlg").open)render();revisarAlertas()},60000);
 DEFAULTS.compradores=()=>({estado:"Activo"});
 DEFAULTS.visitas=()=>({fecha:hoyISO()});
 DEFAULTS.llamadaVend=()=>({});
@@ -1109,8 +1165,8 @@ function vHoyCoord(){
   const capP=S.captaciones.filter(k=>k.estado==="Pendiente").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
   const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
   const ofi=S.compradores.filter(compOtraOficina),sinF=S.visitas.filter(v=>v.fecha&&v.fecha<=hoy&&visSinFicha(v)).sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  const av=misAvisos();
-  return `${av.length?`<section class="avisos-hoy"><h2>Lo primero: avisos para ti <span class="n">${av.length}</span></h2>${bloqueAvisos(av)}</section>`:""}${vAgenda()}
+  const av=misAvisos(),al=alertasPend();
+  return `${av.length+al.length?`<section class="avisos-hoy"><h2>Lo primero: avisos para ti <span class="n">${av.length+al.length}</span></h2>${bloqueAvisos(av,al)}</section>`:""}${vAgenda()}
   <section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small" type="button" data-nuevo="aviso">Pasar llamada de comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>
   ${cr.length?`<section><h2>Cruces: inmuebles que encajan con compradores <span class="n">${cr.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Compradores buscando a los que les encaja un encargo activo que aún no han visitado. Si no le interesa, márcalo en su ficha con «No le encaja».</p>${hoyLista("cruces",cr,rowCruce,"")}</section>`:""}
   <div class="grid2">
@@ -1472,7 +1528,7 @@ $("#frm").addEventListener("click",async ev=>{
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200)}},"Solicitud de borrado: "+m)){$("#dlg").close();toast("Solicitud de borrado enviada. Apruébala desde Hoy")}return}
   if(a==="aCenso"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué no era noticia");$("#fld-nuevaNota")?.focus();return}
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200),tipo:"censo"}},"Pide que vuelva al censo (no era noticia): "+m)){$("#dlg").close();toast("Solicitud enviada. Apruébala desde Hoy")}return}
-  if(a==="rechazarBorrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(await guardar(cur.col,cur.id,{borrarSolicitado:null},"Borrado rechazado"+(m?": "+m:"."))){$("#dlg").close();toast("Solicitud rechazada: el registro se queda")}return}
+  if(a==="rechazarBorrar"){const m=($("#fld-nuevaNota")?.value||"").trim(),ow=anterior(cur.col,cur.id);if(await guardar(cur.col,cur.id,{borrarSolicitado:null},"Borrado rechazado"+(m?": "+m:"."))){if(ow&&ow.asesor)enviarAviso({para:ow.asesor,tipo:"Borrado rechazado",col:cur.col,refId:cur.id,direccion:ow.direccion||ow.inmueble||"",texto:"Stiwhar no ha aprobado el borrado; el registro se queda."+(m?" "+m:"")});$("#dlg").close();toast("Solicitud rechazada: el registro se queda")}return}
   if(a==="aprobarBorrar"){ if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para borrar";return}
     const old=anterior(cur.col,cur.id); let msg="Borrado. Queda una copia en el registro de borrados";
     if(old?.borrarSolicitado?.tipo==="censo"){
@@ -1486,7 +1542,7 @@ $("#frm").addEventListener("click",async ev=>{
         msg="Hecho: ya no es noticia y su información queda en la vivienda del censo"}
       else msg="Ya no es noticia. No he encontrado la vivienda exacta en el censo: sus datos quedan en el registro de borrados"}
     try{await S.db.collection("borrados").doc().set({col:cur.col,docId:cur.id,f:new Date().toISOString(),motivo:old?.borrarSolicitado?.motivo||"",datos:JSON.parse(JSON.stringify(old||{}))});
-      await S.db.collection(cur.col).doc(cur.id).delete();$("#dlg").close();toast(msg)}catch(e){toast("No se ha borrado")} return }
+      await S.db.collection(cur.col).doc(cur.id).delete();if(old&&old.asesor)enviarAviso({para:old.asesor,tipo:"Borrado aprobado",direccion:old.direccion||old.inmueble||"",texto:msg});$("#dlg").close();toast(msg)}catch(e){toast("No se ha borrado")} return }
   if(a==="nota"){const t=$("#fld-notas");t.value=`${fmtF(hoyISO())} · \n`+t.value;t.focus();t.setSelectionRange(t.value.indexOf("\n"),t.value.indexOf("\n"));return}
   if(a==="ctoHoy"){$("#fld-ult").value=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});$("#fld-nuevaNota").focus();return}
   if(a==="aNoticia"){const v=leerForm(),r=cur.viv,id=cur.id,nota=($("#fld-nuevaNota")?.value||"").trim();const ok=await guardar("censoEdits",id,{...v,noticia:true},nota||(S.censoEd[id]?.noticia?"":"Pasada a noticia."));if(!ok)return;$("#dlg").close();
