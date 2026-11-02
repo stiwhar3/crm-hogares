@@ -405,7 +405,7 @@ const EST_OP = ["Reserva","Aceptada","Arras","Escriturada","Caída"];
 const DEF_AJUSTES = {asesores:[{nombre:"Carlos",zona:"ROSA"},{nombre:"Iván",zona:"AZUL"},{nombre:"Sergio",zona:"AMARILLA"},{nombre:"Mery",zona:"VERDE"},{nombre:"Mario",zona:""}],
   objetivoMes:40000,objetivoPeriodo:200000,periodoInicio:"2026-10-01",periodoFin:"2026-12-31",gastosMes:24000,diasRevisionPrecio:30};
 
-const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],compradores:[],visitas:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},portales:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},pag:{},hoyMas:{},lf:{zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
+const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],compradores:[],visitas:[],avisos:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},portales:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},pag:{},hoyMas:{},lf:{zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
 const $ = s=>document.querySelector(s);
 const esc = v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur = n=>(Number(n)||0).toLocaleString("es-ES",{maximumFractionDigits:0})+" €";
@@ -918,7 +918,9 @@ function vHoy(){
   const urg=urgentes(),vend=S.contactos.filter(c=>c.vendida&&!c.vendidaVista);
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sp=sinPaso().length,cli=clientesAntiguos(),llamar=(()=>{const z=miZonaLlamar();return z&&S.censo?aQuienLlamar(z):[]})();
+  const av=misAvisos(),al=alertasPend();
   const B=[
+    {k:"avisos",t:"Lo primero: avisos para ti",n:av.length+al.length,tono:"bad",nota:"Llamadas que te han pasado y avisos automáticos. Pulsa «Hecho» o «Visto» cuando lo hayas atendido.",html:bloqueAvisos(av,al)},
     {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza la vivienda y enlázala a su ficha del censo: 2 días si es agencia o portal, 1 si es particular. Pasa a Seguimiento cuando hables con el propietario.",html:hoyLista("urg",urg,rowContacto,"")},
     {k:"pend",t:"Próximos pasos de hoy",n:pend.length,tono:pend.some(c=>proxEstado(c).cls==="bad")?"bad":"warn",html:hoyLista("pend",pend,rowContacto,"")+(sp?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-go="sinpaso">${sp} sin próximo paso</button></div>`:"")},
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
@@ -1137,7 +1139,7 @@ function vCenso(){
 }
 const TUTORIALES=[["00_instalar_app", "Instalar la app en el móvil"], ["01_entrar", "Entrar y cambiar la contraseña"], ["02_moverse", "Moverse por el CRM"], ["03_hoy", "La pestaña Hoy"], ["04_a_quien_llamar", "A quién llamar"], ["05_crear_noticia", "Crear una noticia"], ["06_seguir_noticias", "Seguir tus noticias"], ["07_calendario_informe", "Calendario e informe"], ["08_valoracion_encargo", "De valoración a encargo"], ["09_notas_vendida_borrar", "Notas, vendida y borrar"], ["10_captaciones", "Captaciones"], ["11_encargos", "Encargos"], ["12_visitas", "Visitas"], ["13_avisar_portal", "Avisar a un portal"], ["14_operaciones", "Operaciones"], ["15_censo", "El censo"], ["16_notas_rapidas_buzon", "Notas rápidas y buzón"], ["17_mapa_ruta", "Mapa y ruta"], ["18_taratura", "Taratura"], ["19_localizar", "Localizar"], ["20_resultados", "Tus resultados"]];
 function vTutoriales(){return `<section><h2>Tutoriales</h2><p style="margin:0 0 12px;color:var(--muted);font-size:13px">Vídeos cortos que explican cómo usar cada parte del CRM. Toca uno para verlo.</p><div class="tuts">${TUTORIALES.map(([f,t])=>`<details class="tut"><summary><b>${+f.slice(0,2)}.</b> ${esc(t)}</summary><video controls playsinline preload="none" src="tutoriales/${f}.mp4"></video></details>`).join("")}</div></section>`}
-function render(){
+function render(){clearTimeout(render.t);render.t=setTimeout(()=>{try{revisarAlertas()}catch(e){console.error(e)}},1500);
   document.querySelectorAll("#tabs button").forEach(b=>{b.setAttribute("aria-current",b.dataset.v===S.view);
     if(b.dataset.v==="hoy"){const n=esCoord()?compPendientes().length:contactosPendientes().length;b.innerHTML="Hoy"+(n?`<span class="count">${n}</span>`:"")}});
   const ban=!S.db?`<div class="banner">${S.dbIntentado?"No hay conexión con la base de datos. Revisa tu conexión a internet y recarga la página.":"Conectando con la base de datos…"}</div>`
@@ -1236,6 +1238,101 @@ FORMS.llamadaVend={titulo:"noticia de un vendedor",fields:[
     ["noCenso","No está en el censo (dejarla sin vincular)","check"],
     ["direccion","Dirección del inmueble *","compdir"],["censoId","","hid"],["zonaCenso","","hid"],["nombre","Propietario","text"],["telefono","Teléfono","tel"],
     ["asesor","Para el asesor","sel",()=>["",...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar"]],["notas","Qué ha contado","textarea",{full:1}]]};
+/* Avisos: una persona le pasa a otra una llamada o una petición. Salen los primeros en «Hoy» y, con la app abierta, como notificación. */
+const TIPOS_AVISO=["Llamada de comprador","Crear ficha de comprador","Llamada de vendedor","Otro"];
+const genteAvisos=()=>[...new Set([...S.ajustes.asesores.map(a=>a.nombre),"Stiwhar","Daniel"])].filter(n=>n&&(!S.yo||n!==S.yo.nombre));
+FORMS.aviso={titulo:"aviso",fields:[
+    ["para","Para *","sel",()=>["",...genteAvisos(),...(S.yo&&S.yo.nombre!=="Stiwhar"&&S.yo.nombre!=="Daniel"?["Daniel y Stiwhar"]:[])]],["tipo","Qué es","sel",()=>TIPOS_AVISO],
+    ["compradorId","Comprador (si ya tiene ficha)","selkv",()=>[["","—"],...S.compradores.filter(c=>c.estado!=="Baja").map(c=>[c.id,c.nombre+(c.telefono?" · "+c.telefono:"")])]],
+    ["nombre","Nombre","text"],["telefono","Teléfono","tel"],["texto","Qué ha pasado / qué hay que hacer *","textarea",{full:1}]]};
+DEFAULTS.aviso=()=>({tipo:"Llamada de comprador"});
+const soloLeeComp=()=>!!(S.yo&&S.yo.rol==="asesor");
+const avisoPre=tipo=>tipo==="Crear ficha de comprador"?{tipo,para:"Daniel y Stiwhar"}:{tipo};
+const misAvisos=()=>{const yo=S.yo&&S.yo.nombre;if(!yo)return[];return S.avisos.filter(a=>!a.hecho&&(a.para===yo||(a.cc||[]).includes(yo))).sort((a,b)=>String(b.creado||"").localeCompare(String(a.creado||"")))};
+async function enviarAviso(a){const yo=S.yo?S.yo.nombre:"";if(!a.para||a.para===yo)return null;
+  return guardar("avisos",null,{...a,de:yo,hecho:""},"Aviso de "+(yo||"la oficina")+" para "+a.para+".")}
+function rowAviso(a){const c=a.compradorId&&S.compradores.find(x=>x.id===a.compradorId),tel=a.telefono||(c&&c.telefono)||"";
+  const cuando=a.creado?new Date(a.creado).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+  const abrirB=a.col==="contactos"&&a.refId&&S.contactos.find(x=>x.id===a.refId)?`<button class="btn small" type="button" data-open="contactos" data-id="${esc(a.refId)}">Abrir la noticia</button>`
+    :c?`<button class="btn small" type="button" data-open="compradores" data-id="${esc(c.id)}">Abrir su ficha</button>`
+    :a.tipo==="Crear ficha de comprador"&&!soloLeeComp()?`<button class="btn small primary" type="button" data-avficha="${esc(a.id)}">Crear la ficha</button>`:"";
+  return `<div class="row aviso"><span class="t">${esc(a.tipo||"Aviso")}: ${esc([a.direccion,a.nombre||(c&&c.nombre)].filter(Boolean).join(" · "))}</span>
+    <span class="r"><span class="pill bad">De ${esc(a.de||"?")}</span></span>
+    <span class="m">${esc(cuando)}${tel?` · <a href="tel:${esc(String(tel).replace(/\s/g,""))}">${esc(tel)}</a>`:""}</span>
+    ${a.texto?`<span class="m" style="white-space:pre-wrap">${esc(a.texto)}</span>`:""}
+    <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${abrirB}<button class="btn small" type="button" data-avhecho="${esc(a.id)}">Hecho</button></span></div>`}
+function bloqueAvisos(L,A){const perm=typeof Notification!=="undefined"&&Notification.permission==="default";
+  return hoyLista("avisos",[...L.map(a=>({a})),...(A||[]).map(x=>({x}))],o=>o.a?rowAviso(o.a):rowAlerta(o.x),"")+(perm?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-avperm>Avisarme también con una notificación en este dispositivo</button></div>`:"")}
+async function guardarAviso(){const v=leerForm();if(!v.para)return toast("Elige para quién es");if(!v.texto&&!v.telefono&&!v.compradorId)return toast("Cuenta qué ha pasado");
+  const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);
+  const a={tipo:v.tipo,compradorId:v.compradorId||"",nombre:v.nombre||(c?c.nombre:""),telefono:v.telefono||(c?c.telefono:""),texto:v.texto||""};
+  if(v.para==="Daniel y Stiwhar"){a.para="Daniel";a.cc=["Stiwhar"]}else a.para=v.para;
+  const id=await enviarAviso(a);
+  if(id){if(c&&!soloLeeComp())await guardar("compradores",c.id,{},"Aviso a "+v.para+": "+(v.texto||v.tipo));$("#dlg").close();toast("Aviso enviado a "+v.para)}}
+document.addEventListener("click",async e=>{
+  const h=e.target.closest("[data-avhecho]");if(h){e.preventDefault();if(await guardar("avisos",h.dataset.avhecho,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:""},"Hecho."))toast("Aviso marcado como hecho");render();return}
+  const f=e.target.closest("[data-avficha]");if(f){e.preventDefault();const a=S.avisos.find(x=>x.id===f.dataset.avficha);if(!a)return;abrirNuevo("compradores",{nombre:a.nombre||"",telefono:a.telefono||"",notas:a.texto?"Pedida por "+(a.de||"")+": "+a.texto:""});cur.avisoId=a.id;return}
+  if(e.target.closest("[data-avperm]")){try{await Notification.requestPermission()}catch(_){}render()}});
+/* Aviso nuevo con la app abierta: mensaje y, si se ha permitido, notificación del sistema. */
+function avisosNuevos(prev,L){if(!prev||!S.yo)return;const yo=S.yo.nombre,nuevos=L.filter(a=>!prev.has(a.id)&&!a.hecho&&(a.para===yo||(a.cc||[]).includes(yo))&&a.de!==yo);
+  for(const a of nuevos){const t=(a.tipo||"Aviso")+" de "+(a.de||"?"),b=[a.direccion,a.nombre,a.telefono,a.texto].filter(Boolean).join(" · ");toast(t+(b?": "+b.slice(0,80):""));
+    try{if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(t,{body:b.slice(0,200),tag:"aviso-"+a.id})}catch(_){}}}
+/* ---------- Avisos automáticos: los calcula cada dispositivo con los datos que ya ve. Cada uno avisa una sola vez (notificación) y sigue en «Hoy» hasta que se resuelve o se pulsa «Visto». ---------- */
+const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||"{}")}catch(_){return{}}},lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
+const haceH=h=>new Date(Date.now()-h*3600e3).toISOString();
+const masDias=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d)};
+function alertasAuto(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const rol=S.yo.rol,resp=rol==="responsable",coord=rol==="coordinador",out=[];
+  const hoy=hoyISO(),ayer=masDias(-1),man=masDias(1),now=new Date(),hm=now.getHours()*60+now.getMinutes();
+  const mio=x=>resp?(!x.asesor||x.asesor===yo):x.asesor===yo,add=(k,t,txt,open,cls)=>out.push({k,t,txt:txt||"",open,cls:cls||"warn"});
+  const encMio=S.encargos.filter(e=>!coord&&mio(e)),encIds=new Set(encMio.map(e=>e.id)),vMias=S.visitas.filter(v=>encIds.has(v.encargoId));
+  const nomV=v=>{const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);return (c&&c.nombre)||v.compradorNombre||"comprador"};
+  if(!coord){
+    // Visita nueva en una de sus casas (y si el comprador es de Finanhogar, prioridad 1)
+    for(const v of vMias)if(!/^imp_/.test(v.id)&&v.creado>=haceH(48)&&(v.fecha||"")>=hoy){const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId),fin=prioComp(c);
+      add("vis:"+v.id,fin?"Visita nueva · Finanhogar, prioridad 1":"Visita nueva en tu casa",`${v.direccion||""} · ${fmtF(v.fecha)}${v.hora?" "+v.hora:""} · ${nomV(v)}`,["visitas",v.id],fin?"bad":"warn")}
+    // Visita de mañana (desde las 17:00)
+    if(hm>=17*60)for(const v of vMias)if(v.fecha===man)add("vm:"+v.id,"Mañana tienes visita",`${v.hora||""} · ${v.direccion||""} · ${nomV(v)}${v.telComprador?" · "+v.telComprador:""}`,["visitas",v.id]);
+    // Informe al vendedor pendiente (visitas de los últimos 3 días)
+    for(const v of vMias)if(v.fecha&&v.fecha<hoy&&v.fecha>=masDias(-3)&&!v.informeEnviado)add("inf:"+v.id,"Informe al vendedor pendiente",`Visita del ${fmtF(v.fecha)} · ${v.direccion||""} · ${nomV(v)}`,["visitas",v.id]);
+    const cMios=S.contactos.filter(mio);
+    // Desarrollos pendientes desde las 12:00, seguimientos desde las 18:30
+    const venc=et=>cMios.filter(c=>c.etapa===et&&c.proxFecha&&c.proxFecha<=hoy);
+    if(hm>=12*60){const L=venc("Desarrollo");if(L.length)add("des:"+hoy,`Tienes ${L.length} desarrollo${L.length>1?"s":""} pendiente${L.length>1?"s":""}`,L.slice(0,3).map(c=>c.direccion).join(" · "),["hoy","pend"],"bad")}
+    if(hm>=18*60+30){const L=venc("Seguimiento");if(L.length)add("seg:"+hoy,`Tienes ${L.length} seguimiento${L.length>1?"s":""} por hacer`,L.slice(0,3).map(c=>c.direccion).join(" · "),["hoy","pend"],"bad")}
+    // Publicada sin localizar: vence hoy o ya ha vencido
+    for(const c of cMios){const u=urgPub(c);if(u&&u.d<=0)add("pub:"+c.id+":"+hoy,"Publicada sin localizar",`${c.direccion||""} · ${u.txt}`,["contactos",c.id],"bad")}
+    // Captación nueva en su zona (2 últimos días)
+    for(const k of capNuevas())if(capFecha(k)>=masDias(-2)&&(!k.asesor||k.asesor===yo||resp))add("cap:"+k.id,"Captación nueva en tu zona",k.direccion||k.dir||"",["captaciones",k.id]);
+    // Comprador nuevo que encaja con una de sus casas
+    for(const c of S.compradores)if(compActivo(c)&&!/^imp_/.test(c.id)&&c.creado>=haceH(72))for(const e of encMio)if(encaja(c,e)&&!descartado(c,e))add("cru:"+c.id+":"+e.id,"Comprador nuevo para tu casa",`${c.nombre||""} busca algo como ${e.direccion||""}`,["compradores",c.id]);
+    // Exclusiva a punto de vencer o precio sin revisar
+    for(const e of encMio)for(const a of alertaEncargo(e))if(a.cls==="bad"||a.txt.startsWith("Exclusiva"))add("enc:"+e.id+":"+a.txt.replace(/\d+/g,"#"),a.txt,e.direccion||"",["encargos",e.id]);
+    // Se ha vendido
+    for(const c of cMios)if(c.vendida&&!c.vendidaVista)add("vend:"+c.id,"Se ha vendido con otra agencia",c.direccion||"",["contactos",c.id]);
+  }
+  if(resp){
+    for(const c of S.contactos)if(c.necesitaSti&&c.etapa!=="KO")add("sti:"+c.id,"Te espera una noticia",`${c.asesor||""} · ${c.direccion||""}${c.notaSti?" · "+c.notaSti:""}`,["contactos",c.id]);
+    for(const o of S.operaciones)if(o.estado&&o.estado!=="Escriturada"&&(o.actualizado||o.creado||"")>=haceH(48))add("op:"+o.id+":"+o.estado,`Operación: ${o.estado}`,`${o.inmueble||o.direccion||""}${o.asesor?" · "+o.asesor:""}`,["operaciones",o.id]);
+    if(now.getDay()===5&&hm>=16*60){const P=rangoPer("semana"),f=sumFact(P[0],P[1]),ob=Math.round(objMes(P[0])*12/52);add("obj:"+hoy,"Resumen de la semana",`Facturado ${eur(f)} de ${eur(ob)} (${ob?Math.round(f/ob*100):0} %)`,["resultados",""],f>=ob?"ok":"warn")}
+  }
+  if(coord||resp){
+    for(const c of S.compradores)if(c.webPendiente)add("web:"+c.id,"Comprador apuntado en la web",`${c.nombre||""}${c.telefono?" · "+c.telefono:""}`,["compradores",c.id],"bad");
+    for(const v of S.visitas)if(v.fecha===hoy&&visSinFicha(v))add("vsf:"+v.id,"Visita de hoy sin ficha de comprador",`${v.compradorNombre||""} · ${v.direccion||""}`,["visitas",v.id]);
+  }
+  return out}
+const alertasPend=()=>{const vis=lsGet("crm-al-visto");return alertasAuto().filter(a=>!vis[a.k])};
+function rowAlerta(x){return `<div class="row aviso"><span class="t">${esc(x.t)}</span><span class="r"><span class="pill ${x.cls}">Automático</span></span>${x.txt?`<span class="m">${esc(x.txt)}</span>`:""}
+  <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${x.open&&x.open[0]!=="hoy"&&x.open[0]!=="resultados"?`<button class="btn small" type="button" data-open="${esc(x.open[0])}" data-id="${esc(x.open[1])}">Abrir</button>`:x.open&&x.open[0]==="resultados"?`<button class="btn small" type="button" data-alver="resultados">Ver resultados</button>`:x.open?`<button class="btn small" type="button" data-alver="pend">Ver la lista</button>`:""}<button class="btn small" type="button" data-alvisto="${esc(x.k)}">Visto</button></span></div>`}
+function revisarAlertas(){if(!S.yo||!S.db)return;const N=lsGet("crm-al-notif"),hoy=hoyISO(),L=alertasPend();let cambio=false;
+  const prim=!N._ini;
+  for(const a of L)if(!N[a.k]){N[a.k]=hoy;cambio=true;if(prim)continue;toast(a.t+(a.txt?": "+a.txt.slice(0,80):""));
+    try{if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(a.t,{body:a.txt.slice(0,200),tag:a.k})}catch(_){}}
+  if(prim){N._ini=hoy;cambio=true}
+  const lim=masDias(-30);for(const k of Object.keys(N))if(k!=="_ini"&&N[k]<lim){delete N[k];cambio=true}
+  if(cambio)lsSet("crm-al-notif",N)}
+document.addEventListener("click",e=>{const v=e.target.closest("[data-alvisto]");if(v){const V=lsGet("crm-al-visto");V[v.dataset.alvisto]=hoyISO();const lim=masDias(-30);for(const k of Object.keys(V))if(V[k]<lim)delete V[k];lsSet("crm-al-visto",V);render();return}
+  const g=e.target.closest("[data-alver]");if(g){if(g.dataset.alver==="resultados"){S.view="resultados"}else{S.view="hoy";S.hoyAbierto="pend"}render()}});
+setInterval(()=>{if(S.yo&&S.db&&S.view==="hoy"&&!$("#dlg").open)render();revisarAlertas()},60000);
 DEFAULTS.compradores=()=>({estado:"Activo"});
 DEFAULTS.visitas=()=>({fecha:hoyISO()});
 DEFAULTS.llamadaVend=()=>({});
@@ -1301,7 +1398,7 @@ function vCompradores(){
   const hoy=hoyISO(),prox=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||""))),
     pas=S.visitas.filter(v=>v.fecha<hoy).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   return `<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-best="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(c=>pasa(c,v)).length}</span></button>`).join("")}</div>
-  <div class="tools"><input type="search" id="b-q" placeholder="Buscar nombre, teléfono, DNI, qué busca…" value="${esc(f.q)}"><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" id="b-form">Copiar enlace del formulario para compradores</button></div>
+  <div class="tools"><input type="search" id="b-q" placeholder="Buscar nombre, teléfono, DNI, qué busca…" value="${esc(f.q)}">${soloLeeComp()?`<button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Crear ficha de comprador">Pedir ficha de comprador</button>`:""}<button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" id="b-form">Copiar enlace del formulario para compradores</button></div>
   <h2>Compradores <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowComp),S.compradores.length?"Ningún comprador coincide con el filtro.":"Aún no hay compradores. Pulsa «+ Nuevo».")+pg.ctrl)(paginar("compradores",L))}</section>
   <section><h2>Próximas visitas <span class="n">${prox.length}</span></h2>${hoyLista("bvprox",prox,rowVisita,"No hay visitas programadas.")}</section>
   <section><h2>Visitas hechas <span class="n">${pas.length}</span></h2>${hoyLista("bvpas",pas,rowVisita,"Aún no hay visitas.")}</section>`}
@@ -1312,8 +1409,9 @@ function vHoyCoord(){
   const capP=S.captaciones.filter(k=>k.estado==="Pendiente").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
   const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
   const ofi=S.compradores.filter(compOtraOficina),sinF=S.visitas.filter(v=>v.fecha&&v.fecha<=hoy&&visSinFicha(v)).sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  return `${vAgenda()}
-  <section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>
+  const av=misAvisos(),al=alertasPend();
+  return `${av.length+al.length?`<section class="avisos-hoy"><h2>Lo primero: avisos para ti <span class="n">${av.length+al.length}</span></h2>${bloqueAvisos(av,al)}</section>`:""}${vAgenda()}
+  <section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small" type="button" data-nuevo="aviso">Pasar llamada de comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>
   ${cr.length?`<section><h2>Cruces: inmuebles que encajan con compradores <span class="n">${cr.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Compradores buscando a los que les encaja un encargo activo que aún no han visitado. Si no le interesa, márcalo en su ficha con «No le encaja».</p>${hoyLista("cruces",cr,rowCruce,"")}</section>`:""}
   <div class="grid2">
     ${sinF.length?`<section><h2>Visitas sin ficha de comprador <span class="n">${sinF.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">No es obligatorio, pero después de la visita conviene darle de alta como comprador: abre la visita y pulsa «Dar de alta como comprador».</p>${hoyLista("bsinf",sinF,rowVisita,"")}</section>`:""}
@@ -1333,7 +1431,7 @@ function vMetasCoord(per){const [a,b]=rangoPer(per),M=metasCoordPer(per),[et,des
 function listaFicha(t,rows,vacio){return `<div class="full" style="grid-column:1/-1"><div class="hl" style="font-weight:600;margin:6px 0 4px">${t}</div><div class="list">${rows.length?rows.join(""):`<div class="empty">${vacio}</div>`}</div></div>`}
 function extraFicha(col,d,id){
   if(col==="compradores"&&id){const enc=S.encargos.filter(e=>encaja(d,e)&&!descartado(d,e)),vs=visitasDe(d).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
-    return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="visitaCon">Apuntar visita</button>${compOtraOficina(d)?`<button class="btn small" type="button" data-act="compPasada">Ya he pasado su casa a la otra oficina</button>`:""}${d.noticiaId?`<span class="pill ok">Su casa ya es noticia</span>`:""}${d.webPendiente?`<button class="btn small primary" type="button" data-act="compWebLlamado">Ya le he llamado</button>`:""}${compActivo(d)?`<button class="btn small" type="button" data-act="compConsultado">Le he preguntado: sigue buscando</button>`:""}${(d.descartados||[]).length?`<button class="btn small" type="button" data-act="descartesFuera">Volver a ver los ${d.descartados.length} descartados</button>`:""}</div>
+    return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${soloLeeComp()?"":`<button class="btn small" type="button" data-act="visitaCon">Apuntar visita</button>`}<button class="btn small" type="button" data-act="avisoComp">${soloLeeComp()?"Avisar a Daniel sobre este comprador":"Pasar llamada a un asesor"}</button>${compOtraOficina(d)?`<button class="btn small" type="button" data-act="compPasada">Ya he pasado su casa a la otra oficina</button>`:""}${d.noticiaId?`<span class="pill ok">Su casa ya es noticia</span>`:""}${d.webPendiente?`<button class="btn small primary" type="button" data-act="compWebLlamado">Ya le he llamado</button>`:""}${compActivo(d)?`<button class="btn small" type="button" data-act="compConsultado">Le he preguntado: sigue buscando</button>`:""}${(d.descartados||[]).length?`<button class="btn small" type="button" data-act="descartesFuera">Volver a ver los ${d.descartados.length} descartados</button>`:""}</div>
       ${listaFicha("Inmuebles que le encajan",enc.map(e=>`<div class="row"><span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span><span class="m">${zona(e.zona)}${e.habitaciones?`<span>${esc(e.habitaciones)} hab.</span>`:""}${e.m2?`<span>${esc(e.m2)} m²</span>`:""}<span>${esc(e.asesor||"")}</span>${visitasDe(d,e).length?`<span class="pill ok">Visitado</span>`:""}<button class="btn small" type="button" data-act="verEnc" data-enc="${esc(e.id)}">Ficha</button><button class="btn small" type="button" data-act="visitaCon" data-enc="${esc(e.id)}">Visita</button><button class="btn small" type="button" data-act="descartar" data-enc="${esc(e.id)}">No le encaja</button></span></div>`),"Ningún encargo activo encaja ahora mismo con lo que busca.")}
       ${listaFicha("Sus visitas",vs.map(rowVisita),"Aún no ha visitado nada.")}`}
   if(col==="visitas"&&id&&visSinFicha(d))return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="pg-m">Aún no tiene ficha de comprador. No es obligatorio, pero se recomienda darle de alta después de la visita.</span><button class="btn small primary" type="button" data-act="visitaAlta">Dar de alta como comprador</button></div>`;
@@ -1424,10 +1522,11 @@ async function guardarLlamadaVend(){const v=leerForm();if(!v.direccion)return to
   if(!v.noCenso&&!v.censoId){toast("Elige la vivienda en la lista del censo o marca «No está en el censo»");$("#fld-direccion").focus();return}
   const cid=v.noCenso?"":v.censoId,quien=S.yo?S.yo.nombre:"la oficina",ya=cid&&S.contactos.find(c=>c.censoId===cid);
   if(ya){const ok=await guardar("contactos",ya.id,{proxAccion:"Llamar al propietario (llamada recibida por "+quien+")",proxFecha:hoyISO(),nombre:ya.nombre||v.nombre,telefono:ya.telefono||v.telefono,notas:[ya.notas,`Llamada recibida (${hoyISO()}): ${[v.nombre,v.telefono].filter(Boolean).join(" · ")}${v.notas?". "+v.notas:""}`].filter(Boolean).join("\n")},"Llamada recibida en la oficina (ya era noticia).");
-    if(ok){$("#dlg").close();toast("Ya era noticia de "+(ya.asesor||"sin asesor")+": le he añadido la llamada")}return}
+    if(ok){await enviarAviso({para:ya.asesor||"Stiwhar",tipo:"Llamada de vendedor",col:"contactos",refId:ya.id,direccion:ya.direccion||v.direccion,nombre:v.nombre,telefono:v.telefono,texto:v.notas||""});$("#dlg").close();toast("Ya era noticia de "+(ya.asesor||"sin asesor")+": le he añadido la llamada y le he avisado")}return}
   const zn=(cid&&v.zonaCenso)||zonaDe(v.direccion)||"",as=v.asesor||(S.ajustes.asesores.find(a=>a.zona===zn)||{}).nombre||"Stiwhar";
-  const ok=await guardar("contactos",null,{direccion:v.direccion,censoId:cid,nombre:v.nombre,telefono:v.telefono,asesor:as,zona:zn,etapa:"Desarrollo",origen:"Llamada a oficina",motivo:"",proxAccion:"Llamar al propietario (llamada recibida por "+(S.yo?S.yo.nombre:"la oficina")+")",proxFecha:hoyISO(),necesitaSti:false,notaSti:"",notas:v.notas||""},"Llamada recibida en la oficina.");
-  if(ok){$("#dlg").close();toast("Noticia creada para "+as)}}
+  const nid=await guardar("contactos",null,{direccion:v.direccion,censoId:cid,nombre:v.nombre,telefono:v.telefono,asesor:as,zona:zn,etapa:"Desarrollo",origen:"Llamada a oficina",motivo:"",proxAccion:"Llamar al propietario (llamada recibida por "+(S.yo?S.yo.nombre:"la oficina")+")",proxFecha:hoyISO(),necesitaSti:false,notaSti:"",notas:v.notas||""},"Llamada recibida en la oficina.");
+  if(nid){let para=as;try{if(window.asesorNoticia)para=(await window.asesorNoticia(nid))||as}catch(_){}
+    await enviarAviso({para,tipo:"Llamada de vendedor",col:"contactos",refId:nid,direccion:v.direccion,nombre:v.nombre,telefono:v.telefono,texto:v.notas||""});$("#dlg").close();toast("Noticia y aviso enviados a "+para)}}
 async function antesDeGuardar(data){ /* compradores y visitas: completa datos; devuelve false para parar */
   if(cur.col==="compradores"){const old=cur.id&&S.compradores.find(x=>x.id===cur.id);
     if(data.estado==="Reservado"&&!data.fechaReserva)data.fechaReserva=hoyISO();
@@ -1455,6 +1554,7 @@ async function antesDeGuardar(data){ /* compradores y visitas: completa datos; d
     if(c&&c.estado==="Activo")setTimeout(()=>guardar("compradores",c.id,{estado:"Visitando"},"Primera visita: "+e.direccion+"."),300)}
   return true}
 async function accionFicha(a,b){
+  if(a==="avisoComp"){const c=S.compradores.find(x=>x.id===cur.id)||{};$("#dlg").close();setTimeout(()=>abrirNuevo("aviso",{tipo:"Llamada de comprador",compradorId:c.id||"",nombre:c.nombre||"",telefono:c.telefono||""}),150);return true}
   if(a==="visitaCon"){const enc=b.dataset.enc||"",cid=cur.id;$("#dlg").close();setTimeout(()=>abrirNuevo("visitas",{compradorId:cid,encargoId:enc}),150);return true}
   if(a==="visitaAlta"){const v=S.visitas.find(x=>x.id===cur.id);if(!v)return true;const ya=S.compradores.find(x=>tel9(x.telefono)&&tel9(x.telefono)===tel9(v.telComprador));$("#dlg").close();
     if(ya){if(await guardar("visitas",v.id,{compradorId:ya.id,compradorNombre:ya.nombre,telComprador:ya.telefono||""}))toast("Ya tenía ficha: visita unida a "+ya.nombre);setTimeout(()=>abrir("compradores",ya.id),150);return true}
@@ -1495,6 +1595,7 @@ function abrir(col,id){
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">Solicitar borrado</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
+  if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
   if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
 }
 async function pintarVivBox(){
@@ -1594,7 +1695,7 @@ function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u03
   .replace(/^\s*(C\/|CL\.?\s|CALLE\s|AVDA\.?\s|AVENIDA\s|AV\.?\s|PZA\.?\s|PZ\.?\s|PLAZA\s|PASEO\s)/,"").replace(/\bESC(ALERA)?\b/g,"").replace(/[^A-Z0-9]/g,"")}
 function etiqueta(col,k){const f=(FORMS[col]?.fields||[]).find(x=>x[0]===k);return f?f[1].replace(" *",""):k}
 function anterior(col,id){if(!id)return null;if(col==="portales")return {...(S.portales[id]||{})};if(col==="censoEdits"){const r=buscarViv(id);return {...(r?r.u:{}),...(S.censoEd[id]||{})}}return S[col].find(x=>x.id===id)||null}
-const VIVAS=["contactos","encargos","operaciones","captaciones","compradores","visitas"];
+const VIVAS=["contactos","encargos","operaciones","captaciones","compradores","visitas","avisos"];
 async function guardar(col,id,data,nota,extraHist){
   if(!S.db){toast("Sin conexión: no se ha guardado");return null}
   const ahora=new Date().toISOString(),old=anterior(col,id);let base=old;
@@ -1610,13 +1711,14 @@ async function guardar(col,id,data,nota,extraHist){
   out.historial=hist.slice(-300);
   const enMemoria=rid=>{const L=S[col];if(!VIVAS.includes(col)||!Array.isArray(L))return;const o={id:rid,...out},i=L.findIndex(x=>x.id===rid);if(i>=0)L[i]=o;else L.push(o)};
   try{ if(id){await S.db.collection(col).doc(id).set(out);enMemoria(id);return id}
-       const r=S.db.collection(col).doc(); out.creado=ahora; await r.set(out); enMemoria(r.id); return r.id; }
+       const r=S.db.collection(col).doc(); out.creado=ahora; const rr=await r.set(out),rid=(typeof rr==="string"&&rr)||r.id; enMemoria(rid); return rid; }
   catch(e){console.error("guardar",col,e);S.soloLectura=e.code||e.message||"error";toast(e.code==="quota_exceeded"?"La base de datos está llena: borra registros antiguos":"No se ha guardado: "+(e.code||"")+" "+(e.message||""));return null}
 }
 $("#frm").addEventListener("submit",async ev=>{
   ev.preventDefault(); if(cur&&cur.col==="pegar")return guardarPegado(); const data=leerForm();
   if(cur.col==="ajustes"){return guardarAjustes()}
   if(cur.col==="llamadaVend"){return guardarLlamadaVend()}
+  if(cur.col==="aviso"){return guardarAviso()}
   if(!(await antesDeGuardar(data)))return;
   if(cur.col==="captaciones"&&!data.asesor&&esCoord()){const z=zonaDe(data.direccion)||data.zona;data.asesor=(S.ajustes.asesores.find(a=>a.zona===z)||{}).nombre||""}
   if(cur.col==="contactos"&&data.etapa!=="KO"&&data.etapa!=="Encargo"&&!data.proxFecha){toast("Pon fecha a la próxima acción");$("#fld-proxFecha").focus();return}
@@ -1629,6 +1731,7 @@ $("#frm").addEventListener("submit",async ev=>{
     if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
   const nid=await guardar(cur.col,cur.id,data,nota);
   if(nid){$("#dlg").close();toast("Guardado");if(cur.col==="contactos")sincronizarCenso(data);
+    if(cur.col==="compradores"&&cur.avisoId&&await guardar("avisos",cur.avisoId,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:"",compradorId:nid},"Ficha creada."))toast("Ficha creada y aviso cerrado");
     if(cur.col==="compradores"&&cur.visitaId&&await guardar("visitas",cur.visitaId,{compradorId:nid,compradorNombre:data.nombre||"",telComprador:data.telefono||""},"Dado de alta como comprador."))toast("Comprador dado de alta y unido a su visita")}
 });
 const chipHTML=x=>`<span class="pill" data-v="${esc(x)}">${esc(x)} <button type="button" class="chipx" data-chipx aria-label="Quitar" style="border:0;background:none;cursor:pointer;padding:0 2px">×</button></span>`;
@@ -1669,7 +1772,7 @@ $("#frm").addEventListener("click",async ev=>{
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200)}},"Solicitud de borrado: "+m)){$("#dlg").close();toast("Solicitud de borrado enviada. Apruébala desde Hoy")}return}
   if(a==="aCenso"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué no era noticia");$("#fld-nuevaNota")?.focus();return}
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200),tipo:"censo"}},"Pide que vuelva al censo (no era noticia): "+m)){$("#dlg").close();toast("Solicitud enviada. Apruébala desde Hoy")}return}
-  if(a==="rechazarBorrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(await guardar(cur.col,cur.id,{borrarSolicitado:null},"Borrado rechazado"+(m?": "+m:"."))){$("#dlg").close();toast("Solicitud rechazada: el registro se queda")}return}
+  if(a==="rechazarBorrar"){const m=($("#fld-nuevaNota")?.value||"").trim(),ow=anterior(cur.col,cur.id);if(await guardar(cur.col,cur.id,{borrarSolicitado:null},"Borrado rechazado"+(m?": "+m:"."))){if(ow&&ow.asesor)enviarAviso({para:ow.asesor,tipo:"Borrado rechazado",col:cur.col,refId:cur.id,direccion:ow.direccion||ow.inmueble||"",texto:"Stiwhar no ha aprobado el borrado; el registro se queda."+(m?" "+m:"")});$("#dlg").close();toast("Solicitud rechazada: el registro se queda")}return}
   if(a==="aprobarBorrar"){ if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para borrar";return}
     const old=anterior(cur.col,cur.id); let msg="Borrado. Queda una copia en el registro de borrados";
     if(old?.borrarSolicitado?.tipo==="censo"){
@@ -1683,7 +1786,7 @@ $("#frm").addEventListener("click",async ev=>{
         msg="Hecho: ya no es noticia y su información queda en la vivienda del censo"}
       else msg="Ya no es noticia. No he encontrado la vivienda exacta en el censo: sus datos quedan en el registro de borrados"}
     try{await S.db.collection("borrados").doc().set({col:cur.col,docId:cur.id,f:new Date().toISOString(),motivo:old?.borrarSolicitado?.motivo||"",datos:JSON.parse(JSON.stringify(old||{}))});
-      await S.db.collection(cur.col).doc(cur.id).delete();$("#dlg").close();toast(msg)}catch(e){toast("No se ha borrado")} return }
+      await S.db.collection(cur.col).doc(cur.id).delete();if(old&&old.asesor)enviarAviso({para:old.asesor,tipo:"Borrado aprobado",direccion:old.direccion||old.inmueble||"",texto:msg});$("#dlg").close();toast(msg)}catch(e){toast("No se ha borrado")} return }
   if(a==="nota"){const t=$("#fld-notas");t.value=`${fmtF(hoyISO())} · \n`+t.value;t.focus();t.setSelectionRange(t.value.indexOf("\n"),t.value.indexOf("\n"));return}
   if(a==="ctoHoy"){$("#fld-ult").value=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});$("#fld-nuevaNota").focus();return}
   if(a==="aNoticia"){const v=leerForm(),r=cur.viv,id=cur.id,nota=($("#fld-nuevaNota")?.value||"").trim();const ok=await guardar("censoEdits",id,{...v,noticia:true},nota||(S.censoEd[id]?.noticia?"":"Pasada a noticia."));if(!ok)return;$("#dlg").close();
@@ -1926,7 +2029,7 @@ document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf
     imprimirTaratura(L);return}});
 $("#btn-new").addEventListener("click",()=>abrir({encargos:"encargos",operaciones:"operaciones",captaciones:"captaciones",compradores:"compradores"}[S.view]||(esCoord()?"compradores":"contactos")));
 $("#frm").addEventListener("click",e=>{const r=e.target.closest("button[data-open]");if(!r)return;e.preventDefault();e.stopPropagation();const c=r.dataset.open,i=r.dataset.id;$("#dlg").close();setTimeout(()=>abrir(c,i),150)},true);
-$("#view").addEventListener("click",e=>{const n=e.target.closest("[data-nuevo]");if(n){abrir(n.dataset.nuevo);return}const be=e.target.closest("[data-best]");if(be){S.bf.estado=be.dataset.best;render()}});
+$("#view").addEventListener("click",e=>{const n=e.target.closest("[data-nuevo]");if(n){if(n.dataset.tipo)abrirNuevo(n.dataset.nuevo,avisoPre(n.dataset.tipo));else abrir(n.dataset.nuevo);return}const be=e.target.closest("[data-best]");if(be){S.bf.estado=be.dataset.best;render()}});
 const URL_FORM_COMP="https://stiwhar3.github.io/crm-hogares/alta.html";
 $("#view").addEventListener("click",async e=>{if(!e.target.closest("#b-form"))return;try{await navigator.clipboard.writeText(URL_FORM_COMP);toast("Enlace copiado: pégalo en WhatsApp o en el email al comprador")}catch(_){toast("Enlace: "+URL_FORM_COMP)}});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id!=="b-q"&&id!=="e-q")return;if(id==="b-q")S.bf.q=e.target.value;else S.eq=e.target.value;clearTimeout(render.t2);render.t2=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)});
@@ -1936,7 +2039,7 @@ render();
 /* ---------- base de datos: Supabase (cada asesor solo recibe lo suyo; lo filtra el servidor) ---------- */
 const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
-const TABLA={contactos:"contactos",captaciones:"captaciones",compradores:"compradores",visitas:"visitas",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados",mercado:"mercado"};
+const TABLA={contactos:"contactos",captaciones:"captaciones",compradores:"compradores",visitas:"visitas",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados",mercado:"mercado",avisos:"avisos"};
 const DOCS={"ajustes/general":"general","zonas/indice":"zonas_indice","geo/parcelas":"geo_parcelas"};
 const nuevoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 function fila(t,id,d){const r={id,d};if(t==="censo")r.zona=d.zona;if(t==="censo_edits"||t==="portales")r.zona=id.split("-")[0].toUpperCase();return r}
@@ -1970,7 +2073,7 @@ function coleccion(nombre){
         .catch(e=>{if(yo===cargando)cargando=0;err&&err(e)})};
       go();enVivo(t,go,p=>{if(cargando){pend.push(p);return true}if(!uno(p))return false;emitir();return true});return()=>{}},
     doc(id){id=id||nuevoId();return{id,
-      async set(d){if(t==="contactos"&&S.yo&&S.yo.rol==="coordinador"){const {error}=await sb.rpc("crear_noticia",{p_id:id,p_d:d});if(error)throw fallo(error);return}
+      async set(d){if(t==="contactos"&&S.yo&&S.yo.rol==="coordinador"){const {data,error}=await sb.rpc("crear_noticia",{p_id:id,p_d:d});if(error)throw fallo(error);return data}
         const {error}=await sb.from(t).upsert(fila(t,id,d));if(error)throw fallo(error)},
       async leer(){const {data,error}=await sb.from(t).select("d").eq("id",id).maybeSingle();if(error)throw fallo(error);return data?data.d:null},
       async delete(){const {error}=await sb.from(t).delete().eq("id",id);if(error)throw fallo(error)}}}
@@ -1987,6 +2090,7 @@ const dbSupabase={collection:coleccion,doc:documento};
 
 /* ---------- quién soy ---------- */
 window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=await sb.functions.invoke("leer-buzon",{body:{imagen}});if(r.error){let m=r.error.message;try{const j=await r.error.context.json();m=j.error||m}catch(_){}return {error:m}}return r};
+window.asesorNoticia=async id=>{const {data,error}=await sb.rpc("asesor_de_noticia",{p_id:id});if(error)throw fallo(error);return data||""};
 window.buscarVivienda=async(calle,num)=>{const {data,error}=await sb.rpc("buscar_vivienda",{p_calle:calle,p_num:num||""});if(error)throw fallo(error);return data||[]};
 window.importarCaptaciones=async filas=>{const t={nuevas:0,sumadas:0,repetidas:0,sinDireccion:0};for(let i=0;i<filas.length;i+=200){const {data,error}=await sb.rpc("importar_captaciones",{filas:filas.slice(i,i+200)});if(error)throw fallo(error);for(const k in t)t[k]+=data[k]||0}return t};
 window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.resolve({data:null});
@@ -1994,7 +2098,7 @@ window.rankingPeriodo=(periodo)=>sb?sb.rpc("ranking_periodo",{periodo}):Promise.
 const esResp=()=>S.yo&&S.yo.rol==="responsable";
 function ajustarPorRol(){
   $("#yo-nombre").textContent=S.yo?S.yo.nombre:"";
-  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","censo","localizar","equipo"]:["equipo","compradores"];
+  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","censo","localizar","equipo"]:["equipo"];
   document.querySelectorAll("#tabs button").forEach(b=>b.hidden=ocultas.includes(b.dataset.v));
   if(ocultas.includes(S.view))S.view="hoy";
   if(!esResp())S.f.asesor="";
