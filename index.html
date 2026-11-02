@@ -1218,6 +1218,7 @@ FORMS.compradores={titulo:"comprador",fields:[
     ["direccionActual","Dirección donde vive *","compdir"],["censoIdActual","","hid"],["zonaActual","","hid"],
     ["oficinaDestino","Oficina a la que se pasa la noticia (si no es de nuestra zona)","text",{full:1}],
     ["h1","Qué busca","h"],
+    ["tipoInm","Tipo de inmueble","sel",()=>CLASES_INM],
     ["zonasBusca","Dónde busca (Fuenlabrada por barrio u otro municipio de Madrid)","chips",ZONAS_BUSCA],
     ["precioMax","Precio máximo (€)","number"],["tipoVivienda","Tipo (piso, ático, chalet…)","text"],["habMin","Habitaciones (mínimo)","number"],["banosMin","Baños (mínimo)","number"],
     ["ascensor","Ascensor","sel",()=>IMP],["terraza","Terraza","sel",()=>IMP],["garaje","Garaje","sel",()=>IMP],
@@ -1263,8 +1264,11 @@ function rowAviso(a){const c=a.compradorId&&S.compradores.find(x=>x.id===a.compr
     <span class="m">${esc(cuando)}${tel?` · <a href="tel:${esc(String(tel).replace(/\s/g,""))}">${esc(tel)}</a>`:""}</span>
     ${a.texto?`<span class="m" style="white-space:pre-wrap">${esc(a.texto)}</span>`:""}
     <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${abrirB}${a.de&&a.de!==(S.yo&&S.yo.nombre)?`<button class="btn small" type="button" data-avresp="${esc(a.de)}">Responder</button>`:""}<button class="btn small" type="button" data-avhecho="${esc(a.id)}">Hecho</button></span></div>`}
-function bloqueAvisos(L,A){const perm=typeof Notification!=="undefined"&&Notification.permission==="default";
-  return hoyLista("avisos",[...L.map(a=>({a})),...(A||[]).map(x=>({x}))],o=>o.a?rowAviso(o.a):rowAlerta(o.x),"")+(perm?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-avperm>Avisarme también con una notificación en este dispositivo</button></div>`:"")}
+const esIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+const esApp=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+function bloqueAvisos(L,A){const sop=window.pushSoportado&&window.pushSoportado(),act=window.pushActivo&&window.pushActivo(),den=typeof Notification!=="undefined"&&Notification.permission==="denied";
+  const perm=!act&&!den&&(sop||(esIOS()&&!esApp()));
+  return hoyLista("avisos",[...L.map(a=>({a})),...(A||[]).map(x=>({x}))],o=>o.a?rowAviso(o.a):rowAlerta(o.x),"")+(perm?`<div class="tools" style="margin-top:8px">${esIOS()&&!esApp()?`<span class="m">Para recibir notificaciones en el iPhone, primero añade el CRM a la pantalla de inicio (Compartir → «Añadir a pantalla de inicio») y ábrelo desde ese icono.</span>`:`<button class="btn small primary" type="button" data-avperm>Activar notificaciones en este dispositivo</button>`}</div>`:"")}
 async function guardarAviso(){const v=leerForm();if(!v.para)return toast("Elige para quién es");if(!v.texto&&!v.telefono&&!v.compradorId)return toast("Cuenta qué ha pasado");
   const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);
   const a={tipo:v.tipo,compradorId:v.compradorId||"",nombre:v.nombre||(c?c.nombre:""),telefono:v.telefono||(c?c.telefono:""),texto:v.texto||""};
@@ -1276,11 +1280,13 @@ document.addEventListener("click",async e=>{
   const h=e.target.closest("[data-avhecho]");if(h){e.preventDefault();if(await guardar("avisos",h.dataset.avhecho,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:""},"Hecho."))toast("Aviso marcado como hecho");render();return}
   const r=e.target.closest("[data-avresp]");if(r){e.preventDefault();if($("#dlg").open)$("#dlg").close();abrirNuevo("aviso",{tipo:"Mensaje",para:r.dataset.avresp});return}
   const f=e.target.closest("[data-avficha]");if(f){e.preventDefault();const a=S.avisos.find(x=>x.id===f.dataset.avficha);if(!a)return;abrirNuevo("compradores",{nombre:a.nombre||"",telefono:a.telefono||"",notas:a.texto?"Pedida por "+(a.de||"")+": "+a.texto:""});cur.avisoId=a.id;return}
-  if(e.target.closest("[data-avperm]")){try{await Notification.requestPermission()}catch(_){}render()}});
+  if(e.target.closest("[data-avperm]")){const ok=window.activarPush?await window.activarPush(true):false;
+    if(!ok){try{if(Notification.permission==="default")await Notification.requestPermission()}catch(_){}}
+    toast(ok?"Notificaciones activadas en este dispositivo":Notification.permission==="denied"?"Las notificaciones están bloqueadas en este navegador: actívalas en sus ajustes":"No se han podido activar las notificaciones");render()}});
 /* Aviso nuevo con la app abierta: mensaje y, si se ha permitido, notificación del sistema. */
 function avisosNuevos(prev,L){if(!prev||!S.yo)return;const yo=S.yo.nombre,nuevos=L.filter(a=>!prev.has(a.id)&&!a.hecho&&(a.para===yo||(a.cc||[]).includes(yo))&&a.de!==yo);
   for(const a of nuevos){const t=(a.tipo||"Aviso")+" de "+(a.de||"?"),b=[a.direccion,a.nombre,a.telefono,a.texto].filter(Boolean).join(" · ");toast(t+(b?": "+b.slice(0,80):""));
-    try{if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(t,{body:b.slice(0,200),tag:"aviso-"+a.id})}catch(_){}}}
+    try{if(!(window.pushActivo&&window.pushActivo())&&typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(t,{body:b.slice(0,200),tag:"aviso-"+a.id})}catch(_){}}}
 /* ---------- Avisos automáticos: los calcula cada dispositivo con los datos que ya ve. Cada uno avisa una sola vez (notificación) y sigue en «Hoy» hasta que se resuelve o se pulsa «Visto». ---------- */
 const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||"{}")}catch(_){return{}}},lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
 const haceH=h=>new Date(Date.now()-h*3600e3).toISOString();
@@ -1311,6 +1317,9 @@ function alertasAuto(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const rol=S.yo
     for(const c of S.compradores)if(compActivo(c)&&!/^imp_/.test(c.id)&&c.creado>=haceH(72))for(const e of encMio)if(encaja(c,e)&&!descartado(c,e))add("cru:"+c.id+":"+e.id,"Comprador nuevo para tu casa",`${c.nombre||""} busca algo como ${e.direccion||""}`,["compradores",c.id]);
     // Exclusiva a punto de vencer o precio sin revisar
     for(const e of encMio)for(const a of alertaEncargo(e))if(a.cls==="bad"||a.txt.startsWith("Exclusiva"))add("enc:"+e.id+":"+a.txt.replace(/\d+/g,"#"),a.txt,e.direccion||"",["encargos",e.id]);
+    // Encargo paralizado: cada 30 días, que el asesor revise si se reactiva o se retira
+    for(const e of encMio)if(e.estado==="Paralizado"){const f=e.fechaParalizado||String(e.actualizado||e.creado||"").slice(0,10),d=f?Math.floor((new Date(hoy)-new Date(f))/864e5):0;
+      if(d>=30)add("par:"+e.id+":"+Math.floor(d/30),"Encargo paralizado desde hace "+d+" días",(e.direccion||"")+" · revisa si se reactiva o se retira",["encargos",e.id])}
     // Se ha vendido
     for(const c of cMios)if(c.vendida&&!c.vendidaVista)add("vend:"+c.id,"Se ha vendido con otra agencia",c.direccion||"",["contactos",c.id]);
   }
@@ -1330,14 +1339,14 @@ function rowAlerta(x){return `<div class="row aviso"><span class="t">${esc(x.t)}
 function revisarAlertas(){if(!S.yo||!S.db)return;const N=lsGet("crm-al-notif"),hoy=hoyISO(),L=alertasPend();let cambio=false;
   const prim=!N._ini;
   for(const a of L)if(!N[a.k]){N[a.k]=hoy;cambio=true;if(prim)continue;toast(a.t+(a.txt?": "+a.txt.slice(0,80):""));
-    try{if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(a.t,{body:a.txt.slice(0,200),tag:a.k})}catch(_){}}
+    try{if(!(window.pushActivo&&window.pushActivo()&&/^(vis|vm|des|seg):/.test(a.k))&&typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(a.t,{body:a.txt.slice(0,200),tag:a.k})}catch(_){}}
   if(prim){N._ini=hoy;cambio=true}
   const lim=masDias(-30);for(const k of Object.keys(N))if(k!=="_ini"&&N[k]<lim){delete N[k];cambio=true}
   if(cambio)lsSet("crm-al-notif",N)}
 document.addEventListener("click",e=>{const v=e.target.closest("[data-alvisto]");if(v){const V=lsGet("crm-al-visto");V[v.dataset.alvisto]=hoyISO();const lim=masDias(-30);for(const k of Object.keys(V))if(V[k]<lim)delete V[k];lsSet("crm-al-visto",V);render();return}
   const g=e.target.closest("[data-alver]");if(g){if(g.dataset.alver==="resultados"){S.view="resultados"}else{S.view="hoy";S.hoyAbierto="pend"}render()}});
 setInterval(()=>{if(S.yo&&S.db&&S.view==="hoy"&&!$("#dlg").open)render();revisarAlertas()},60000);
-DEFAULTS.compradores=()=>({estado:"Activo"});
+DEFAULTS.compradores=()=>({estado:"Activo",tipoInm:"Vivienda"});
 DEFAULTS.visitas=()=>({fecha:hoyISO()});
 DEFAULTS.llamadaVend=()=>({});
 FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo"),0,
@@ -1356,9 +1365,7 @@ const compOtraOficina=c=>compNoticia(c)&&!c.dirNuestra&&c.direccionActual&&!c.pa
 /* Tipo de inmueble (Stiwhar, 02/11/2026): una plaza de garaje, un local o un trastero solo cruzan con quien busca eso, y al revés. */
 const CLASES_INM=["Vivienda","Plaza de garaje","Local","Trastero"];
 const claseEnc=e=>e.clase||(/\bplaza\b.*\d|garaje/i.test(e.direccion||"")&&!(+e.habitaciones)?"Plaza de garaje":"Vivienda");
-const claseBusca=c=>{const t=[c.busca,c.notas].join(" ").toLowerCase(),p=+c.precioMax||0;
-  if(p&&p<60000){if(/local/.test(t))return "Local";if(/trastero/.test(t)&&!/garaje/.test(t))return "Trastero";return "Plaza de garaje"}
-  return "Vivienda"};
+const claseBusca=c=>c.tipoInm||"Vivienda";
 function encaja(c,e){if(e.estado!=="Activo")return false;if(claseEnc(e)!==claseBusca(c))return false;
   const cps=cpsBusca(c),muns=munsBusca(c);if(cps.length||muns.length){const m=encMun(e);if(m?!muns.includes(m):!cps.includes(cpEnc(e)))return false}
   if(c.precioMax&&e.precio&&+e.precio>+c.precioMax*1.05)return false;
@@ -1548,6 +1555,7 @@ async function guardarLlamadaVend(){const v=leerForm();if(!v.direccion)return to
   if(nid){let para=as;try{if(window.asesorNoticia)para=(await window.asesorNoticia(nid))||as}catch(_){}
     await enviarAviso({para,tipo:"Llamada de vendedor",col:"contactos",refId:nid,direccion:v.direccion,nombre:v.nombre,telefono:v.telefono,texto:v.notas||""});$("#dlg").close();toast("Noticia y aviso enviados a "+para)}}
 async function antesDeGuardar(data){ /* compradores y visitas: completa datos; devuelve false para parar */
+  if(cur.col==="encargos"){const old=cur.id&&S.encargos.find(x=>x.id===cur.id);if(data.estado==="Paralizado"&&(!old||old.estado!=="Paralizado"))data.fechaParalizado=hoyISO()}
   if(cur.col==="compradores"){const old=cur.id&&S.compradores.find(x=>x.id===cur.id);
     if(data.estado==="Reservado"&&!data.fechaReserva)data.fechaReserva=hoyISO();
     if(!cur.id){const t=String(data.telefono||"").replace(/\D/g,"").slice(-9),dup=t.length>=9&&S.compradores.find(c=>String(c.telefono||"").replace(/\D/g,"").slice(-9)===t);
@@ -2203,6 +2211,19 @@ $("#btn-pass").addEventListener("click",()=>{cur={col:"__pass"};
 $("#btn-salir").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
 $("#view").addEventListener("click",e=>{if(e.target.id==="btn-importar")importar()});
 
+/* Notificaciones push: este dispositivo se apunta para recibir avisos aunque el CRM esté cerrado. */
+const VAPID_PUB="BENyYxD2VpiiK4V7qXG0Hcps8otXBafDYGQV2eEJRSb7SlPXP8jDRoq8shbzjzyAYLLK3tKlOjjQymuxNG7j4FA";
+window.pushSoportado=()=>"serviceWorker" in navigator&&"PushManager" in window&&typeof Notification!=="undefined";
+window.pushActivo=()=>{try{return localStorage.getItem("crm-push-ok")==="1"&&Notification.permission==="granted"}catch(_){return false}};
+const b64u=s=>{const p="=".repeat((4-s.length%4)%4),r=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(r,c=>c.charCodeAt(0))};
+window.activarPush=async(preguntar)=>{if(!window.pushSoportado()||!S.yo)return false;
+  try{if(preguntar&&Notification.permission==="default")await Notification.requestPermission();if(Notification.permission!=="granted")return false;
+    const reg=await navigator.serviceWorker.register("sw.js").then(()=>navigator.serviceWorker.ready);
+    let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VAPID_PUB)});
+    const j=sub.toJSON(),buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(j.endpoint)),id="p_"+[...new Uint8Array(buf)].slice(0,12).map(b=>b.toString(16).padStart(2,"0")).join("");
+    const {error}=await sb.from("push_subs").upsert({id,d:{nombre:S.yo.nombre,sub:j,ua:navigator.userAgent.slice(0,160),fecha:new Date().toISOString()}});
+    if(error)throw error;localStorage.setItem("crm-push-ok","1");return true}catch(e){console.warn("push",e);return false}};
+
 let arrancado=false;
 async function arrancar(sesion){
   if(arrancado)return;
@@ -2218,6 +2239,7 @@ async function arrancar(sesion){
   db.doc("zonas/indice").onSnapshot(s=>{if(!s.exists)return;const d=s.data(),I={};for(const [c,v] of Object.entries(d.calles||{})){const P={};for(const t of String(v).split(",")){const m=t.match(/^(\d+[A-Z]?)([A-Z])$/);if(m)P[m[1]]=(d.codigos||{})[m[2]]||""}I[c]=P}S.zidx=I},()=>{});
   db.doc("ajustes/general").onSnapshot(s=>{S.ajustes=s.exists?{...DEF_AJUSTES,...s.data()}:DEF_AJUSTES;render()},()=>{});
   render();
+  setTimeout(()=>{if(window.pushSoportado()&&Notification.permission==="granted")window.activarPush(false)},3000);
 }
 (async()=>{
   if(!sb){S.dbIntentado=true;return render()}
