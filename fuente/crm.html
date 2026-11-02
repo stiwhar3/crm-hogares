@@ -1098,6 +1098,7 @@ DEFAULTS.visitas=()=>({fecha:hoyISO()});
 DEFAULTS.llamadaVend=()=>({});
 FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo"),0,
     ["h3","Ficha para las llamadas de compradores","h"],
+    ["clase","Qué es","sel",()=>CLASES_INM],
     ["municipio","Municipio","selkv",()=>[["","Fuenlabrada"],...MUNICIPIOS_MAD.map(m=>[m,m])]],["cp","Código postal (barrio, para cruzar con compradores)","selkv",()=>[["","—"],...BARRIOS_CP.map(([cp,n])=>[cp,cp+" · "+n])]],
     ["m2","Superficie (m²)","number"],["habitaciones","Habitaciones","number"],["banos","Baños","number"],["planta","Planta","text"],
     ["ascensor","Ascensor","sel",()=>SINO],["terraza","Terraza","sel",()=>SINO],["garaje","Garaje","sel",()=>SINO],
@@ -1108,7 +1109,13 @@ const compActivo=c=>c.estado==="Activo"||c.estado==="Visitando";
 /* Su casa es noticia si tiene que venderla o alquilarla, o si vive de alquiler (casa familiar: no). Nuestra zona: noticia automática; fuera: pasarla a la oficina que corresponda. */
 const compNoticia=c=>c.viveEn!=="Casa familiar"&&(c.necesitaVender==="Vender"||c.necesitaVender==="Alquilar"||c.viveEn==="De alquiler");
 const compOtraOficina=c=>compNoticia(c)&&!c.dirNuestra&&c.direccionActual&&!c.pasadaOficina;
-function encaja(c,e){if(e.estado!=="Activo")return false;
+/* Tipo de inmueble (Stiwhar, 02/11/2026): una plaza de garaje, un local o un trastero solo cruzan con quien busca eso, y al revés. */
+const CLASES_INM=["Vivienda","Plaza de garaje","Local","Trastero"];
+const claseEnc=e=>e.clase||(/\bplaza\b.*\d|garaje/i.test(e.direccion||"")&&!(+e.habitaciones)?"Plaza de garaje":"Vivienda");
+const claseBusca=c=>{const t=[c.busca,c.notas].join(" ").toLowerCase(),p=+c.precioMax||0;
+  if(p&&p<60000){if(/local/.test(t))return "Local";if(/trastero/.test(t)&&!/garaje/.test(t))return "Trastero";return "Plaza de garaje"}
+  return "Vivienda"};
+function encaja(c,e){if(e.estado!=="Activo")return false;if(claseEnc(e)!==claseBusca(c))return false;
   const cps=cpsBusca(c),muns=munsBusca(c);if(cps.length||muns.length){const m=encMun(e);if(m?!muns.includes(m):!cps.includes(cpEnc(e)))return false}
   if(c.precioMax&&e.precio&&+e.precio>+c.precioMax*1.05)return false;
   if(c.habMin&&e.habitaciones&&+e.habitaciones<+c.habMin)return false;
