@@ -8,6 +8,7 @@ self.addEventListener('fetch',e=>{
   const r=e.request, u=new URL(r.url);
   if(r.method!=='GET'||u.origin!==location.origin) return; // Supabase, Google, etc.: directo a la red
   if(u.pathname.endsWith('.mp4')) return; // vídeos de tutoriales: directos a la red, sin guardar
+  if(u.pathname.endsWith('alta.html')) return; // formulario público de compradores: no se guarda en lugar de la app
   // Primero la red (para tener siempre la versión nueva); si no hay, lo guardado.
   e.respondWith(fetch(r).then(resp=>{
     if(resp.ok){const copia=resp.clone();caches.open(CACHE).then(c=>c.put(r.mode==='navigate'?'./':r,copia))}
