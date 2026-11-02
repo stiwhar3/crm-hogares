@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Busco vivienda · Hogares Group Fuenlabrada</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icono-192.png">
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--fg:#2b2a28;--muted:#6b6862;--line:#e3e0da;--accent:#8a7346;--accent-fg:#fff;--bad:#b3261e;--ok:#2e7d4f}
+@media (prefers-color-scheme:dark){:root{--bg:#171615;--card:#211f1e;--fg:#ece9e4;--muted:#a8a39b;--line:#3a3734;--accent:#c9b282;--accent-fg:#171615;--bad:#ff8a80;--ok:#7ccf9c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:620px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+header img{width:44px;height:44px;border-radius:10px}
+h1{font-size:22px;margin:0}
+.sub{color:var(--muted);margin:2px 0 0;font-size:14px}
+form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px}
+label{display:grid;gap:5px;font-size:14px;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 12px;width:100%}
+textarea{min-height:90px;resize:vertical}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.dos{grid-template-columns:1fr}}
+fieldset{border:0;padding:0;margin:0;display:grid;gap:6px}
+legend{font-size:14px;color:var(--muted);margin-bottom:6px}
+.ck{display:flex;gap:8px;align-items:flex-start;color:var(--fg);font-size:15px}
+.ck input{width:auto;margin-top:3px}
+.barrios{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+@media (max-width:480px){.barrios{grid-template-columns:1fr}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:3px 6px 3px 10px;font-size:14px}
+.chip button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px}
+.legal{font-size:12.5px;color:var(--muted)}
+button.env{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-fg);border:0;border-radius:10px;padding:12px;cursor:pointer}
+button.env:disabled{opacity:.6}
+.msg{font-size:14px;min-height:1em}.msg.bad{color:var(--bad)}
+.gracias{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center}
+.gracias h2{margin:0 0 6px;color:var(--ok)}
+</style></head><body><main>
+<header><img src="logo-casa.png" alt=""><div><h1>¿Buscas vivienda?</h1><p class="sub">Hogares Group Fuenlabrada · déjanos tus datos y te llamamos cuando entre algo que encaje contigo</p></div></header>
+<form id="f" novalidate>
+  <div class="dos"><label>Nombre *<input name="nombre" autocomplete="name" maxlength="80" required></label>
+  <label>Teléfono *<input name="telefono" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" required></label></div>
+  <label>Email<input name="email" type="email" autocomplete="email" maxlength="120"></label>
+  <fieldset><legend>¿Dónde buscas?</legend>
+    <div class="barrios" id="barrios"></div>
+    <label style="margin-top:6px">Otro municipio de Madrid<input id="mun" list="dl-mun" placeholder="Escribe y elige (por ejemplo, Leganés)" autocomplete="off"></label>
+    <datalist id="dl-mun"></datalist><div class="chips" id="chips"></div>
+  </fieldset>
+  <div class="dos"><label>Precio máximo (€)<input name="precioMax" inputmode="numeric" placeholder="Ej. 220000" maxlength="9"></label>
+  <label>Habitaciones (mínimo)<select name="habMin"><option value="">Me da igual</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label></div>
+  <div class="dos"><label>Financiación<select name="financiacion"><option value=""></option><option>Hipoteca preaprobada</option><option>Hipoteca en estudio</option><option>Necesita hipoteca (sin estudiar)</option><option>Ahorros / contado</option><option>Tiene que vender antes</option></select></label>
+  <label>¿Tienes que vender o alquilar tu casa?<select name="necesitaVender"><option value=""></option><option>No</option><option>Vender</option><option>Alquilar</option></select></label></div>
+  <label>Cuéntanos qué buscas<textarea name="mensaje" maxlength="1000" placeholder="Ático, con terraza, cerca del metro…"></textarea></label>
+  <label class="ck"><input type="checkbox" name="consentimiento"> <span>He leído y acepto que Hogares Group Fuenlabrada use mis datos para contactarme sobre viviendas que encajen con lo que busco. *</span></label>
+  <p class="legal">Responsable: Hogares Group Fuenlabrada. Finalidad: atender tu búsqueda de vivienda y llamarte con inmuebles que encajen. No cedemos tus datos a terceros. Puedes pedirnos en cualquier momento que los borremos o corrijamos llamando o escribiendo a la oficina.</p>
+  <button class="env" type="submit">Enviar mis datos</button>
+  <div class="msg" id="msg" role="status"></div>
+</form>
+<div class="gracias" id="ok" hidden><h2>¡Gracias!</h2><p>Hemos recibido tus datos. Te llamaremos en cuanto tengamos algo que encaje contigo.</p></div>
+</main>
+<script>
+const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
+const BARRIOS=[["28941", "La Serna"], ["28942", "Loranca, Vivero, Universidad, Hospital"], ["28943", "Parque Europa / El Molino"], ["28944", "El Arroyo / La Fuente"], ["28945", "La Avanzada / La Cueva"], ["28946", "Zona Industrial"], ["28947", "Cobo Calleja"]],MUNICIPIOS=["La Acebeda", "Ajalvir", "Alameda del Valle", "El Álamo", "Alcalá de Henares", "Alcobendas", "Alcorcón", "Aldea del Fresno", "Algete", "Alpedrete", "Ambite", "Anchuelo", "Aranjuez", "Arganda del Rey", "Arroyomolinos", "El Atazar", "Batres", "Becerril de la Sierra", "Belmonte de Tajo", "El Berrueco", "Berzosa del Lozoya", "Boadilla del Monte", "El Boalo", "Braojos", "Brea de Tajo", "Brunete", "Buitrago del Lozoya", "Bustarviejo", "Cabanillas de la Sierra", "La Cabrera", "Cadalso de los Vidrios", "Camarma de Esteruelas", "Campo Real", "Canencia", "Carabaña", "Casarrubuelos", "Cenicientos", "Cercedilla", "Cervera de Buitrago", "Chapinería", "Chinchón", "Ciempozuelos", "Cobeña", "Collado Mediano", "Collado Villalba", "Colmenar de Oreja", "Colmenar del Arroyo", "Colmenar Viejo", "Colmenarejo", "Corpa", "Coslada", "Cubas de la Sagra", "Daganzo de Arriba", "El Escorial", "Estremera", "Fresnedillas de la Oliva", "Fresno de Torote", "Fuente el Saz de Jarama", "Fuentidueña de Tajo", "Galapagar", "Garganta de los Montes", "Gargantilla del Lozoya y Pinilla de Buitrago", "Gascones", "Getafe", "Griñón", "Guadalix de la Sierra", "Guadarrama", "La Hiruela", "Horcajo de la Sierra-Aoslos", "Horcajuelo de la Sierra", "Hoyo de Manzanares", "Humanes de Madrid", "Leganés", "Loeches", "Lozoya", "Lozoyuela-Navas-Sieteiglesias", "Madarcos", "Madrid", "Majadahonda", "Manzanares el Real", "Meco", "Mejorada del Campo", "Miraflores de la Sierra", "El Molar", "Los Molinos", "Montejo de la Sierra", "Moraleja de Enmedio", "Moralzarzal", "Morata de Tajuña", "Móstoles", "Navacerrada", "Navalafuente", "Navalagamella", "Navalcarnero", "Navarredonda y San Mamés", "Navas del Rey", "Nuevo Baztán", "Olmeda de las Fuentes", "Orusco de Tajuña", "Paracuellos de Jarama", "Parla", "Patones", "Pedrezuela", "Pelayos de la Presa", "Perales de Tajuña", "Pezuela de las Torres", "Pinilla del Valle", "Pinto", "Piñuécar-Gandullas", "Pozuelo de Alarcón", "Pozuelo del Rey", "Prádena del Rincón", "Puebla de la Sierra", "Puentes Viejas", "Quijorna", "Rascafría", "Redueña", "Ribatejada", "Rivas-Vaciamadrid", "Robledillo de la Jara", "Robledo de Chavela", "Robregordo", "Las Rozas de Madrid", "Rozas de Puerto Real", "San Agustín del Guadalix", "San Fernando de Henares", "San Lorenzo de El Escorial", "San Martín de la Vega", "San Martín de Valdeiglesias", "San Sebastián de los Reyes", "Santa María de la Alameda", "Santorcaz", "Los Santos de la Humosa", "La Serna del Monte", "Serranillos del Valle", "Sevilla la Nueva", "Somosierra", "Soto del Real", "Talamanca de Jarama", "Tielmes", "Titulcia", "Torrejón de Ardoz", "Torrejón de la Calzada", "Torrejón de Velasco", "Torrelaguna", "Torrelodones", "Torremocha de Jarama", "Torres de la Alameda", "Tres Cantos", "Valdaracete", "Valdeavero", "Valdelaguna", "Valdemanco", "Valdemaqueda", "Valdemorillo", "Valdemoro", "Valdeolmos-Alalpardo", "Valdepiélagos", "Valdetorres de Jarama", "Valdilecha", "Valverde de Alcalá", "Velilla de San Antonio", "El Vellón", "Venturada", "Villa del Prado", "Villaconejos", "Villalbilla", "Villamanrique de Tajo", "Villamanta", "Villamantilla", "Villanueva de la Cañada", "Villanueva de Perales", "Villanueva del Pardillo", "Villar del Olmo", "Villarejo de Salvanés", "Villaviciosa de Odón", "Villavieja del Lozoya", "Zarzalejo"];
+const $=s=>document.querySelector(s),esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+$("#barrios").innerHTML=BARRIOS.map(([cp,n])=>`<label class="ck"><input type="checkbox" name="barrio" value="Fuenlabrada · ${esc(n)} (${cp})"> <span>Fuenlabrada · ${esc(n)}</span></label>`).join("");
+$("#dl-mun").innerHTML=MUNICIPIOS.map(m=>`<option value="${esc(m)}">`).join("");
+const muns=new Set(),norm=t=>t.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();
+function pintar(){$("#chips").innerHTML=[...muns].map(m=>`<span class="chip">${esc(m)}<button type="button" data-q="${esc(m)}" aria-label="Quitar">×</button></span>`).join("")}
+function anadir(){const v=norm($("#mun").value),m=MUNICIPIOS.find(x=>norm(x)===v);if(m){muns.add(m);$("#mun").value="";pintar()}}
+$("#mun").addEventListener("input",anadir);$("#mun").addEventListener("change",anadir);
+$("#mun").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();anadir()}});
+$("#chips").addEventListener("click",e=>{const b=e.target.closest("[data-q]");if(b){muns.delete(b.dataset.q);pintar()}});
+$("#f").addEventListener("submit",async e=>{e.preventDefault();const f=e.target,msg=$("#msg"),fd=new FormData(f);msg.className="msg";
+  const p={nombre:(fd.get("nombre")||"").trim(),telefono:(fd.get("telefono")||"").trim(),email:(fd.get("email")||"").trim(),
+    zonasBusca:[...fd.getAll("barrio"),...muns],precioMax:String(fd.get("precioMax")||"").replace(/\D/g,""),habMin:fd.get("habMin")||"",
+    financiacion:fd.get("financiacion")||"",necesitaVender:fd.get("necesitaVender")||"",mensaje:(fd.get("mensaje")||"").trim(),consentimiento:!!fd.get("consentimiento")};
+  const err=p.nombre.length<2?"Pon tu nombre":p.telefono.replace(/\D/g,"").length<9?"Pon un teléfono válido":!p.consentimiento?"Marca la casilla para que podamos contactarte":"";
+  if(err){msg.textContent=err;msg.classList.add("bad");return}
+  const b=f.querySelector("button.env");b.disabled=true;msg.textContent="Enviando…";
+  try{const r=await fetch(SB_URL+"/rest/v1/rpc/alta_comprador_web",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY},body:JSON.stringify({p})});
+    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.message||"No se ha podido enviar")}
+    f.hidden=true;$("#ok").hidden=false;window.scrollTo(0,0)}
+  catch(x){msg.textContent=x.message+". Inténtalo de nuevo o llámanos.";msg.classList.add("bad");b.disabled=false}});
+</script></body></html>

@@ -1183,7 +1183,7 @@ const DEFAULTS={captaciones:()=>({estado:"Pendiente",fecha:hoyISO()}),contactos:
 const esCoord=()=>!!(S.yo&&S.yo.rol==="coordinador");
 const veTodo=()=>!S.yo||S.yo.rol!=="asesor";
 const EST_COMP=["Activo","Visitando","Reservado","Comprado","Mirón (solo mira)","Baja"];
-const ORIG_COMP=["","Idealista","Fotocasa","Habitaclia","Web Hogares","Llamada a oficina","Pasó por la oficina","Cartel","Referido de un cliente","Otra oficina Hogares","Otro"];
+const ORIG_COMP=["","Idealista","Fotocasa","Habitaclia","Web Hogares","Llamada a oficina","Pasó por la oficina","Cartel","Referido de un cliente","Otra oficina Hogares","Formulario web","Otro"];
 /* Finanhogar (Stiwhar): con asesoramiento o con la hipoteca en tramitación con Finanhogar = prioridad número 1. */
 const FINANHOGAR=["","No","Asesoramiento con Finanhogar","Hipoteca en tramitación con Finanhogar"];
 const prioComp=c=>c&&/Finanhogar/.test(c.finanhogar||"")?1:0;
@@ -1228,7 +1228,7 @@ const encOpts=()=>{const v=cur&&cur.col==="visitas"&&cur.id&&S.visitas.find(x=>x
   return [["","Elige el inmueble"],...[...S.encargos].filter(e=>!encSinVisitas(e)||e.id===ya).sort((a,b)=>(a.estado==="Activo"?0:1)-(b.estado==="Activo"?0:1)||String(a.direccion).localeCompare(String(b.direccion))).map(e=>[e.id,e.direccion+(e.estado!=="Activo"?" ("+e.estado+")":"")])]};
 FORMS.visitas={titulo:"visita",fields:[
     ["encargoId","Inmueble (encargo) *","selkv",encOpts],["compradorId","Comprador","selkv",()=>[["",S.compradores.length?"Elige el comprador":"—"],...S.compradores.filter(c=>c.estado!=="Baja").map(c=>[c.id,c.nombre+(c.telefono?" · "+c.telefono:"")])]],
-    ["compradorNombre","Comprador (si no está en la lista)","text"],["fecha","Fecha","date"],["hora","Hora","time"],
+    ["compradorNombre","Nombre (si aún no tiene ficha)","text"],["telComprador","Teléfono (si aún no tiene ficha)","tel"],["fecha","Fecha","date"],["hora","Hora","time"],
     ["interes","Interés","sel",()=>["","Mucho","Algo","Nada"]],["informeEnviado","Informe enviado al vendedor","check"],
     ["opinion","Qué le ha parecido (pegas, precio que ofrecería…)","textarea",{full:1}],
     ["seguimiento","Seguimiento de la visita hecho el","date"],["seguimientoNota","Qué ha dicho en el seguimiento","textarea",{full:1}]]};
@@ -1264,7 +1264,10 @@ function cruces(){const out=[];for(const c of S.compradores){if(!compActivo(c))c
 /* Con compradores no hay «próximo paso» (Stiwhar): hay visita, seguimiento de la visita hecha y, tras 3 meses sin visitas, preguntar si ha comprado. */
 const DIAS_CONSULTA=90;
 const visSinSeg=v=>v.fecha&&v.fecha<hoyISO()&&!v.seguimiento;
+const tel9=t=>String(t||"").replace(/\D/g,"").slice(-9);
+const visSinFicha=v=>!v.compradorId||!S.compradores.some(c=>c.id===v.compradorId);
 function pasoComp(c){if(!compActivo(c))return null;const hoy=hoyISO(),V=visitasDe(c);
+  if(c.webPendiente)return {cls:"bad",txt:"Se ha apuntado en la web: llamarle",orden:(c.creado||"").slice(0,10)};
   const fut=V.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")))[0];
   const sin=V.filter(visSinSeg).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
   if(sin)return {cls:"bad",txt:`Seguimiento de la visita del ${fmtF(sin.fecha)}`,orden:sin.fecha};
@@ -1283,7 +1286,7 @@ function rowComp(c){const p=pasoComp(c),n=compActivo(c)?S.encargos.filter(e=>enc
 function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnviado;
   return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}">
     <span class="t">${esc(v.direccion||"")}${v.compradorNombre?` · <span style="font-weight:500">${esc(v.compradorNombre)}</span>`:""}</span><span class="r">${fmtF(v.fecha)}${v.hora?" "+esc(v.hora):""}</span>
-    <span class="m"><span>${esc(v.asesor||"")}</span>${v.interes?`<span class="pill ${v.interes==="Mucho"?"ok":v.interes==="Nada"?"bad":"warn"}">Interés: ${esc(v.interes)}</span>`:""}${visSinSeg(v)?`<span class="pill bad">Falta el seguimiento</span>`:""}${inf?`<span class="pill bad">Falta el informe al vendedor</span>`:v.informeEnviado?`<span class="pill ok">Informe enviado</span>`:""}${v.opinion?`<span>${esc(v.opinion.slice(0,80))}</span>`:""}</span>
+    <span class="m"><span>${esc(v.asesor||"")}</span>${v.interes?`<span class="pill ${v.interes==="Mucho"?"ok":v.interes==="Nada"?"bad":"warn"}">Interés: ${esc(v.interes)}</span>`:""}${visSinFicha(v)?`<span class="pill ${pas?"bad":"warn"}">Sin ficha de comprador</span>`:""}${visSinSeg(v)?`<span class="pill bad">Falta el seguimiento</span>`:""}${inf?`<span class="pill bad">Falta el informe al vendedor</span>`:v.informeEnviado?`<span class="pill ok">Informe enviado</span>`:""}${v.opinion?`<span>${esc(v.opinion.slice(0,80))}</span>`:""}</span>
   </button>`}
 function rowCruce({c,e}){return `<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${prioComp(c)?"★ ":""}${esc(c.nombre)}${c.telefono?" · "+esc(c.telefono):""}</span>
     <span class="r">${e.precio?eur(e.precio):""}</span>
@@ -1297,7 +1300,7 @@ function vCompradores(){
   const hoy=hoyISO(),prox=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||""))),
     pas=S.visitas.filter(v=>v.fecha<hoy).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   return `<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-best="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(c=>pasa(c,v)).length}</span></button>`).join("")}</div>
-  <div class="tools"><input type="search" id="b-q" placeholder="Buscar nombre, teléfono, DNI, qué busca…" value="${esc(f.q)}"><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button></div>
+  <div class="tools"><input type="search" id="b-q" placeholder="Buscar nombre, teléfono, DNI, qué busca…" value="${esc(f.q)}"><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" id="b-form">Copiar enlace del formulario para compradores</button></div>
   <h2>Compradores <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowComp),S.compradores.length?"Ningún comprador coincide con el filtro.":"Aún no hay compradores. Pulsa «+ Nuevo».")+pg.ctrl)(paginar("compradores",L))}</section>
   <section><h2>Próximas visitas <span class="n">${prox.length}</span></h2>${hoyLista("bvprox",prox,rowVisita,"No hay visitas programadas.")}</section>
   <section><h2>Visitas hechas <span class="n">${pas.length}</span></h2>${hoyLista("bvpas",pas,rowVisita,"Aún no hay visitas.")}</section>`}
@@ -1307,11 +1310,12 @@ function vHoyCoord(){
   const inf=S.visitas.filter(v=>v.fecha&&v.fecha<hoy&&!v.informeEnviado);
   const capP=S.captaciones.filter(k=>k.estado==="Pendiente").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
   const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
-  const ofi=S.compradores.filter(compOtraOficina);
+  const ofi=S.compradores.filter(compOtraOficina),sinF=S.visitas.filter(v=>v.fecha&&v.fecha<=hoy&&visSinFicha(v)).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   return `${vAgenda()}
   <section><div class="tools"><button class="btn small primary" type="button" data-nuevo="compradores">+ Comprador</button><button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" data-nuevo="captaciones">+ Captación</button><button class="btn small" type="button" data-nuevo="llamadaVend">Llamada de un vendedor: pasar a un asesor</button></div></section>
   ${cr.length?`<section><h2>Cruces: inmuebles que encajan con compradores <span class="n">${cr.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Compradores buscando a los que les encaja un encargo activo que aún no han visitado. Si no le interesa, márcalo en su ficha con «No le encaja».</p>${hoyLista("cruces",cr,rowCruce,"")}</section>`:""}
   <div class="grid2">
+    ${sinF.length?`<section><h2>Visitas sin ficha de comprador <span class="n">${sinF.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">No es obligatorio, pero después de la visita conviene darle de alta como comprador: abre la visita y pulsa «Dar de alta como comprador».</p>${hoyLista("bsinf",sinF,rowVisita,"")}</section>`:""}
     <section><h2>Compradores: seguimientos y consultas pendientes <span class="n">${pend.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Visitas sin seguimiento, visitas de hoy y compradores con 3 meses sin visitas a los que hay que preguntar si han comprado.</p>${hoyLista("bpend",pend,rowComp,"No hay seguimientos pendientes.")}</section>
     ${ofi.length?`<section><h2>Noticias para pasar a otra oficina <span class="n">${ofi.length}</span></h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Compradores que tienen que vender o alquilar su casa (o viven de alquiler) fuera de nuestras zonas. Pásala a la oficina que corresponda y márcalo en su ficha.</p>${hoyLista("bofi",ofi,c=>`<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${esc(c.nombre||"")}</span><span class="r">${esc(c.oficinaDestino||"")}</span><span class="m"><span>${esc(c.direccionActual||"")}</span><span class="pill warn">${esc(c.viveEn==="De alquiler"?"Vive de alquiler":(c.necesitaVender||"")+" su casa")}</span></span></button>`,"")}</section>`:""}
     <section><h2>Visitas de hoy y próximas <span class="n">${vis.length}</span></h2>${hoyLista("bvis",vis,rowVisita,"No hay visitas programadas.")}</section>
@@ -1328,9 +1332,10 @@ function vMetasCoord(per){const [a,b]=rangoPer(per),M=metasCoordPer(per),[et,des
 function listaFicha(t,rows,vacio){return `<div class="full" style="grid-column:1/-1"><div class="hl" style="font-weight:600;margin:6px 0 4px">${t}</div><div class="list">${rows.length?rows.join(""):`<div class="empty">${vacio}</div>`}</div></div>`}
 function extraFicha(col,d,id){
   if(col==="compradores"&&id){const enc=S.encargos.filter(e=>encaja(d,e)&&!descartado(d,e)),vs=visitasDe(d).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
-    return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="visitaCon">Apuntar visita</button>${compOtraOficina(d)?`<button class="btn small" type="button" data-act="compPasada">Ya he pasado su casa a la otra oficina</button>`:""}${d.noticiaId?`<span class="pill ok">Su casa ya es noticia</span>`:""}${compActivo(d)?`<button class="btn small" type="button" data-act="compConsultado">Le he preguntado: sigue buscando</button>`:""}${(d.descartados||[]).length?`<button class="btn small" type="button" data-act="descartesFuera">Volver a ver los ${d.descartados.length} descartados</button>`:""}</div>
+    return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" data-act="visitaCon">Apuntar visita</button>${compOtraOficina(d)?`<button class="btn small" type="button" data-act="compPasada">Ya he pasado su casa a la otra oficina</button>`:""}${d.noticiaId?`<span class="pill ok">Su casa ya es noticia</span>`:""}${d.webPendiente?`<button class="btn small primary" type="button" data-act="compWebLlamado">Ya le he llamado</button>`:""}${compActivo(d)?`<button class="btn small" type="button" data-act="compConsultado">Le he preguntado: sigue buscando</button>`:""}${(d.descartados||[]).length?`<button class="btn small" type="button" data-act="descartesFuera">Volver a ver los ${d.descartados.length} descartados</button>`:""}</div>
       ${listaFicha("Inmuebles que le encajan",enc.map(e=>`<div class="row"><span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span><span class="m">${zona(e.zona)}${e.habitaciones?`<span>${esc(e.habitaciones)} hab.</span>`:""}${e.m2?`<span>${esc(e.m2)} m²</span>`:""}<span>${esc(e.asesor||"")}</span>${visitasDe(d,e).length?`<span class="pill ok">Visitado</span>`:""}<button class="btn small" type="button" data-act="verEnc" data-enc="${esc(e.id)}">Ficha</button><button class="btn small" type="button" data-act="visitaCon" data-enc="${esc(e.id)}">Visita</button><button class="btn small" type="button" data-act="descartar" data-enc="${esc(e.id)}">No le encaja</button></span></div>`),"Ningún encargo activo encaja ahora mismo con lo que busca.")}
       ${listaFicha("Sus visitas",vs.map(rowVisita),"Aún no ha visitado nada.")}`}
+  if(col==="visitas"&&id&&visSinFicha(d))return `<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="pg-m">Aún no tiene ficha de comprador. No es obligatorio, pero se recomienda darle de alta después de la visita.</span><button class="btn small primary" type="button" data-act="visitaAlta">Dar de alta como comprador</button></div>`;
   if(col==="captaciones"&&id&&(d.veces>1||(d.pedidas||[]).length)){const P=[...(d.pedidas||[])].sort().reverse();
     return `<div class="full" style="grid-column:1/-1;font-size:13px"><b>Han pedido valoración ${d.veces||P.length} ${(d.veces||P.length)>1?"veces":"vez"}</b>${P.length?": "+P.slice(0,12).map(t=>fmtF(t.slice(0,10))+(t.slice(11,16)!=="00:00"?" "+t.slice(11,16):"")).join(" · ")+(P.length>12?" …":""):""}</div>`}
   if(col==="encargos"&&id){const vs=visitasDe(null,d).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")),cs=veTodo()?S.compradores.filter(c=>compActivo(c)&&encaja(c,d)).sort(porPrio):[];
@@ -1437,11 +1442,18 @@ async function antesDeGuardar(data){ /* compradores y visitas: completa datos; d
     const vAnt=cur.id&&S.visitas.find(x=>x.id===cur.id);if(encSinVisitas(e)&&(!vAnt||vAnt.encargoId!==e.id)){toast(`Ese inmueble está ${e.estado.toLowerCase()}: no se pueden apuntar visitas`);return false}
     const c=S.compradores.find(x=>x.id===data.compradorId);data.direccion=e.direccion;data.asesor=e.asesor||"";
     if(c){data.compradorNombre=c.nombre;data.telComprador=c.telefono||""}
-    if(!data.compradorNombre){toast("Elige el comprador o escribe su nombre");return false}
+    else{/* Sin ficha (Stiwhar): basta nombre y teléfono; después de la visita se recomienda darle de alta como comprador. */
+      data.compradorNombre=(data.compradorNombre||"").trim();const t9=tel9(data.telComprador);
+      if(!data.compradorNombre){toast("Elige el comprador o pon su nombre");$("#fld-compradorNombre").focus();return false}
+      if(t9.length<9){toast("Pon el teléfono del comprador");$("#fld-telComprador").focus();return false}
+      const ya=S.compradores.find(x=>tel9(x.telefono)===t9);if(ya){data.compradorId=ya.id;data.compradorNombre=ya.nombre;data.telComprador=ya.telefono||"";toast("Ese teléfono ya tiene ficha: visita apuntada a "+ya.nombre)}}
     if(c&&c.estado==="Activo")setTimeout(()=>guardar("compradores",c.id,{estado:"Visitando"},"Primera visita: "+e.direccion+"."),300)}
   return true}
 async function accionFicha(a,b){
   if(a==="visitaCon"){const enc=b.dataset.enc||"",cid=cur.id;$("#dlg").close();setTimeout(()=>abrirNuevo("visitas",{compradorId:cid,encargoId:enc}),150);return true}
+  if(a==="visitaAlta"){const v=S.visitas.find(x=>x.id===cur.id);if(!v)return true;const ya=S.compradores.find(x=>tel9(x.telefono)&&tel9(x.telefono)===tel9(v.telComprador));$("#dlg").close();
+    if(ya){if(await guardar("visitas",v.id,{compradorId:ya.id,compradorNombre:ya.nombre,telComprador:ya.telefono||""}))toast("Ya tenía ficha: visita unida a "+ya.nombre);setTimeout(()=>abrir("compradores",ya.id),150);return true}
+    setTimeout(()=>{abrirNuevo("compradores",{nombre:v.compradorNombre||"",telefono:v.telComprador||"",estado:"Visitando"});cur.visitaId=v.id},150);return true}
   if(a==="visitaEnc"){const eid=cur.id;$("#dlg").close();setTimeout(()=>abrirNuevo("visitas",{encargoId:eid}),150);return true}
   if(a==="capSubir"){subirCap(b);return true}
   if(a==="verEnc"){const eid=b.dataset.enc;$("#dlg").close();setTimeout(()=>abrir("encargos",eid),150);return true}
@@ -1607,7 +1619,9 @@ $("#frm").addEventListener("submit",async ev=>{
   const nota=($("#fld-nuevaNota")?.value||"").trim();
   if(!cur.id&&cur.col==="contactos"&&data.censoId){}else if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
     if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
-  if(await guardar(cur.col,cur.id,data,nota)){$("#dlg").close();toast("Guardado");if(cur.col==="contactos")sincronizarCenso(data)}
+  const nid=await guardar(cur.col,cur.id,data,nota);
+  if(nid){$("#dlg").close();toast("Guardado");if(cur.col==="contactos")sincronizarCenso(data);
+    if(cur.col==="compradores"&&cur.visitaId&&await guardar("visitas",cur.visitaId,{compradorId:nid,compradorNombre:data.nombre||"",telComprador:data.telefono||""},"Dado de alta como comprador."))toast("Comprador dado de alta y unido a su visita")}
 });
 const chipHTML=x=>`<span class="pill" data-v="${esc(x)}">${esc(x)} <button type="button" class="chipx" data-chipx aria-label="Quitar" style="border:0;background:none;cursor:pointer;padding:0 2px">×</button></span>`;
 const chipAdd=e=>{const k=e.target.dataset&&e.target.dataset.chips;if(!k)return;const v=e.target.value.trim(),F=FORMS[cur&&cur.col],fd=F&&F.fields.find(f=>f[0]===k);
@@ -1699,6 +1713,7 @@ $("#frm").addEventListener("click",async ev=>{
   if(a==="avisoImprimir"){imprimirCartas(cur.aviso);return}
   if(a==="avisoApuntar"){apuntarAviso(cur.aviso);return}
   if(a==="compPasada"){const id=cur.id,ofi=$("#fld-oficinaDestino")?.value.trim()||"";if(await guardar("compradores",id,{pasadaOficina:hoyISO(),oficinaDestino:ofi},"Noticia pasada a otra oficina"+(ofi?": "+ofi:"")+".")){toast("Apuntado");$("#dlg").close();render()}return}
+  if(a==="compWebLlamado"){if(await guardar("compradores",cur.id,{webPendiente:false},"Llamado tras apuntarse en la web.")){toast("Apuntado");$("#dlg").close();render()}return}
   if(a==="compConsultado"){const id=cur.id;if(await guardar("compradores",id,{consultado:hoyISO()},"Consultado: sigue buscando")){toast("Apuntado: sigue buscando. Se volverá a avisar en 3 meses sin visitas");$("#dlg").close();render()}return}
   if(a==="mas7"){const d=new Date();d.setDate(d.getDate()+7);$("#fld-proxFecha").value=new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);return}
   if(a==="revisado"){$("#fld-ultimaRevisionPrecio").value=hoyISO();return}
@@ -1904,6 +1919,8 @@ document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf
 $("#btn-new").addEventListener("click",()=>abrir({encargos:"encargos",operaciones:"operaciones",captaciones:"captaciones",compradores:"compradores"}[S.view]||(esCoord()?"compradores":"contactos")));
 $("#frm").addEventListener("click",e=>{const r=e.target.closest("button[data-open]");if(!r)return;e.preventDefault();e.stopPropagation();const c=r.dataset.open,i=r.dataset.id;$("#dlg").close();setTimeout(()=>abrir(c,i),150)},true);
 $("#view").addEventListener("click",e=>{const n=e.target.closest("[data-nuevo]");if(n){abrir(n.dataset.nuevo);return}const be=e.target.closest("[data-best]");if(be){S.bf.estado=be.dataset.best;render()}});
+const URL_FORM_COMP="https://stiwhar3.github.io/crm-hogares/alta.html";
+$("#view").addEventListener("click",async e=>{if(!e.target.closest("#b-form"))return;try{await navigator.clipboard.writeText(URL_FORM_COMP);toast("Enlace copiado: pégalo en WhatsApp o en el email al comprador")}catch(_){toast("Enlace: "+URL_FORM_COMP)}});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id!=="b-q"&&id!=="e-q")return;if(id==="b-q")S.bf.q=e.target.value;else S.eq=e.target.value;clearTimeout(render.t2);render.t2=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)});
 
 try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar"||v==="tutoriales")S.view=v}catch(_){}
