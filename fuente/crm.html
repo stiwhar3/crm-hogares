@@ -515,6 +515,26 @@ function vecinosDe(r,rango){const n=parseInt(r.b.num),out=[];
     for(const u0 of b.u){if(u0._id===r.uid)continue;const u={...u0,...(S.censoEd[u0._id]||{})};out.push({zona,b,u,id:u0._id,mismo:b===r.b})}}
   return out.sort((x,y)=>(y.mismo-x.mismo)||(parseInt(x.b.num)-parseInt(y.b.num)))}
 const telOk=t=>{const x=String(t||"").replace(/[^\d]/g,"");return /^[67]\d{8}$/.test(x)?x:(/^34[67]\d{8}$/.test(x)?x.slice(2):"")};
+/* WhatsApp sin coste (Stiwhar, 02/11/2026): enlaces wa.me que abren WhatsApp Business con el mensaje ya escrito; se envía con un toque. Sin API de Meta, gratis. */
+const waURL=(tel,txt)=>{const t=telOk(tel);return t?`https://wa.me/34${t}?text=${encodeURIComponent(txt||"")}`:""};
+const movilDe=n=>(S.ajustes.moviles||{})[n]||"";
+const waBtn=(tel,txt,et)=>{const u=waURL(tel,txt);return u?`<a class="btn small wa" style="text-decoration:none;border-color:#25d366" target="_blank" rel="noopener" href="${esc(u)}">${esc(et)}</a>`:""};
+const pNombre=n=>String(n||"").trim().split(/\s+/)[0]||"";
+const yoFirma=()=>{const n=S.yo&&S.yo.nombre;return n?`soy ${n}, de Hogares Group Fuenlabrada`:"le escribimos de Hogares Group Fuenlabrada"};
+function bloqueWA(col,d,id){if(!id&&col!=="aviso")return "";const yo=S.yo&&S.yo.nombre,B=[],dirE=d.direccion||d.inmueble||"";
+  const aAsesor=(as,txt)=>{if(as&&as!==yo)B.push(waBtn(movilDe(as),txt,"WhatsApp a "+as))};
+  if(col==="visitas"){const c=d.compradorId&&S.compradores.find(x=>x.id===d.compradorId),e=d.encargoId&&S.encargos.find(x=>x.id===d.encargoId);
+    const n=(c&&c.nombre)||d.compradorNombre||"",tel=(c&&c.telefono)||d.telComprador||"",dir=(e&&e.direccion)||d.direccion||"",cuando=`el ${fmtF(d.fecha)}${d.hora?" a las "+d.hora:""}`;
+    if(d.fecha&&d.fecha<hoyISO())B.push(waBtn(tel,`Hola ${pNombre(n)}, ${yoFirma()}. ¿Qué le pareció la vivienda de ${dir} que vio ${cuando}? Si tiene cualquier duda o quiere hacer una oferta, aquí estamos.`,"WhatsApp: qué le pareció"));
+    else B.push(waBtn(tel,`Hola ${pNombre(n)}, ${yoFirma()}. Le confirmo la visita a la vivienda de ${dir} ${cuando}${d.asesor?". Le atenderá "+d.asesor:""}. ¿Nos confirma que le viene bien? Gracias.`,"WhatsApp: confirmar visita"));
+    aAsesor(d.asesor,`Hola ${d.asesor}, tienes visita en ${dir} ${cuando} con ${n||"un comprador"}${tel?" ("+tel+")":""}.`)}
+  else if(col==="compradores")B.push(waBtn(d.telefono,`Hola ${pNombre(d.nombre)}, ${yoFirma()}. `,"WhatsApp al comprador"));
+  else if(col==="contactos"){B.push(waBtn(d.telefono,`Hola ${pNombre(d.nombre)}, ${yoFirma()}. `,"WhatsApp al propietario"));aAsesor(d.asesor,`Hola ${d.asesor}, sobre la noticia de ${dirE}: `)}
+  else if(col==="captaciones"){B.push(waBtn(d.telefono,`Hola ${pNombre(d.propietario)}, ${yoFirma()}. `,"WhatsApp al propietario"));aAsesor(d.asesor,`Hola ${d.asesor}, sobre la captación de ${dirE}: `)}
+  else if(col==="encargos")aAsesor(d.asesor,`Hola ${d.asesor}, sobre el encargo de ${dirE}: `);
+  else if(col==="operaciones"){B.push(waBtn(d.telVendedor,`Hola ${pNombre(d.vendedor)}, ${yoFirma()}. `,"WhatsApp al vendedor"));B.push(waBtn(d.telComprador,`Hola ${pNombre(d.comprador)}, ${yoFirma()}. `,"WhatsApp al comprador"));aAsesor(d.asesor,`Hola ${d.asesor}, sobre la operación de ${dirE}: `)}
+  else if(col==="aviso")B.push(`<button class="btn small wa" style="border-color:#25d366" type="button" data-act="avisoWA">Mandarlo también por WhatsApp</button>`);
+  const h=B.filter(Boolean).join("");return h?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${h}</div>`:""}
 const TIPOVIA={CL:"calle",C:"calle",AV:"avenida",AVDA:"avenida",PZ:"plaza",PZA:"plaza",PL:"plaza",PS:"paseo",CM:"camino",RD:"ronda",TR:"travesía",GT:"glorieta",UR:"urbanización",CR:"carretera",PJ:"pasaje"};
 const viaLarga=v=>{const m=String(v||"").trim().match(/^([A-Z]{1,4})\.?\s+(.*)$/);return m&&TIPOVIA[m[1]]?TIPOVIA[m[1]].toUpperCase()+" "+m[2]:String(v||"")};
 const calleBonita=v=>{const t=viaLarga(v).toLowerCase().replace(/(^|[\s\/(-])([a-záéíóúñü])/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (De|Del|La|Las|Los|El|Y)(?= )/g,m=>m.toLowerCase());return /^(calle|avenida|plaza|paseo|camino|ronda|travesía|glorieta|urbanización|carretera|pasaje)\b/i.test(t)?t.charAt(0).toLowerCase()+t.slice(1):"la calle "+t};
@@ -1018,7 +1038,7 @@ function rowAviso(a){const c=a.compradorId&&S.compradores.find(x=>x.id===a.compr
   const sobre=[a.direccion,a.nombre||(c&&c.nombre)].filter(Boolean).join(" · ");
   return `<div class="row aviso"><span class="t">${esc(a.tipo||"Aviso")}${sobre?": "+esc(sobre):""}</span>
     <span class="r"><span class="pill bad">De ${esc(a.de||"?")}</span></span>
-    <span class="m">${esc(cuando)}${tel?` · <a href="tel:${esc(String(tel).replace(/\s/g,""))}">${esc(tel)}</a>`:""}</span>
+    <span class="m">${esc(cuando)}${tel?` · <a href="tel:${esc(String(tel).replace(/\s/g,""))}">${esc(tel)}</a>${waURL(tel,"")?` · <a target="_blank" rel="noopener" href="${esc(waURL(tel,`Hola ${pNombre(a.nombre||(c&&c.nombre))}, ${yoFirma()}. `))}">WhatsApp</a>`:""}`:""}</span>
     ${a.texto?`<span class="m" style="white-space:pre-wrap">${esc(a.texto)}</span>`:""}
     <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${abrirB}${a.de&&a.de!==(S.yo&&S.yo.nombre)?`<button class="btn small" type="button" data-avresp="${esc(a.de)}">Responder</button>`:""}<button class="btn small" type="button" data-avhecho="${esc(a.id)}">Hecho</button></span></div>`}
 const esIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
@@ -1376,7 +1396,7 @@ function abrir(col,id){
   const extraEnc=col==="encargos"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
   const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button><button class="btn small" type="button" data-act="resenaHoy">Reseña pedida hoy</button><button class="btn small" type="button" data-act="felicitadoHoy">Aniversario felicitado hoy</button>`:"";
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
-    <div class="db">${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
+    <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">Solicitar borrado</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
@@ -1548,6 +1568,11 @@ $("#frm").addEventListener("click",async ev=>{
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
   if(a==="cerrar") return $("#dlg").close();
   if(a==="fusionar"){if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para fusionar";return}b.disabled=true;await fusionar(cur.id,b.dataset.con);return}
+  if(a==="avisoWA"){const v=leerForm(),c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);
+    if(!v.para||v.para==="Todo el equipo"||v.para==="Daniel y Stiwhar")return toast("Por WhatsApp solo se puede mandar a una persona: elígela en «Para»");
+    const tel=movilDe(v.para);if(!telOk(tel))return toast("No tengo el móvil de "+v.para+": apúntalo en Ajustes");
+    const sobre=[v.nombre||(c&&c.nombre),v.telefono||(c&&c.telefono)].filter(Boolean).join(" · ");
+    window.open(waURL(tel,`${v.tipo&&v.tipo!=="Mensaje"?v.tipo+(sobre?": "+sobre:"")+"\n":sobre?sobre+"\n":""}${v.texto||""}`),"_blank","noopener");return}
   if(await accionFicha(a,b))return;
   if(a==="pgRevisar"){pgRevisar();return}
   if(a==="pgSaltar"){const r=cur&&cur.pg&&cur.pg.resto;if(r)pgSiguiente(r);return}
@@ -1635,6 +1660,7 @@ function abrirAjustes(){
    <label class="full">Metas semanales del coordinador (compradores nuevos, visitas, reservas)<input id="aj-metasc" type="text" value="${esc(METAS_COORD_ET.map(([k])=>({...DEF_METAS_COORD,...(A.metasCoord||{})})[k]).join(", "))}"></label>
    <label class="full">Google Calendar compartido (ID del calendario)<input id="aj-cal" type="text" placeholder="...@group.calendar.google.com" value="${esc(A.calendarioId||"")}"></label>
    <label class="full">Asesores (uno por línea: Nombre, ZONA)<textarea id="aj-ase">${esc(A.asesores.map(a=>a.nombre+(a.zona?", "+a.zona:"")).join("\n"))}</textarea></label>
+   <label class="full">Móviles del equipo para WhatsApp (uno por línea: Nombre, móvil)<textarea id="aj-mov">${esc([...new Set([...A.asesores.map(a=>a.nombre),"Stiwhar","Daniel"])].map(n=>n+", "+((A.moviles||{})[n]||"")).join("\n"))}</textarea></label>
   </div><div class="df"><div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal();
 }
@@ -1642,7 +1668,8 @@ async function guardarAjustes(){
   const n=id=>Number($(id).value)||0;
   const A={objetivoMes:n("#aj-mes"),objetivosMes:Object.fromEntries(($("#aj-objmes")?.value||"").split(",").map(t=>t.trim().match(/^(\d{4}-\d{2})\s*[=:]\s*([\d.]+)$/)).filter(Boolean).map(m=>[m[1],Number(m[2].replace(/\./g,""))])),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
     metasCoord:(v=>Object.fromEntries(METAS_COORD_ET.map(([k],i)=>[k,v[i]!==undefined&&v[i].trim()!==""&&Number(v[i])>=0?Number(v[i]):DEF_METAS_COORD[k]])))($("#aj-metasc").value.split(",")),
-    asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()}))};
+    asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()})),
+    moviles:Object.fromEntries($("#aj-mov").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()&&telOk(p[1])).map(p=>[p[0].trim(),telOk(p[1])]))};
   if(!S.db) return toast("No se puede guardar fuera de claude.ai");
   try{await S.db.doc("ajustes/general").set({...S.ajustes,...A});$("#dlg").close();toast("Ajustes guardados")}catch(e){toast("No se han guardado los ajustes")}
 }
