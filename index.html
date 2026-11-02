@@ -933,11 +933,14 @@ function vHoy(){
   const vacios=B.filter(b=>!b.n).map(b=>b.t);
   return hoyBloques(B,vacios);
 }
+/* Objetivo de un mes: el de «Objetivos por mes» de Ajustes si lo hay; si no, el objetivo mensual general. */
+const objMes=f=>{const v=(S.ajustes.objetivosMes||{})[String(f).slice(0,7)];return v!=null&&v!==""?+v:(+S.ajustes.objetivoMes||0)};
 function vResultados(){
   const A=S.ajustes,per=S.resPer||"semana",resp=!S.yo||S.yo.rol==="responsable",eq=A.gastosMes/0.7;
   const P={semana:rangoPer("semana"),mes:rangoPer("mes"),trimestre:rangoPer("trimestre")};
   const F={semana:sumFact(P.semana[0],P.semana[1]),mes:sumFact(P.mes[0],P.mes[1]),trimestre:sumFact(P.trimestre[0],P.trimestre[1])},fp=sumFact(A.periodoInicio,A.periodoFin);
-  const O={semana:Math.round(A.objetivoMes*12/52),mes:+A.objetivoMes||0,trimestre:(A.periodoInicio===P.trimestre[0]&&A.periodoFin===P.trimestre[1]&&+A.objetivoPeriodo)?+A.objetivoPeriodo:(+A.objetivoMes||0)*3};
+  const om=objMes(P.mes[0]),qm=[0,1,2].map(i=>{const d=new Date(P.trimestre[0]+"T12:00");d.setMonth(d.getMonth()+i);return objMes(iso(d))}).reduce((a,b)=>a+b,0);
+  const O={semana:Math.round(om*12/52),mes:om,trimestre:(A.periodoInicio===P.trimestre[0]&&A.periodoFin===P.trimestre[1]&&+A.objetivoPeriodo)?+A.objetivoPeriodo:qm};
   const sinCobrar=S.operaciones.filter(o=>facturada(o)&&!o.fechaCobro),act=S.encargos.filter(e=>e.estado==="Activo");
   const M={...DEF_METAS,...(A.metas||{})},pc=(a,b)=>b?Math.round(a/b*100)+" %":"—",fr=([a,b])=>fmtF(a)+" – "+fmtF(b);
   const sel=`<div class="tools">${["semana","mes","trimestre"].map(k=>`<button class="btn small${k===per?" primary":""}" type="button" data-resper="${k}">${k.charAt(0).toUpperCase()+k.slice(1)}</button>`).join("")}</div>`;
@@ -955,7 +958,7 @@ function vResultados(){
     </tbody></table></div>
     <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th style="text-align:left">Metas de actividad por asesor</th><th>Semana</th><th>Mes</th><th>Trimestre</th></tr></thead><tbody>
     ${(m=>METAS_ET.map(([k,t])=>`<tr><td style="text-align:left">${t}</td><td>${m.semana[k]}</td><td>${m.mes[k]}</td><td>${m.trimestre[k]}</td></tr>`).join(""))({semana:metasPer("semana"),mes:metasPer("mes"),trimestre:metasPer("trimestre")})}
-    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">La semana sale del objetivo mensual (×12/52); el trimestre, del objetivo del periodo si coincide con él, o del mensual ×3. Las metas de actividad se ponen por semana en Ajustes y se escalan al mes y al trimestre.</p></section>`:"";
+    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">El mes usa su objetivo de «Objetivos por mes» si lo tiene; la semana sale del objetivo de su mes (×12/52); el trimestre, del objetivo del periodo si coincide con él, o de la suma de sus tres meses. Las metas de actividad se ponen por semana en Ajustes y se escalan al mes y al trimestre.</p></section>`:"";
   if(esCoord())return fact+sel+vMetasCoord(per);
   const rk=vRanking(per);
   return fact+sel+(rk||`<section><h2>${resp?"Ranking":"Tus objetivos"} ${PER_ET[per][0]}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+(resp?vMetasCoord(per):"")+obj;
@@ -1595,7 +1598,7 @@ $("#frm").addEventListener("click",async ev=>{
 function abrirAjustes(){
   const A=S.ajustes; cur={col:"ajustes"};
   $("#frm").innerHTML=`<div class="dh">Objetivos y asesores</div><div class="db">
-   <label>Objetivo del mes (€)<input id="aj-mes" type="number" value="${A.objetivoMes}"></label>
+   <label>Objetivo del mes (€)<input id="aj-mes" type="number" value="${A.objetivoMes}"></label><label class="full">Objetivos por mes (si un mes tiene el suyo; AAAA-MM=importe, separados por comas)<input id="aj-objmes" value="${esc(Object.entries(A.objetivosMes||{}).map(([k,v])=>k+"="+v).join(", "))}" placeholder="2026-11=40000, 2026-12=50000"></label>
    <label>Objetivo del periodo (€)<input id="aj-per" type="number" value="${A.objetivoPeriodo}"></label>
    <label>Inicio del periodo<input id="aj-ini" type="date" value="${A.periodoInicio}"></label>
    <label>Fin del periodo<input id="aj-fin" type="date" value="${A.periodoFin}"></label>
@@ -1611,7 +1614,7 @@ function abrirAjustes(){
 }
 async function guardarAjustes(){
   const n=id=>Number($(id).value)||0;
-  const A={objetivoMes:n("#aj-mes"),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
+  const A={objetivoMes:n("#aj-mes"),objetivosMes:Object.fromEntries(($("#aj-objmes")?.value||"").split(",").map(t=>t.trim().match(/^(\d{4}-\d{2})\s*[=:]\s*([\d.]+)$/)).filter(Boolean).map(m=>[m[1],Number(m[2].replace(/\./g,""))])),objetivoPeriodo:n("#aj-per"),periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
     metasCoord:(v=>Object.fromEntries(METAS_COORD_ET.map(([k],i)=>[k,v[i]!==undefined&&v[i].trim()!==""&&Number(v[i])>=0?Number(v[i]):DEF_METAS_COORD[k]])))($("#aj-metasc").value.split(",")),
     asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()}))};
   if(!S.db) return toast("Sin conexión: no se ha guardado");
