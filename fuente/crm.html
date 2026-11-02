@@ -156,7 +156,7 @@ const ETAPAS = ["Desarrollo","Seguimiento","Paralizado","Valoración agendada","
 const ETAPA_ANTIGUA = {"Noticia":"Desarrollo","En seguimiento":"Seguimiento"};
 const ORIGENES = ["Lead central (con contacto)","Consulta de valor (solo dirección)","Otra oficina Hogares","Puerta fría / buzoneo","Llamada a oficina","Particular que vende solo","Con otra agencia","Base de datos antigua","Recomendación","Idealista","Comprador (coordinador)","Otro"];
 const MOTIVOS = ["","Herencia","Divorcio","Extinción de condominio","Cambio de vivienda","Inversor","Vacío","Alquilado","Otro"];
-const EST_ENC = ["Activo","Reservado","Vendido","Retirado","Devuelto"];
+const EST_ENC = ["Activo","Reservado","Paralizado","Vendido","Retirado","Devuelto"];
 const EST_OP = ["Reserva","Aceptada","Arras","Escriturada","Caída"];
 const DEF_AJUSTES = {asesores:[{nombre:"Carlos",zona:"ROSA"},{nombre:"Iván",zona:"AZUL"},{nombre:"Sergio",zona:"AMARILLA"},{nombre:"Mery",zona:"VERDE"},{nombre:"Mario",zona:""}],
   objetivoMes:40000,objetivoPeriodo:200000,periodoInicio:"2026-10-01",periodoFin:"2026-12-31",gastosMes:24000,diasRevisionPrecio:30};
@@ -628,7 +628,7 @@ function rowEncargo(e){
   const al=alertaEncargo(e); const dm=e.fechaCaptacion&&e.estado==="Activo"?dias(e.fechaCaptacion,hoyISO())+" días":"";
   return `<button class="row" type="button" data-open="encargos" data-id="${esc(e.id)}">
     <span class="t">${esc(e.direccion)}</span><span class="r">${e.precio?eur(e.precio):""}</span>
-    <span class="m">${zona(e.zona)}<span>${esc(e.asesor||"")}</span><span class="pill ${e.estado==="Activo"?"acc":e.estado==="Reservado"?"ok":""}">${esc(e.estado)}</span>${dm?`<span>${dm} en mercado</span>`:""}${veTodo()&&e.estado==="Activo"&&!cpEnc(e)&&!encMun(e)?`<span class="pill warn">Falta el código postal</span>`:""}${al.map(a=>`<span class="pill ${a.cls}">${esc(a.txt)}</span>`).join("")}${e.riesgo?`<span class="pill bad">${esc(e.riesgo)}</span>`:""}</span>
+    <span class="m">${zona(e.zona)}<span>${esc(e.asesor||"")}</span><span class="pill ${e.estado==="Activo"?"acc":e.estado==="Reservado"?"ok":e.estado==="Paralizado"?"warn":""}">${esc(e.estado)}</span>${dm?`<span>${dm} en mercado</span>`:""}${veTodo()&&e.estado==="Activo"&&!cpEnc(e)&&!encMun(e)?`<span class="pill warn">Falta el código postal</span>`:""}${al.map(a=>`<span class="pill ${a.cls}">${esc(a.txt)}</span>`).join("")}${e.riesgo?`<span class="pill bad">${esc(e.riesgo)}</span>`:""}</span>
   </button>`;
 }
 function rowOp(o){
