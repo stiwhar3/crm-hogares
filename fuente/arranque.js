@@ -1,7 +1,7 @@
 /* ---------- base de datos: Supabase (cada asesor solo recibe lo suyo; lo filtra el servidor) ---------- */
 const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
-const TABLA={contactos:"contactos",captaciones:"captaciones",compradores:"compradores",visitas:"visitas",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados",mercado:"mercado"};
+const TABLA={contactos:"contactos",captaciones:"captaciones",compradores:"compradores",visitas:"visitas",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados",mercado:"mercado",avisos:"avisos"};
 const DOCS={"ajustes/general":"general","zonas/indice":"zonas_indice","geo/parcelas":"geo_parcelas"};
 const nuevoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 function fila(t,id,d){const r={id,d};if(t==="censo")r.zona=d.zona;if(t==="censo_edits"||t==="portales")r.zona=id.split("-")[0].toUpperCase();return r}
@@ -35,7 +35,7 @@ function coleccion(nombre){
         .catch(e=>{if(yo===cargando)cargando=0;err&&err(e)})};
       go();enVivo(t,go,p=>{if(cargando){pend.push(p);return true}if(!uno(p))return false;emitir();return true});return()=>{}},
     doc(id){id=id||nuevoId();return{id,
-      async set(d){if(t==="contactos"&&S.yo&&S.yo.rol==="coordinador"){const {error}=await sb.rpc("crear_noticia",{p_id:id,p_d:d});if(error)throw fallo(error);return}
+      async set(d){if(t==="contactos"&&S.yo&&S.yo.rol==="coordinador"){const {data,error}=await sb.rpc("crear_noticia",{p_id:id,p_d:d});if(error)throw fallo(error);return data}
         const {error}=await sb.from(t).upsert(fila(t,id,d));if(error)throw fallo(error)},
       async leer(){const {data,error}=await sb.from(t).select("d").eq("id",id).maybeSingle();if(error)throw fallo(error);return data?data.d:null},
       async delete(){const {error}=await sb.from(t).delete().eq("id",id);if(error)throw fallo(error)}}}
@@ -52,6 +52,7 @@ const dbSupabase={collection:coleccion,doc:documento};
 
 /* ---------- quién soy ---------- */
 window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=await sb.functions.invoke("leer-buzon",{body:{imagen}});if(r.error){let m=r.error.message;try{const j=await r.error.context.json();m=j.error||m}catch(_){}return {error:m}}return r};
+window.asesorNoticia=async id=>{const {data,error}=await sb.rpc("asesor_de_noticia",{p_id:id});if(error)throw fallo(error);return data||""};
 window.buscarVivienda=async(calle,num)=>{const {data,error}=await sb.rpc("buscar_vivienda",{p_calle:calle,p_num:num||""});if(error)throw fallo(error);return data||[]};
 window.importarCaptaciones=async filas=>{const t={nuevas:0,sumadas:0,repetidas:0,sinDireccion:0};for(let i=0;i<filas.length;i+=200){const {data,error}=await sb.rpc("importar_captaciones",{filas:filas.slice(i,i+200)});if(error)throw fallo(error);for(const k in t)t[k]+=data[k]||0}return t};
 window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.resolve({data:null});
@@ -59,7 +60,7 @@ window.rankingPeriodo=(periodo)=>sb?sb.rpc("ranking_periodo",{periodo}):Promise.
 const esResp=()=>S.yo&&S.yo.rol==="responsable";
 function ajustarPorRol(){
   $("#yo-nombre").textContent=S.yo?S.yo.nombre:"";
-  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","censo","localizar","equipo"]:["equipo","compradores"];
+  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","censo","localizar","equipo"]:["equipo"];
   document.querySelectorAll("#tabs button").forEach(b=>b.hidden=ocultas.includes(b.dataset.v));
   if(ocultas.includes(S.view))S.view="hoy";
   if(!esResp())S.f.asesor="";
