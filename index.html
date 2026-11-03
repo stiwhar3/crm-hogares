@@ -1207,6 +1207,9 @@ const DEFAULTS={captaciones:()=>({estado:"Pendiente",fecha:hoyISO()}),contactos:
 
 /* ---------- Compradores, visitas y cruces con encargos (coordinador: Daniel) ---------- */
 const esCoord=()=>!!(S.yo&&S.yo.rol==="coordinador");
+/* Stiwhar (03/11): Daniel borra sin pedir permiso en lo que gestiona; siempre queda copia en borrados */
+const BORRA_COORD=["compradores","visitas","captaciones","encargos","avisos"];
+const borraYa=col=>esCoord()&&BORRA_COORD.includes(col);
 const veTodo=()=>!S.yo||S.yo.rol!=="asesor";
 const EST_COMP=["Activo","Visitando","Reservado","Comprado","Mirón (solo mira)","Baja"];
 const ORIG_COMP=["","Idealista","Fotocasa","Habitaclia","Web Hogares","Llamada a oficina","Pasó por la oficina","Cartel","Referido de un cliente","Otra oficina Hogares","Formulario web","Otro"];
@@ -1643,7 +1646,7 @@ function abrir(col,id){
   const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button><button class="btn small" type="button" data-act="resenaHoy">Reseña pedida hoy</button><button class="btn small" type="button" data-act="felicitadoHoy">Aniversario felicitado hoy</button>`:"";
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
-    <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">Solicitar borrado</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+    <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
   if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
@@ -1825,6 +1828,10 @@ $("#frm").addEventListener("click",async ev=>{
   if(a==="vivVer"){const id=cur.censoId;$("#dlg").close();setTimeout(()=>abrirViv(id),100);return}
   if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>$("#viv-q")?.focus(),50);return}
   if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
+    if(borraYa(cur.col)){ if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para borrar";return}
+      const old=anterior(cur.col,cur.id);
+      try{await S.db.collection("borrados").doc().set({col:cur.col,docId:cur.id,f:new Date().toISOString(),motivo:m.slice(0,200),por:S.yo?S.yo.nombre:"",datos:JSON.parse(JSON.stringify(old||{}))});
+        await S.db.collection(cur.col).doc(cur.id).delete();$("#dlg").close();toast("Borrado. Queda una copia en el registro de borrados")}catch(e){console.error("borrar",e);toast("No se ha borrado")} return }
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200)}},"Solicitud de borrado: "+m)){$("#dlg").close();toast("Solicitud de borrado enviada. Apruébala desde Hoy")}return}
   if(a==="aCenso"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué no era noticia");$("#fld-nuevaNota")?.focus();return}
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200),tipo:"censo"}},"Pide que vuelva al censo (no era noticia): "+m)){$("#dlg").close();toast("Solicitud enviada. Apruébala desde Hoy")}return}
