@@ -935,7 +935,7 @@ function vHoy(){
   const sti=S.contactos.filter(c=>c.necesitaSti&&c.etapa!=="KO");
   const encAl=S.encargos.filter(e=>alertaEncargo(e).some(a=>a.cls==="bad"||a.txt.startsWith("Exclusiva")));
   const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
-  const TIT={contactos:"Noticia",encargos:"Encargo",operaciones:"Operación",captaciones:"Captación"};
+  const TIT={contactos:"Noticia",encargos:"Encargo",operaciones:"Operación",captaciones:"Captación",visitas:"Visita",compradores:"Comprador"};
   const urg=urgentes(),vend=S.contactos.filter(c=>c.vendida&&!c.vendidaVista);
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sp=sinPaso().length,cli=clientesAntiguos(),llamar=(()=>{const z=miZonaLlamar();return z&&S.censo?aQuienLlamar(z):[]})();
@@ -947,7 +947,7 @@ function vHoy(){
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
     {k:"vend",t:"Se han vendido",n:vend.length,tono:"warn",html:hoyLista("vend",vend,rowContacto,"")},
-    {k:"borr",t:"Solicitudes de borrado",n:solBorr.length,tono:"warn",html:`<div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
+    {k:"borr",t:"Solicitudes de borrado",n:solBorr.length,tono:"warn",html:`<div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||x.nombre||"")}${col==="visitas"&&x.fecha?" · "+fmtF(x.fecha)+(x.hora?" "+esc(x.hora):""):""}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
     {k:"sti",t:S.yo&&S.yo.rol==="responsable"?"Te esperan a ti":"Esperan a Stiwhar",n:sti.length,tono:"warn",html:hoyLista("sti",sti,rowContacto,"")},
     {k:"encAl",t:"Encargos que piden atención",n:encAl.length,tono:"warn",html:hoyLista("encAl",encAl,rowEncargo,"")},
     {k:"cli",t:"Clientes antiguos",n:cli.length,nota:"Reseña a los 15 días de la venta y felicitación en cada aniversario.",html:hoyLista("clientes",cli,rowCliente,"")},
