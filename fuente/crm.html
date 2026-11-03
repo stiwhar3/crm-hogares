@@ -363,7 +363,7 @@ function pgEscVal(t){t=zUp(t||"").replace(/[.:\s]/g,"");if(/^(D|DCHA|DCH|DER|DER
 function pgEscIgual(U,e){e=zPP(pgEscVal(e));if(!e)return ()=>true;const alt={D:"2",I:"1"}[e];const usa=U.some(u=>zPP(u.esc)===e)?e:alt&&U.some(u=>zPP(u.esc)===alt)?alt:e;return u=>zPP(u.esc)===usa}
 function pgUnidad(U,esc,pl,pu){let C=U.filter(u=>zPl(u.planta)===pl&&zPP(u.puerta)===pgPuerta(pu));if(esc){const f=C.filter(pgEscIgual(U,esc));if(f.length)C=f}return C.length===1?C[0]._id:""}
 const PG_MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-const PG_ABR=[[/•/g," NC "],[/\bns\s*[\/\-]?\s*nv\b/gi,"nsnv"],[/\bno sabe,? (?:ni |no )?vende\b/gi,"nsnv"],[/\bns\s*[\/\-]?\s*ni\b/gi,"No sabe, no interesa"],[/\bnsnv\b/gi,"No sabe ni vende"],[/\bnitp\b/gi,"No interesa tras puerta"],[/\bNC\b/g,"No contactado"],[/(^|\s)M\??(?=\s|[,.;:]|$)/g,"$1Mirilazo"],[/\btp\b/gi,"tras puerta"],[/\bnt\b/gi,"no timbre"],[/\br y t\b/gi,"revista y tarjeta"],[/\bPV\b\??/g,"piso en venta"],
+const PG_ABR=[[/•/g," NC "],[/\bns\s*[\/\-]?\s*nv\b/gi,"nsnv"],[/\bno sabe,? (?:ni |no )?vende\b/gi,"nsnv"],[/\bns\s*[\/\-]?\s*ni\b/gi,"No sabe, no interesa"],[/\bnsnv\b/gi,"No sabe ni vende"],[/\bnitp\b/gi,"No interesa tras puerta"],[/\bNC\b/gi,"No contactado"],[/(^|\s)M\??(?=\s|[,.;:]|$)/g,"$1Mirilazo"],[/\btp\b/gi,"tras puerta"],[/\bnt\b/gi,"no timbre"],[/\br y t\b/gi,"revista y tarjeta"],[/\bPV\b\??/g,"piso en venta"],
   [/^\s*ni(?=\s*$)/i,"No interesa"],[/^\s*ni\s+(?=interesa\b)/i,"No "],[/(^|\s)ns(?=\s|[,.;:]|$)/gi,"$1no sabe"],[/(^|\s)nv(?=\s|[,.;:]|$)/gi,"$1no vende"],[/\balq\b\.?/gi,"alquilado"]];
 function pgExpand(t){let x=" "+String(t||"")+" ";for(const [r,v] of PG_ABR)x=x.replace(r,v);x=x.replace(/\s+/g," ").trim();x=x.replace(/^no (sabe|vende)\b/,(a,b)=>"No "+b);
   return x.replace(/^(No contactado|Mirilazo|No sabe, no interesa|No sabe ni vende|No interesa tras puerta|No interesa(?! tras puerta))\s+(?=[a-záéíóúñ])/,"$1, ")}
@@ -377,7 +377,7 @@ function pgHora(l){let m=l.match(/\b(\d{1,2})\s*[:.h]\s*(\d{2})\b/i)||l.match(/\
 /* Mensajes copiados o exportados de WhatsApp: «[19/3/26, 11:02:55] Iván: …» o «19/3/26, 11:02 - Iván: …» */
 const PG_WA=/^\[?(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::\d{2})?\]?\s*(?:-\s*)?[^:\n]{1,40}?:\s?/;
 const PG_ABRV="(?:nsnv|nsni|nitp|ns|nv|ni|nt|tp|alq|m\\b)";
-const PG_PISO=new RegExp("^(?:(?:esc(?:alera)?|portal|bloque)\\.?\\s*([0-9a-z]+)\\s*[,.\\-]?\\s*)?(bajo|bj|[áa]tico|at|\\d{1,2})\\s*[ºª°]?\\s*[-\\/]?\\s*(izq(?:da|uierda)?\\.?|dcha\\.?|dch\\.?|derecha|centro|[a-l]|\\d{1,2})(?![a-záéíóúñ0-9:\\/])[\\s,.:;\\-]*(.*)$","i");
+const PG_PISO=new RegExp("^(?:(?:esc(?:alera)?|portal|bloque)\\.?\\s*([0-9a-z]+)\\s*[,.\\-]?\\s*)?(bajo|bj|[áa]tico|at|\\d{1,2})\\s*[ºª°]?\\s*[-\\/]?\\s*(izq(?:da|uierda)?\\.?|dcha\\.?|dch\\.?|derecha|centro|[a-l]|\\d{1,2})(?![a-záéíóúñ0-9\\/]|:\\d)[\\s,.:;\\-]*(.*)$","i");
 const PG_NUM=/^(bajo|bj|b|[áa]tico|at|a|\d{1,2})\s*[,.]\s*(\d{1,2})(?![\d.,ºª°a-z])[\s,.:;\-]*(.*)$/i;
 const PG_BN=/^([ab])\.?(\d{1,2})(?![\d.,ºª°a-z])[\s,.:;\-]*(.*)$/i;
 const PG_LETRA=/^([a-l])(?![a-záéíóúñ0-9])[\s•.:;\-]*(.*)$/i;
@@ -406,7 +406,7 @@ function pgParse(txt,U,op){op=op||{};U=U||[];const out=[],cab={fecha:"",hora:"",
     if(w&&!out.length&&enCab){if(!cab.fecha)cab.fecha=wf;if(!cab.hora)cab.hora=wh}
     if(!l)continue;
     const f=pgFecha(l),h=pgHora(l);
-    if(enCab&&(f||h)&&!PG_PISO.test(l.replace(/^•\s*/,""))&&!PG_NUM.test(l)||enCab&&f&&!/[a-záéíóúñ]{3,}\s+\d/i.test(l)){if(f&&!cab.fecha)cab.fecha=f;if(h&&!cab.hora)cab.hora=h;continue}
+    if(enCab&&(f||h)&&!PG_PISO.test(l.replace(/^•\s*/,""))&&!PG_NUM.test(l)||enCab&&f&&(!/[a-záéíóúñ]{3,}\s+\d/i.test(l)||/^\d{1,2}\s*(?:de\s+)?[a-záéíóú]{3,}|^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}/i.test(l))){if(f&&!cab.fecha)cab.fecha=f;if(h&&!cab.hora)cab.hora=h;continue}
     // Escalera / portal / bloque como cabecera: «Esc 2:», «Esc.3», «Bloque1», «Escalera derecha 12A …»
     const ei=l.match(/^(izq(?:da|uierda)?|izda|dcha|derecha)\.?\s*(\d{1,2})?\s*:\s*$/i);if(ei){esc=pgEscVal(ei[1]);run=null;enCab=false;continue}
     const ec=l.match(PG_ESCCAB);
