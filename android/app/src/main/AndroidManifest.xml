@@ -2,6 +2,8 @@
 <!-- App «envoltorio» (Trusted Web Activity): abre la web del CRM en Chrome a pantalla completa.
      Todo el CRM vive en la web, así que las mejoras llegan sin reinstalar el APK. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android 13+: permiso para mostrar las notificaciones push del CRM dentro de la app -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -37,6 +39,10 @@
         </activity>
 
         <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
+
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.NotificationPermissionRequestActivity"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
