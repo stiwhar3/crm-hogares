@@ -7,3 +7,7 @@ alter policy borrar on public.captaciones using (es_responsable() or es_coordina
 alter policy borrar on public.encargos    using (es_responsable() or es_coordinador());
 alter policy borrar on public.avisos      using (es_responsable() or es_coordinador());
 create policy coordinador_copia on public.borrados for insert with check (es_coordinador());
+
+-- La app guarda la copia con upsert (INSERT ... ON CONFLICT), que exige poder leer la fila nueva.
+-- Daniel solo ve las copias que ha hecho él.
+create policy coordinador_ve_suyos on public.borrados for select using (es_coordinador() and d->>'por' = mi_nombre());
