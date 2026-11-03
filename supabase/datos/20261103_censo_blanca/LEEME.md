@@ -10,3 +10,7 @@ Total añadido: 3.799 viviendas en 355 portales, en `censo` como zona `BLANCA` (
 No se tocó el índice de zonas (`zonas/indice`), para que las noticias y captaciones que ya tienen zona no cambien al guardarlas.
 
 `preparar.py` genera `nuevos_censo.json`; `cargar.sql` lo carga con pg_net.
+
+## Noticias enlazadas (Stiwhar: «enlaza las noticias pero no le asignes esa zona a nadie»)
+- 25 noticias de esas calles enlazadas a su vivienda (`censoId` = `blanca-…`). No cambia ni su zona ni su asesor. Copia previa: `respaldo.contactos_20261103_antes_enlace_blanca` y `respaldo.censo_edits_20261103_antes_enlace_blanca`. SQL en `enlazar_noticias.sql`.
+- App: al guardar una noticia enlazada a una vivienda de la zona BLANCA, la noticia conserva su zona (antes tomaba la del censo).
