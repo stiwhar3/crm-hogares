@@ -381,6 +381,7 @@ main{gap:18px;padding-block:16px 60px}
       <button data-v="equipo" type="button">Equipo</button>
       <button data-v="resultados" type="button">Resultados</button>
       <button data-v="tutoriales" type="button">Tutoriales</button>
+      <button data-v="papelera" type="button">Papelera</button>
     </nav>
   </div>
 </header>
@@ -1160,6 +1161,35 @@ function vCenso(){
 }
 const TUTORIALES={"asesor": [["00_instalar_app", "Instalar la app en el móvil"], ["asesor/01_entrar", "Entrar en el CRM"], ["asesor/02_moverse", "Moverse por el CRM"], ["asesor/03_hoy", "Hoy: tu día de trabajo"], ["asesor/04_avisos_mensajes", "Avisos y mensajes"], ["asesor/05_a_quien_llamar", "A quién llamar hoy"], ["asesor/06_crear_noticia", "Crear una noticia"], ["asesor/07_seguir_noticias", "Seguir tus noticias"], ["asesor/08_calendario_informe", "Calendario e informe de mercado"], ["asesor/09_valoracion_encargo", "De la valoración al encargo"], ["asesor/10_notas_vendida_borrar", "Notas, vendidas y borrados"], ["asesor/11_captaciones", "Captaciones"], ["asesor/12_encargos", "Encargos"], ["asesor/13_visitas", "Visitas de tus casas"], ["asesor/14_compradores", "Compradores"], ["asesor/15_avisar_portal", "Avisar a los vecinos"], ["asesor/16_operaciones", "Operaciones y comisión"], ["asesor/17_censo", "Censo: portales y viviendas"], ["asesor/18_notas_rapidas_buzon", "Notas rápidas y foto del buzón"], ["asesor/19_mapa_ruta", "Mapa y ruta de puerta fría"], ["asesor/20_taratura", "Imprimir la taratura"], ["asesor/21_localizar", "Localizar: ¿qué piso es?"], ["asesor/22_resultados", "Resultados y metas"], ["asesor/23_whatsapp", "WhatsApp desde el CRM"]], "coordinador": [["00_instalar_app", "Instalar la app en el móvil"], ["coordinador/01_entrar", "Entrar en el CRM"], ["coordinador/02_moverse", "Moverse por el CRM"], ["coordinador/03_hoy", "Tu Hoy"], ["coordinador/04_avisos_mensajes", "Avisos y mensajes"], ["coordinador/05_alta_comprador", "Dar de alta un comprador"], ["coordinador/06_compradores", "Tus compradores"], ["coordinador/07_visitas", "Visitas"], ["coordinador/08_cruces", "Cruces: casas para cada comprador"], ["coordinador/09_pasar_llamadas", "Pasar llamadas a los asesores"], ["coordinador/10_captaciones", "Captaciones"], ["coordinador/11_encargos", "Encargos"], ["coordinador/12_objetivos", "Tus objetivos"], ["coordinador/13_whatsapp", "WhatsApp desde el CRM"]]};
 /* Cada rol ve sus vídeos; el responsable ve los dos juegos. El de instalar la app está en tutoriales/, el resto en tutoriales/asesor/ y tutoriales/coordinador/. */
+/* ---------- Papelera (solo Stiwhar): lo borrado en los últimos 3 días, con «Recuperar» ---------- */
+const PAP_COL={contactos:"Noticia",captaciones:"Captación",compradores:"Comprador",visitas:"Visita",encargos:"Encargo",operaciones:"Operación",avisos:"Aviso"};
+function cargarPapelera(){if(S.papCargando||!S.db)return;S.papCargando=true;
+  const desde=new Date(Date.now()-3*864e5).toISOString();
+  const p=typeof window.leerPapelera==="function"?window.leerPapelera(desde):S.db.collection("borrados").get().then(s=>s.docs.map(x=>({id:x.id,d:x.data()})));
+  p.then(L=>{S.pap=(L||[]).filter(r=>r.d&&(r.d.f||"")>=desde).sort((a,b)=>String(b.d.f).localeCompare(String(a.d.f)))})
+   .catch(e=>{console.error("papelera",e);S.pap=[];toast("No he podido leer la papelera")}).finally(()=>{S.papCargando=false;if(S.view==="papelera")render()})}
+function vPapelera(){
+  if(!(typeof esResp!=="function"||esResp()))return `<section><div class="empty">Solo Stiwhar ve la papelera.</div></section>`;
+  if(!S.pap){cargarPapelera();return `<section><h2>Papelera</h2><div class="empty">Cargando…</div></section>`}
+  const fila=r=>{const d=r.d,x=d.datos||{},q=[x.direccion||x.titulo||x.inmueble||"",x.nombre||"",x.asesor||""].filter(Boolean).join(" · ")||d.docId;
+    return `<div class="row" style="cursor:default"><div class="main"><span class="t">${esc(q)}</span><span class="m"><span class="pill">${esc(PAP_COL[d.col]||d.col||"")}</span><span>Borrado ${esc(fmtFH(d.f))}${d.por?" por "+esc(d.por):""}</span>${d.motivo?`<span>${esc(d.motivo)}</span>`:""}</span></div>
+      ${d.restaurado?`<span class="pill ok">Recuperado ${esc(fmtFH(d.restaurado))}</span>`:`<button class="btn small" type="button" data-pap="${esc(r.id)}">Recuperar</button>`}</div>`};
+  return `<section><h2>Papelera</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Lo que se ha borrado en los últimos 3 días. «Recuperar» lo devuelve tal como estaba al borrarlo. Solo lo ves tú.</p>
+    <div class="tools"><button class="btn small" type="button" data-papre>Actualizar</button></div>
+    <div class="list">${S.pap.length?S.pap.map(fila).join(""):`<div class="empty">No se ha borrado nada en los últimos 3 días.</div>`}</div></section>`}
+async function recuperarBorrado(rid,b){const r=(S.pap||[]).find(x=>x.id===rid);if(!r)return;const d=r.d;
+  if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez";return}b.disabled=true;
+  try{const ya=await S.db.collection(d.col).doc(d.docId).leer();
+    if(ya){toast("Ya existe una ficha con ese código: no la piso");b.disabled=false;return}
+    const ahora=new Date().toISOString(),out={...(d.datos||{})};delete out.id;delete out._id;delete out.borrarSolicitado;out.actualizado=ahora;
+    out.historial=[...(out.historial||[]),{f:ahora,n:"Recuperada de la papelera"+(d.motivo?" (se borró: "+d.motivo+")":"")+"."}].slice(-300);
+    await S.db.collection(d.col).doc(d.docId).set(out);
+    const nd={...d,restaurado:ahora};await S.db.collection("borrados").doc(rid).set(nd);r.d=nd;
+    const L=S[d.col];if(Array.isArray(L)&&!L.some(x=>x.id===d.docId))L.push({id:d.docId,...out});
+    toast("Recuperado");render()}
+  catch(e){console.error("recuperar",e);toast("No se ha podido recuperar");b.disabled=false}}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-pap]");if(b){recuperarBorrado(b.dataset.pap,b);return}
+  if(e.target.closest("[data-papre]")){S.pap=null;render()}});
 function vTutoriales(){const rol=S.yo?S.yo.rol:"asesor",R=rol==="responsable"?["asesor","coordinador"]:[rol==="coordinador"?"coordinador":"asesor"];
   const lista=r=>TUTORIALES[r].map(([f,t])=>`<details class="tut"><summary><b>${+f.split("/").pop().slice(0,2)}.</b> ${esc(t)}</summary><video controls playsinline preload="none" src="tutoriales/${f}.mp4"></video></details>`).join("");
   return `<section><h2>Tutoriales</h2><p style="margin:0 0 12px;color:var(--muted);font-size:13px">Vídeos cortos que explican cómo usar cada parte del CRM. Toca uno para verlo.</p>${R.map(r=>`${R.length>1?`<h2 style="margin-top:16px">${r==="asesor"?"Para asesores":"Para el coordinador"}</h2>`:""}<div class="tuts">${lista(r)}</div>`).join("")}</section>`}
@@ -1171,7 +1201,7 @@ function render(){clearTimeout(render.t);render.t=setTimeout(()=>{try{revisarAle
     :S.soloLectura?`<div class="banner">No se ha podido guardar (${esc(S.soloLectura)}). Puede que esta vista sea solo de lectura. <button class="btn small" type="button" id="btn-perm">Revisar permisos</button></div>`:"";
   setTimeout(()=>{if(S.view==="censo"&&S.cf.mapa&&$("#mapa"))pintarMapa(S.cf.zona)},0);
   pintarSecbar();setTimeout(()=>{pintarBarra();colorUnico($("#view"))},0);
-  $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,compradores:vCompradores,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo,tutoriales:vTutoriales}[S.view])();
+  $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,compradores:vCompradores,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo,tutoriales:vTutoriales,papelera:vPapelera}[S.view])();
   if((S.view==="censo"||S.view==="localizar")&&!S.censo&&S.db) cargarCenso();
 }
 
@@ -1721,6 +1751,8 @@ function cajaFusion(d){const L=repetidasDe(d);if(!L.length)return "";
    El asesor no puede borrar: su repetida queda con «Borrado solicitado» para que Stiwhar lo apruebe en Hoy. */
 async function fusionar(dupId,destId){
   const dest=S.contactos.find(c=>c.id===destId),old=S.contactos.find(c=>c.id===dupId);if(!dest||!old)return toast("No encuentro la otra noticia");
+  /* Si la otra ya se borró (p. ej. se fusionó antes con esta), no se fusiona: si no, se borrarían las dos */
+  try{if(!(await S.db.collection("contactos").doc(destId).leer())){const i=S.contactos.findIndex(c=>c.id===destId);if(i>=0)S.contactos.splice(i,1);$("#dlg").close();render();return toast("La otra noticia ya no existe: no fusiono")}}catch(_){}
   const dup={...old,...leerForm()},nueva=($("#fld-nuevaNota")?.value||"").trim(),ch={};
   for(const k of ["nombre","telefono","publicado","fechaPublicado","precioPropietario","precioValorado","fechaValoracion","origen","referidoPor","motivo","idealistaId","idealistaUrl","censoId"])
     if((dest[k]==null||dest[k]===""||dest[k]===false)&&dup[k]!=null&&dup[k]!==""&&dup[k]!==false)ch[k]=dup[k];
@@ -1764,6 +1796,7 @@ async function guardar(col,id,data,nota,extraHist){
   const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","borrarSolicitado","vendidaVista"].includes(k)&&String(old[k]??"")!==String(data[k]??"")&&!(old[k]==null&&data[k]===false))
     .map(k=>({campo:etiqueta(col,k),antes:String(old[k]??"").slice(0,200),despues:String(data[k]??"").slice(0,200)})):[];
   const out={...(base||{}),...data}; delete out.id; delete out._id; out.actualizado=ahora;
+  if(col==="contactos"&&out.vendida&&out.etapa!=="KO")out.etapa="KO"; /* Stiwhar (03/11): toda noticia vendida pasa a KO */
   const hist=[...((base&&base.historial)||[])];
   if(extraHist&&extraHist.length){hist.push(...extraHist);hist.sort((a,b)=>String(a.f).localeCompare(String(b.f)))}
   if(!old||cambios.length||nota) hist.push({f:ahora,...(old?{}:{alta:true}),...(cambios.length?{c:cambios}:{}),...(nota?{n:nota}:{})});
@@ -2107,7 +2140,7 @@ const URL_FORM_COMP="https://stiwhar3.github.io/crm-hogares/alta.html";
 $("#view").addEventListener("click",async e=>{if(!e.target.closest("#b-form"))return;try{await navigator.clipboard.writeText(URL_FORM_COMP);toast("Enlace copiado: pégalo en WhatsApp o en el email al comprador")}catch(_){toast("Enlace: "+URL_FORM_COMP)}});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id!=="b-q"&&id!=="e-q")return;if(id==="b-q")S.bf.q=e.target.value;else S.eq=e.target.value;clearTimeout(render.t2);render.t2=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)});
 
-try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar"||v==="tutoriales")S.view=v}catch(_){}
+try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar"||v==="tutoriales"||v==="papelera")S.view=v}catch(_){}
 render();
 /* ---------- base de datos: Supabase (cada asesor solo recibe lo suyo; lo filtra el servidor) ---------- */
 const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
@@ -2171,9 +2204,10 @@ window.importarCaptaciones=async filas=>{const t={nuevas:0,sumadas:0,repetidas:0
 window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.resolve({data:null});
 window.rankingPeriodo=(periodo)=>sb?sb.rpc("ranking_periodo",{periodo}):Promise.resolve({data:null});
 const esResp=()=>S.yo&&S.yo.rol==="responsable";
+window.leerPapelera=async desde=>{const {data,error}=await sb.from("borrados").select("id,d").gte("creado",desde).order("creado",{ascending:false}).limit(500);if(error)throw fallo(error);return data};
 function ajustarPorRol(){
   $("#yo-nombre").textContent=S.yo?S.yo.nombre:"";
-  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","censo","localizar","equipo"]:["equipo"];
+  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","censo","localizar","equipo","papelera"]:["equipo","papelera"];
   document.querySelectorAll("#tabs button").forEach(b=>b.hidden=ocultas.includes(b.dataset.v));
   if(ocultas.includes(S.view))S.view="hoy";
   if(!esResp())S.f.asesor="";
