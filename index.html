@@ -935,7 +935,7 @@ function vHoy(){
   const sti=S.contactos.filter(c=>c.necesitaSti&&c.etapa!=="KO");
   const encAl=S.encargos.filter(e=>alertaEncargo(e).some(a=>a.cls==="bad"||a.txt.startsWith("Exclusiva")));
   const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
-  const TIT={contactos:"Noticia",encargos:"Encargo",operaciones:"Operación",captaciones:"Captación"};
+  const TIT={contactos:"Noticia",encargos:"Encargo",operaciones:"Operación",captaciones:"Captación",visitas:"Visita",compradores:"Comprador"};
   const urg=urgentes(),vend=S.contactos.filter(c=>c.vendida&&!c.vendidaVista);
   const solBorr=Object.keys(TIT).flatMap(col=>S[col].filter(x=>x.borrarSolicitado).map(x=>({col,x})));
   const sp=sinPaso().length,cli=clientesAntiguos(),llamar=(()=>{const z=miZonaLlamar();return z&&S.censo?aQuienLlamar(z):[]})();
@@ -947,7 +947,7 @@ function vHoy(){
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
     {k:"vend",t:"Se han vendido",n:vend.length,tono:"warn",html:hoyLista("vend",vend,rowContacto,"")},
-    {k:"borr",t:"Solicitudes de borrado",n:solBorr.length,tono:"warn",html:`<div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||"")}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
+    {k:"borr",t:"Solicitudes de borrado",n:solBorr.length,tono:"warn",html:`<div class="list">${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||x.nombre||"")}${col==="visitas"&&x.fecha?" · "+fmtF(x.fecha)+(x.hora?" "+esc(x.hora):""):""}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
     {k:"sti",t:S.yo&&S.yo.rol==="responsable"?"Te esperan a ti":"Esperan a Stiwhar",n:sti.length,tono:"warn",html:hoyLista("sti",sti,rowContacto,"")},
     {k:"encAl",t:"Encargos que piden atención",n:encAl.length,tono:"warn",html:hoyLista("encAl",encAl,rowEncargo,"")},
     {k:"cli",t:"Clientes antiguos",n:cli.length,nota:"Reseña a los 15 días de la venta y felicitación en cada aniversario.",html:hoyLista("clientes",cli,rowCliente,"")},
@@ -1329,7 +1329,7 @@ function alertasAuto(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const rol=S.yo
     // Visita de mañana (desde las 17:00)
     if(hm>=17*60)for(const v of vMias)if(v.fecha===man)add("vm:"+v.id,"Mañana tienes visita",`${v.hora||""} · ${v.direccion||""} · ${nomV(v)}${v.telComprador?" · "+v.telComprador:""}`,["visitas",v.id]);
     // Informe al vendedor pendiente (visitas de los últimos 3 días)
-    for(const v of vMias)if(v.fecha&&v.fecha<hoy&&v.fecha>=masDias(-3)&&!v.informeEnviado)add("inf:"+v.id,"Informe al vendedor pendiente",`Visita del ${fmtF(v.fecha)} · ${v.direccion||""} · ${nomV(v)}`,["visitas",v.id]);
+    for(const v of vMias)if(v.fecha&&v.fecha<hoy&&v.fecha>=masDias(-3)&&!v.informeEnviado&&!v.cancelada)add("inf:"+v.id,"Informe al vendedor pendiente",`Visita del ${fmtF(v.fecha)} · ${v.direccion||""} · ${nomV(v)}`,["visitas",v.id]);
     const cMios=S.contactos.filter(mio);
     // Desarrollos pendientes desde las 12:00, seguimientos desde las 18:30
     const venc=et=>cMios.filter(c=>c.etapa===et&&c.proxFecha&&c.proxFecha<=hoy);
@@ -1405,10 +1405,10 @@ function cruces(){const out=[];for(const c of S.compradores){if(!compActivo(c))c
   return out.sort((a,b)=>porPrio(a.c,b.c)||(b.e.fechaCaptacion||"").localeCompare(a.e.fechaCaptacion||""))}
 /* Con compradores no hay «próximo paso» (Stiwhar): hay visita, seguimiento de la visita hecha y, tras 3 meses sin visitas, preguntar si ha comprado. */
 const DIAS_CONSULTA=90;
-const visSinSeg=v=>v.fecha&&v.fecha<hoyISO()&&!v.seguimiento;
+const visSinSeg=v=>!v.cancelada&&v.fecha&&v.fecha<hoyISO()&&!v.seguimiento;
 const tel9=t=>String(t||"").replace(/\D/g,"").slice(-9);
-const visSinFicha=v=>!v.compradorId||!S.compradores.some(c=>c.id===v.compradorId);
-function pasoComp(c){if(!compActivo(c))return null;const hoy=hoyISO(),V=visitasDe(c);
+const visSinFicha=v=>!v.cancelada&&!v.compradorId||!v.cancelada&&!S.compradores.some(c=>c.id===v.compradorId);
+function pasoComp(c){if(!compActivo(c))return null;const hoy=hoyISO(),V=visitasDe(c).filter(v=>!v.cancelada);
   if(c.webPendiente)return {cls:"bad",txt:"Se ha apuntado en la web: llamarle",orden:(c.creado||"").slice(0,10)};
   const fut=V.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")))[0];
   const sin=V.filter(visSinSeg).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
@@ -1425,7 +1425,8 @@ function rowComp(c){const p=pasoComp(c),n=compActivo(c)?S.encargos.filter(e=>enc
     <span class="t">${esc(c.nombre||"")}${c.telefono?` · <span style="font-weight:500">${esc(c.telefono)}</span>`:""}</span><span class="r">${c.precioMax?"hasta "+eur(c.precioMax):""}</span>
     <span class="m">${prioComp(c)?`<span class="pill ok">Finanhogar · prioridad 1</span>`:""}<span class="pill ${estCls(c.estado)}">${esc(c.estado||"")}</span>${buscaEn(c).slice(0,3).map(b=>`<span>${esc(b)}</span>`).join("")}${buscaEn(c).length>3?`<span>+${buscaEn(c).length-3}</span>`:""}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${n?`<span class="pill ok">${n} encaja${n>1?"n":""}</span>`:""}${p&&p.txt?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:""}</span>
   </button>`}
-function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnviado;
+function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnviado&&!v.cancelada;
+  if(v.cancelada)return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}" style="opacity:.5;filter:grayscale(1)"><span class="t" style="text-decoration:line-through">${esc(v.direccion||"")}${v.compradorNombre?` · ${esc(v.compradorNombre)}`:""}</span><span class="r">${fmtF(v.fecha)}${v.hora?" "+esc(v.hora):""}</span><span class="m"><span>${esc(v.asesor||"")}</span><span class="pill">Cancelada</span></span></button>`;
   return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}">
     <span class="t">${esc(v.direccion||"")}${v.compradorNombre?` · <span style="font-weight:500">${esc(v.compradorNombre)}</span>`:""}</span><span class="r">${fmtF(v.fecha)}${v.hora?" "+esc(v.hora):""}</span>
     <span class="m"><span>${esc(v.asesor||"")}</span>${v.interes?`<span class="pill ${v.interes==="Mucho"?"ok":v.interes==="Nada"?"bad":"warn"}">Interés: ${esc(v.interes)}</span>`:""}${visSinFicha(v)?`<span class="pill ${pas?"bad":"warn"}">Sin ficha de comprador</span>`:""}${visSinSeg(v)?`<span class="pill bad">Falta el seguimiento</span>`:""}${inf?`<span class="pill bad">Falta el informe al vendedor</span>`:v.informeEnviado?`<span class="pill ok">Informe enviado</span>`:""}${v.opinion?`<span>${esc(v.opinion.slice(0,80))}</span>`:""}</span>
@@ -1455,7 +1456,7 @@ function vCompradores(){
 function vHoyCoord(){
   const pend=compPendientes(),cr=cruces(),crG=crucesPorCasa(cr),hoy=hoyISO();
   const vis=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")));
-  const inf=S.visitas.filter(v=>v.fecha&&v.fecha<hoy&&!v.informeEnviado);
+  const inf=S.visitas.filter(v=>v.fecha&&v.fecha<hoy&&!v.informeEnviado&&!v.cancelada);
   const capP=S.captaciones.filter(k=>k.estado==="Pendiente").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
   const reservas=S.operaciones.filter(o=>o.estado==="Reserva");
   const ofi=S.compradores.filter(compOtraOficina),sinF=S.visitas.filter(v=>v.fecha&&v.fecha<=hoy&&visSinFicha(v)).sort((a,b)=>b.fecha.localeCompare(a.fecha));
@@ -1650,7 +1651,7 @@ function abrir(col,id){
   const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button><button class="btn small" type="button" data-act="resenaHoy">Reseña pedida hoy</button><button class="btn small" type="button" data-act="felicitadoHoy">Aniversario felicitado hoy</button>`:"";
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
-    <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
+    <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}${col==="visitas"?`<button class="btn" type="button" data-act="visCancelar">${d.cancelada?"Reactivar la visita":"Visita cancelada"}</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
   $("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
   if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
@@ -1831,6 +1832,9 @@ $("#frm").addEventListener("click",async ev=>{
   if(a==="pgSaltar"){const r=cur&&cur.pg&&cur.pg.resto;if(r)pgSiguiente(r);return}
   if(a==="vivVer"){const id=cur.censoId;$("#dlg").close();setTimeout(()=>abrirViv(id),100);return}
   if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>$("#viv-q")?.focus(),50);return}
+  /* Stiwhar (03/11): «Visita cancelada» no borra: la deja en gris aquí y en el calendario */
+  if(a==="visCancelar"){const v=anterior(cur.col,cur.id);if(!v)return;const on=!v.cancelada,m=($("#fld-nuevaNota")?.value||"").trim();
+    if(await guardar(cur.col,cur.id,{cancelada:on?new Date().toISOString():""},(on?"Visita cancelada":"Visita reactivada")+(m?": "+m:""))){$("#dlg").close();toast(on?"Visita cancelada: queda en gris":"Visita reactivada")}return}
   if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
     if(borraYa(cur.col)){ if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para borrar";return}
       const old=anterior(cur.col,cur.id);

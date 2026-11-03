@@ -65,7 +65,16 @@ Deno.serve(async (req) => {
     const { data: v } = await db.from("visitas").select("id,d").eq("id", id).single();
     if (!v) return json({ ok: false, motivo: "no existe" });
     const d = v.d || {};
-    if (!d.fecha || !d.hora || d.borrarSolicitado || String(d.opinion || "").startsWith("Cancelada")) return json({ ok: false, motivo: "sin fecha/hora o cancelada" });
+    // Stiwhar (03/11): una visita cancelada no se borra; su evento se pone en gris (colorId 8) y vuelve a su color si se reactiva
+    if (d.calEventId && !!d.cancelada !== !!d.calGris) {
+      const gris = !!d.cancelada;
+      await gcal("PATCH", "/" + encodeURIComponent(d.calEventId), { colorId: gris ? "8" : (COLOR[d.asesor] || "8") });
+      const { data: v2 } = await db.from("visitas").select("d").eq("id", id).single();
+      const d2 = v2?.d || d, h2 = Array.isArray(d2.historial) ? d2.historial : [];
+      await db.from("visitas").update({ d: { ...d2, calGris: gris, historial: [...h2, { f: new Date().toISOString(), n: gris ? "Calendario: puesta en gris (cancelada)" : "Calendario: vuelve a su color" }] } }).eq("id", id);
+      return json({ ok: true, gris });
+    }
+    if (!d.fecha || !d.hora || d.borrarSolicitado || d.cancelada || String(d.opinion || "").startsWith("Cancelada")) return json({ ok: false, motivo: "sin fecha/hora o cancelada" });
     if (d.fecha < hoyMadrid()) return json({ ok: false, motivo: "pasada" });
     const start = { dateTime: `${d.fecha}T${d.hora}:00`, timeZone: "Europe/Madrid" };
     const end = { dateTime: mas30(d.fecha, d.hora), timeZone: "Europe/Madrid" };
