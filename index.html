@@ -1802,7 +1802,7 @@ $("#frm").addEventListener("click",e=>{const x=e.target.closest("[data-chipx]");
 $("#frm").addEventListener("input",e=>{if(e.target.id==="fld-direccion")pistaZona();if(e.target.id==="viv-q"){clearTimeout(pintarVivRes.t);pintarVivRes.t=setTimeout(pintarVivRes,200)}});
 $("#frm").addEventListener("change",e=>{if(e.target.id==="viv-manual"){cur.manual=e.target.checked;cur.vq=$("#viv-q")?.value;pintarVivBox();if(cur.manual)$("#fld-direccion").focus()}});
 function reglasVivienda(data){ /* devuelve texto de error o "" y completa data */
-  if(cur.censoId){data.censoId=cur.censoId;const r=buscarViv(cur.censoId);if(r){data.direccion=dirViv(r);data.zona=r.zona}return ""}
+  if(cur.censoId){data.censoId=cur.censoId;const r=buscarViv(cur.censoId);if(r){data.direccion=dirViv(r);if(r.zona!=="BLANCA")data.zona=r.zona} /* zona BLANCA = censo sin color: la noticia conserva su zona */return ""}
   data.censoId="";
   if(!S.censo)return "";
   if(!cur.manual)return "Elige la vivienda en el censo o marca «Aún no está localizada».";
