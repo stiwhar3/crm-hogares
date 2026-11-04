@@ -960,6 +960,8 @@ async function recuperarBorrado(rid,b){const r=(S.pap||[]).find(x=>x.id===rid);i
 document.addEventListener("click",e=>{const b=e.target.closest("[data-pap]");if(b){recuperarBorrado(b.dataset.pap,b);return}
   if(e.target.closest("[data-papre]")){S.pap=null;render()}});
 function vTutoriales(){const rol=S.yo?S.yo.rol:"asesor",R=rol==="responsable"?["asesor","coordinador"]:[rol==="coordinador"?"coordinador":"asesor"];
+  const lista=r=>TUTORIALES[r].map(([f,t])=>`<details class="tut"><summary><b>${+f.split("/").pop().slice(0,2)}.</b> ${esc(t)}</summary><video controls playsinline preload="none" src="tutoriales/${f}.mp4"></video></details>`).join("");
+  return `<section><h2>Tutoriales</h2><p style="margin:0 0 12px;color:var(--muted);font-size:13px">Vídeos cortos que explican cómo usar cada parte del CRM. Toca uno para verlo.</p>${R.map(r=>`${R.length>1?`<h2 style="margin-top:16px">${r==="asesor"?"Para asesores":"Para el coordinador"}</h2>`:""}<div class="tuts">${lista(r)}</div>`).join("")}</section>`}
 function render(){clearTimeout(render.t);render.t=setTimeout(()=>{try{revisarAlertas()}catch(e){console.error(e)}},1500);
   document.querySelectorAll("#tabs button").forEach(b=>{b.setAttribute("aria-current",b.dataset.v===S.view);
     if(b.dataset.v==="hoy"){const n=esCoord()?compPendientes().length:contactosPendientes().length;b.innerHTML="Hoy"+(n?`<span class="count">${n}</span>`:"")}});
