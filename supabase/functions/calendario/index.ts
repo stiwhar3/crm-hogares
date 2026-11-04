@@ -94,6 +94,29 @@ Deno.serve(async (req) => {
     const { data: e } = await db.from("encargos").select("d").eq("id", d.encargoId || "").maybeSingle();
     const dir = String((e?.d?.direccion) || d.direccion || "").split(",")[0].trim();
     const quien = [d.compradorNombre, d.telComprador].filter(Boolean).join(" ");
+
+    // Stiwhar (04/11): si alguien ya ha puesto esta visita a mano en el calendario («CV» ese día a esa hora
+    // con el mismo teléfono, o con la misma calle si no hay teléfono), no se crea otra: se enlaza la que hay.
+    const tels = String(d.telComprador || "").split(/[\/,;]/).map((t) => t.replace(/\D/g, "").slice(-9)).filter((t) => t.length === 9);
+    const norm = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const calle = norm(dir.replace(/\d.*$/, "")).slice(0, 8);
+    const q = new URLSearchParams({ singleEvents: "true", timeMin: `${d.fecha}T00:00:00Z`, timeMax: `${d.fecha}T23:59:59Z`, maxResults: "250" });
+    const delDia = await gcal("GET", "?" + q.toString());
+    const ya = (delDia.items || []).find((x: any) => {
+      const t = String(x.summary || "");
+      if (!/^\s*(2da\s+)?cv/i.test(t) || x.status === "cancelled") return false;
+      const h = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date(x.start?.dateTime || 0));
+      if (h !== d.hora) return false;
+      const digs = t.replace(/\D/g, "");
+      if (tels.length) return tels.some((n) => digs.includes(n));
+      return !!calle && norm(t).includes(calle);
+    });
+    if (ya) {
+      const { data: v2 } = await db.from("visitas").select("d").eq("id", id).single();
+      const d2 = v2?.d || d, h2 = Array.isArray(d2.historial) ? d2.historial : [];
+      await db.from("visitas").update({ d: { ...d2, calEventId: ya.id, calFecha: d.fecha, calHora: d.hora, historial: [...h2, { f: ahora, n: "Ya estaba en el calendario: enlazada (no se duplica)" }] } }).eq("id", id);
+      return json({ ok: true, enlazada: ya.id });
+    }
     const ev = await gcal("POST", "?sendUpdates=none", {
       summary: "CV " + [dir, quien].filter(Boolean).join(" - "),
       description: `Creada desde el CRM (visita ${id})`,
