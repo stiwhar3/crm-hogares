@@ -83,7 +83,7 @@ th:first-child,td:first-child{text-align:left}
 .db input,.db select,.db textarea{font:inherit;font-size:15px;font-weight:400;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
 .db textarea{min-height:90px;resize:vertical}
 .db label.check input{width:auto}
-#frm .db{flex:1 1 auto;align-content:start}#frm .dh{position:relative;padding-right:56px}.dx{position:absolute;top:10px;right:10px;width:40px;height:40px;border:0;border-radius:50%;background:var(--bg);color:var(--fg);font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}.dx:hover{background:var(--line)}.fcuerpo{display:flex;flex:1 1 auto;min-height:0}.fcuerpo>.db{flex:1 1 auto;min-width:0}.flat{flex:0 0 340px;overflow-y:auto;border-left:1px solid var(--line);background:var(--bg);padding:12px 16px}.flat .hist{margin:0;border:0;padding:0}@media (min-width:1000px){#frm:has(.flat){width:min(1120px,100%);height:min(820px,100%)}}@media (min-width:701px){#frm:has(.ftabs){height:min(780px,100%)}}.fpane{display:contents}.fpane[hidden]{display:none!important}
+#frm .db{flex:1 1 auto;align-content:start}#frm .dh{position:relative;padding-right:56px}.dx{position:absolute;top:10px;right:10px;width:40px;height:40px;border:0;border-radius:50%;background:var(--bg);color:var(--fg);font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}.dx:hover{background:var(--line)}.fcuerpo{display:flex;flex:1 1 auto;min-height:0}.fcuerpo>.db{flex:1 1 auto;min-width:0}.flat{flex:0 0 340px;overflow-y:auto;border-left:1px solid var(--line);background:var(--bg);padding:12px 16px}.flat .hist{margin:0;border:0;padding:0}@media (min-width:1000px){#frm:has(.flat){width:min(1120px,100%);height:min(720px,100%)}}.ftabs.desb{-webkit-mask-image:linear-gradient(to right,#000 80%,transparent);mask-image:linear-gradient(to right,#000 80%,transparent)}.ftabs.desb.fin{-webkit-mask-image:none;mask-image:none}.fdias{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-top:-4px}.fdias .btn{flex:none;padding:5px 11px!important;min-height:0!important;font-size:13px!important}@media (max-width:700px){#frm .db:has(>.fpane){grid-template-columns:1fr 1fr;column-gap:10px}#frm .db>.fpane>*{grid-column:1/-1}#frm .db>.fpane>.mitad{grid-column:auto}.facc{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:2px 18px}.facc::-webkit-scrollbar{display:none}.facc .btn{flex:none;padding:7px 14px;min-height:0;font-size:14px}#frm:has(.ftabs) .df{padding:10px 18px}#frm:has(.ftabs) .df .right{width:100%}}@media (min-width:701px){#frm:has(.ftabs){height:min(780px,100%)}}.fpane{display:contents}.fpane[hidden]{display:none!important}
 .ftabs{flex:none;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line);background:var(--surface);padding:0 12px}
 .dh.fres{border-bottom:0!important;padding-bottom:6px!important}.fres .ft{display:block;font-size:19px;line-height:1.25}.fres .fs{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;margin-top:6px;font-family:var(--body);font-size:14px;font-weight:400;color:var(--muted)}.fres .fs a.tel{color:var(--fg);font-weight:600;text-decoration:none}.fres .fs .btn{padding:4px 10px;min-height:0;font-size:13px}
 .ftabs::-webkit-scrollbar{display:none}
@@ -1822,7 +1822,7 @@ const PEST={
     ["enc","Le encajan",["_lenc"]],["vis","Visitas",["_lvis"]],
     ["vive","Contacto",["nombre","telefono","email","dni","origen","viveEn","necesitaVender","dirNuestra","direccionActual","censoIdActual","zonaActual","oficinaDestino"]],
     ["fin","Financiación",["financiacion","entrada","urgencia","fechaReserva"]],["notas","Notas",["notas","_hist"]]]}};
-const ACC_SEC=["informe","calProx","calVal","descartesFuera"],pestUlt={};
+const ACC_SEC=["informe","calProx","calVal","descartesFuera"],pestUlt={},MITAD={contactos:["etapa","proxFecha"],encargos:["precio","estado"],compradores:["estado","finanhogar"]};
 function claveHijo(c){
   if(c.id==="vivbox")return "_viv";if(c.id==="fusbox"||(c.classList.contains("vivbox")&&c.querySelector("[data-act=fusComp]")))return "_fus";
   if(c.classList.contains("hist"))return "_hist";if(c.querySelector("#fld-nuevaNota"))return "_nota";
@@ -1841,21 +1841,31 @@ function organizarFicha(col,id,d){const P=PEST[col],db=$("#frm .db");if(!P||!id|
   const T=[["prin","Principal",P.top],...P.tabs],donde={};T.forEach(([,,L],i)=>L.forEach(x=>donde[x]=i));
   const panes=T.map(([k])=>{const p=document.createElement("div");p.className="fpane";p.dataset.pane=k;return p});let wa=null;
   for(const c of [...db.children]){const k=claveHijo(c);if(k==="_h"){c.remove();continue}if(k==="_wa"){wa=c;c.remove();continue}panes[donde[k]??1].appendChild(c);
-    if(k==="_acc"){const sec=[...c.querySelectorAll("[data-act]")].filter(b=>ACC_SEC.includes(b.dataset.act));
+    if((MITAD[col]||[]).includes(k)&&!c.classList.contains("full"))c.classList.add("mitad");
+    if(k==="_acc"){c.classList.add("facc");const sec=[...c.querySelectorAll("[data-act]")].filter(b=>ACC_SEC.includes(b.dataset.act));
       if(sec.length){const m=document.createElement("details");m.className="fmas";m.innerHTML="<summary>Más acciones</summary><div></div>";sec.forEach(b=>m.lastChild.appendChild(b));panes[0].appendChild(m)}}}
+  /* Pie más limpio: «No era noticia» y «Borrar» pasan a «Más acciones» (si hay un borrado pendiente de aprobar, el pie se queda igual) */
+  const df=$("#frm .df"),pie=df&&!df.querySelector(".pill.bad")?[...df.querySelectorAll("[data-act=aCenso],[data-act=borrar]")]:[];
+  if(pie.length){let m=panes[0].querySelector("details.fmas");if(!m){m=document.createElement("details");m.className="fmas";m.innerHTML="<summary>Más acciones</summary><div></div>";const nt=panes[0].querySelector("#fld-nuevaNota");nt?nt.closest("label").before(m):panes[0].appendChild(m)}
+    pie.forEach(b=>{b.classList.add("small");m.lastChild.appendChild(b)})}
+  if(col==="contactos"){const pf=panes[0].querySelector("#fld-proxFecha")?.closest("label"),et=panes[0].querySelector("#fld-etapa")?.closest("label");
+    if(pf&&et){et.after(pf);const q=document.createElement("div");q.className="fdias";q.style.gridColumn="1/-1";
+      q.innerHTML=[["Mañana",1],["+3 días",3],["+1 semana",7],["+15 días",15]].map(([t,n])=>`<button type="button" class="btn small" data-dias="${n}">${t}</button>`).join("");pf.after(q)}}
   const [tit,sub]=resumenFicha(col,d),dh=$("#frm .dh");
   dh.classList.add("fres");dh.innerHTML=`<span class="ft">${esc(tit||"Sin nombre")}</span><span class="fs">${sub.filter(Boolean).join(" · ").replace(/<\/span> · /,"</span> ")}${wa?wa.innerHTML:""}</span>`;
   const cuenta=p=>{const n=p.querySelectorAll(".list>.row").length;return p.querySelector("#fusbox")?'<span class="n av">!</span>':n?`<span class="n">${n}</span>`:""};
   const bar=document.createElement("div");bar.className="ftabs";bar.setAttribute("role","tablist");
   bar.innerHTML=T.map(([k,t],i)=>`<button type="button" role="tab" data-ftab="${k}">${t}${cuenta(panes[i])}</button>`).join("");
-  dh.after(bar);db.replaceChildren(...panes);verPestana(T.some(t=>t[0]===pestUlt[col+id])?pestUlt[col+id]:"prin",true)}
+  dh.after(bar);db.replaceChildren(...panes);bar.addEventListener("scroll",()=>bar.classList.toggle("fin",bar.scrollLeft+bar.clientWidth>=bar.scrollWidth-4));setTimeout(()=>bar.classList.toggle("desb",bar.scrollWidth>bar.clientWidth+4),60);verPestana(T.some(t=>t[0]===pestUlt[col+id])?pestUlt[col+id]:"prin",true)}
 /* En ordenador (≥1000 px) el historial va en una barra a la derecha; en el móvil sigue en su pestaña */
 function historialLateral(id){const h=$("#frm .db .hist");if(!id||!h||!matchMedia("(min-width:1000px)").matches)return;
   const db=$("#frm .db"),w=document.createElement("div"),a=document.createElement("aside");w.className="fcuerpo";a.className="flat";
   db.before(w);w.append(db,a);a.appendChild(h)}
 function verPestana(k,inicio){const fr=$("#frm");fr.querySelectorAll(".fpane").forEach(p=>p.hidden=p.dataset.pane!==k);
   fr.querySelectorAll("[data-ftab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.ftab===k?"true":"false"));
-  if(cur&&!inicio)pestUlt[cur.col+cur.id]=k}
+  if(cur&&!inicio)pestUlt[cur.col+cur.id]=k;const sb=fr.querySelector(`[data-ftab="${k}"]`);if(sb&&!inicio)sb.scrollIntoView({block:"nearest",inline:"nearest"})}
+$("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-dias]");if(!b)return;e.preventDefault();const f=new Date();f.setDate(f.getDate()+Number(b.dataset.dias));
+  const el=$("#fld-proxFecha");if(el){el.value=`${f.getFullYear()}-${pad2(f.getMonth()+1)}-${pad2(f.getDate())}`;el.dispatchEvent(new Event("input",{bubbles:true}))}});
 function enfocar(sel){const el=$(sel);if(!el)return;const p=el.closest(".fpane");if(p&&p.hidden)verPestana(p.dataset.pane);el.focus()}
 $("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-ftab]");if(!b)return;e.preventDefault();verPestana(b.dataset.ftab);$("#frm .db").scrollTop=0});
 function abrir(col,id){
