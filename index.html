@@ -83,7 +83,7 @@ th:first-child,td:first-child{text-align:left}
 .db input,.db select,.db textarea{font:inherit;font-size:15px;font-weight:400;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
 .db textarea{min-height:90px;resize:vertical}
 .db label.check input{width:auto}
-#frm .db{flex:1 1 auto;align-content:start}@media (min-width:701px){#frm:has(.ftabs){height:min(780px,100%)}}.fpane{display:contents}.fpane[hidden]{display:none!important}
+#frm .db{flex:1 1 auto;align-content:start}#frm .dh{position:relative;padding-right:56px}.dx{position:absolute;top:10px;right:10px;width:40px;height:40px;border:0;border-radius:50%;background:var(--bg);color:var(--fg);font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}.dx:hover{background:var(--line)}.fcuerpo{display:flex;flex:1 1 auto;min-height:0}.fcuerpo>.db{flex:1 1 auto;min-width:0}.flat{flex:0 0 340px;overflow-y:auto;border-left:1px solid var(--line);background:var(--bg);padding:12px 16px}.flat .hist{margin:0;border:0;padding:0}@media (min-width:1000px){#frm:has(.flat){width:min(1120px,100%);height:min(820px,100%)}}@media (min-width:701px){#frm:has(.ftabs){height:min(780px,100%)}}.fpane{display:contents}.fpane[hidden]{display:none!important}
 .ftabs{flex:none;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line);background:var(--surface);padding:0 12px}
 .dh.fres{border-bottom:0!important;padding-bottom:6px!important}.fres .ft{display:block;font-size:19px;line-height:1.25}.fres .fs{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;margin-top:6px;font-family:var(--body);font-size:14px;font-weight:400;color:var(--muted)}.fres .fs a.tel{color:var(--fg);font-weight:600;text-decoration:none}.fres .fs .btn{padding:4px 10px;min-height:0;font-size:13px}
 .ftabs::-webkit-scrollbar{display:none}
@@ -402,9 +402,9 @@ main{gap:18px;padding-block:16px 60px}
 <script>
 /* Ventana propia en vez de <dialog>: en algunas vistas de la app showModal() no abre nada. */
 (function(){const d=document.getElementById("dlg");d.open=false;
-  d.showModal=function(){d.hidden=false;d.open=true;document.body.style.overflow="hidden";setTimeout(()=>{const f=d.querySelector("input,select,textarea");if(f&&window.innerWidth>700)f.focus()},30)};
+  d.showModal=function(){const h=d.querySelector(".dh");if(h&&!h.querySelector(".dx"))h.insertAdjacentHTML("beforeend",'<button type="button" class="dx" data-act="cerrar" aria-label="Cerrar" title="Cerrar">×</button>');d.hidden=false;d.open=true;document.body.style.overflow="hidden";setTimeout(()=>{const f=d.querySelector("input,select,textarea");if(f&&window.innerWidth>700)f.focus()},30)};
   d.close=function(){if(!d.open)return;d.hidden=true;d.open=false;document.body.style.overflow="";d.dispatchEvent(new Event("close"))};
-  d.addEventListener("click",e=>{if(e.target===d)d.close()});
+  /* Stiwhar (04/11): ya no se cierra al pulsar fuera (se perdían cambios); se cierra con la X, Cancelar o Esc */
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&d.open)d.close()});})();
 const ZONAS = {VERDE:"#3a9a4a",AZUL:"#2f6fd0",AMARILLA:"#e3b300",ROJA:"#cf3b30",ROSA:"#e57ab0",NARANJA:"#ee8a2a",MORADA:"#7d4fc4",MARRON:"#8a5a35",BLANCA:"#f2f2f2"};
 const ETAPAS = ["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo","KO"];
@@ -1554,7 +1554,7 @@ async function hojaCompradores(L,nombre,titulo){const X=await cargarXLSX();
 function ventanaCruce(){let w=$("#dlgCru");if(w)return w;
   w=document.createElement("div");w.id="dlgCru";w.className="modal";w.setAttribute("role","dialog");w.setAttribute("aria-modal","true");w.hidden=true;
   w.innerHTML='<form id="frmCru" novalidate></form>';document.body.appendChild(w);
-  w.addEventListener("click",e=>{if(e.target===w){w.hidden=true;return}const a=e.target.closest("[data-cru]");if(!a)return;e.preventDefault();
+  w.addEventListener("click",e=>{if(e.target===w)return;const a=e.target.closest("[data-cru]");if(!a)return;e.preventDefault();
     if(a.dataset.cru==="cerrar")w.hidden=true;else if(a.dataset.cru==="re")cruzar(true);else if(a.dataset.cru==="llam"){a.disabled=true;apuntarLlamada(a.dataset.c,a.dataset.r)}else if(a.dataset.cru==="hoja")hojaCompradores(CRU.L,"Cruce_"+String(CRU.e.direccion||"piso").replace(/[^\wÀ-ÿ]+/g,"_").slice(0,40)+".xlsx","Cruce").catch(err=>toast("No se ha podido descargar: "+(err.message||err)))});
   w.addEventListener("change",e=>{if(e.target.id&&e.target.id.startsWith("cru-"))cruzar(true)});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!w.hidden){e.stopPropagation();w.hidden=true}},true);
@@ -1849,6 +1849,10 @@ function organizarFicha(col,id,d){const P=PEST[col],db=$("#frm .db");if(!P||!id|
   const bar=document.createElement("div");bar.className="ftabs";bar.setAttribute("role","tablist");
   bar.innerHTML=T.map(([k,t],i)=>`<button type="button" role="tab" data-ftab="${k}">${t}${cuenta(panes[i])}</button>`).join("");
   dh.after(bar);db.replaceChildren(...panes);verPestana(T.some(t=>t[0]===pestUlt[col+id])?pestUlt[col+id]:"prin",true)}
+/* En ordenador (≥1000 px) el historial va en una barra a la derecha; en el móvil sigue en su pestaña */
+function historialLateral(id){const h=$("#frm .db .hist");if(!id||!h||!matchMedia("(min-width:1000px)").matches)return;
+  const db=$("#frm .db"),w=document.createElement("div"),a=document.createElement("aside");w.className="fcuerpo";a.className="flat";
+  db.before(w);w.append(db,a);a.appendChild(h)}
 function verPestana(k,inicio){const fr=$("#frm");fr.querySelectorAll(".fpane").forEach(p=>p.hidden=p.dataset.pane!==k);
   fr.querySelectorAll("[data-ftab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.ftab===k?"true":"false"));
   if(cur&&!inicio)pestUlt[cur.col+cur.id]=k}
@@ -1864,7 +1868,7 @@ function abrir(col,id){
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}${col==="visitas"?`<button class="btn" type="button" data-act="visCancelar">${d.cancelada?"Reactivar la visita":"Visita cancelada"}</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
-  organizarFicha(col,id,d);$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
+  organizarFicha(col,id,d);historialLateral(id);$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
   if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
   if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
