@@ -1408,14 +1408,16 @@ async function cruzar(re){const w=$("#dlgCru"),F=$("#frmCru");if(!w||!CRU)return
 function vCompradores(){
   const f=S.bf||(S.bf={estado:"activos",q:""}),q=f.q.toLowerCase();
   const base=S.compradores.filter(c=>!q||[c.nombre,c.telefono,c.email,c.dni,c.busca,c.notas].join(" ").toLowerCase().includes(q));
-  const pasa=(c,v)=>v==="activos"?compActivo(c):v==="rep"?repCompDe(c).length>0:!v||c.estado===v;
+  /* Fichas por completar (Stiwhar, 04/11/2026): compradores que siguen buscando y aún no tienen presupuesto (p. ej. los creados desde visitas sin ficha). */
+  const porHacer=c=>!["Comprado","Baja"].includes(c.estado)&&!(+c.precioMax);
+  const pasa=(c,v)=>v==="activos"?compActivo(c):v==="rep"?repCompDe(c).length>0:v==="porHacer"?porHacer(c):!v||c.estado===v;
   /* Filtros (Stiwhar, 04/11/2026): zona, presupuesto, habitaciones y financiación; la lista filtrada se descarga para los asesores. */
   const fz=f.zona||"",fmin=+f.pmin||0,fmax=+f.pmax||0,fh=+f.hab||0,ff=f.fin||"";
   const pasaF=c=>(!fz||cpsBusca(c).includes(fz)||munsBusca(c).includes(fz))&&(!fmin||+c.precioMax>=fmin)&&(!fmax||(+c.precioMax&&+c.precioMax<=fmax))&&(!fh||(+c.habMin||0)>=fh)&&(!ff||(ff==="Finanhogar"?prioComp(c):c.financiacion===ff));
   const hayF=!!(fz||fmin||fmax||fh||ff),munsC=[...new Set(S.compradores.flatMap(munsBusca))].sort();
   const L=base.filter(c=>pasa(c,f.estado)&&pasaF(c)).sort((a,b)=>porPrio(a,b)||((pasoComp(a)||{}).orden||"9").localeCompare((pasoComp(b)||{}).orden||"9"));
   vCompradores.L=L;
-  const chips=[["activos","Buscando"],...EST_COMP.filter(e=>e!=="Activo"&&e!=="Visitando").map(e=>[e,e]),["","Todos"],...(!soloLeeComp()&&base.some(c=>repCompDe(c).length)?[["rep","Posibles repetidos"]]:[])];
+  const chips=[["activos","Buscando"],...(!soloLeeComp()&&base.some(porHacer)?[["porHacer","Fichas por completar"]]:[]),...EST_COMP.filter(e=>e!=="Activo"&&e!=="Visitando").map(e=>[e,e]),["","Todos"],...(!soloLeeComp()&&base.some(c=>repCompDe(c).length)?[["rep","Posibles repetidos"]]:[])];
   const hoy=hoyISO(),prox=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||""))),
     pas=S.visitas.filter(v=>v.fecha<hoy).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   return `<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-best="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(c=>pasa(c,v)).length}</span></button>`).join("")}</div>
