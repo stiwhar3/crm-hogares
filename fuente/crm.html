@@ -701,6 +701,7 @@ function vHoy(){
     {k:"avisos",t:"Lo primero: avisos para ti",n:av.length+al.length,tono:"bad",nota:"Llamadas que te han pasado y avisos automáticos. Pulsa «Hecho» o «Visto» cuando lo hayas atendido.",html:bloqueAvisos(av,al)},
     {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza la vivienda y enlázala a su ficha del censo: 2 días si es agencia o portal, 1 si es particular. Pasa a Seguimiento cuando hables con el propietario.",html:hoyLista("urg",urg,rowContacto,"")},
     {k:"pend",t:"Próximos pasos de hoy",n:pend.length,tono:pend.some(c=>proxEstado(c).cls==="bad")?"bad":"warn",html:hoyLista("pend",pend,rowContacto,"")+(sp?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-go="sinpaso">${sp} sin próximo paso</button></div>`:"")},
+    ...(cn=>[{k:"compn",t:"Compradores nuevos para tus pisos",n:cn.length,tono:"warn",nota:"Se han dado de alta esta semana y encajan con tus encargos o tus noticias con precio. Llámales y apunta la llamada en el «Cruce de compradores» del piso.",html:hoyLista("compn",cn,rowCompNuevo,"")}])(compNuevosParaMi()),
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
     {k:"vend",t:"Se han vendido",n:vend.length,tono:"warn",html:hoyLista("vend",vend,rowContacto,"")},
@@ -1251,6 +1252,36 @@ async function fusionarComp(dupId,destId){
     await S.db.collection("compradores").doc(dupId).delete();const i=S.compradores.findIndex(c=>c.id===dupId);if(i>=0)S.compradores.splice(i,1)}
   catch(e){msg="Datos unidos, pero no he podido borrar la repetida: bórrala a mano"}
   $("#dlg").close();toast(msg);render();setTimeout(()=>abrir("compradores",destId),200)}
+/* Llamadas a compradores desde el cruce (Stiwhar, 04/11/2026): quién llamó, cuándo y qué dijo, para no llamar dos veces.
+   Se guarda con apuntar_llamada_comprador() en Supabase (los asesores no pueden editar compradores). «No le interesa» en un encargo lo descarta. */
+const RES_LLAM=["Quiere visita","No le interesa","No contesta"];
+const ultLlam=(c,piso)=>{const L=(c.llamadas||[]).filter(l=>!piso||l.piso===piso);return L[L.length-1]};
+const txtLlam=l=>l?`${l.quien||""} ${fmtF(String(l.f||"").slice(0,10))}: ${l.res||""}`:"";
+async function apuntarLlamada(cid,res){const e=CRU&&CRU.e;if(!e)return;
+  const c=(CRU.L||[]).find(x=>x.id===cid);if(!c)return;
+  try{await window.apuntarLlamadaComp(cid,e.id||"",e.direccion||"",res)}catch(err){return toast("No se ha podido apuntar: "+(err.message||err))}
+  const l={f:new Date().toISOString(),quien:S.yo&&S.yo.nombre||"",piso:e.id||"",dir:e.direccion||"",res};
+  c.llamadas=[...(c.llamadas||[]),l];if(res==="No le interesa"&&e.id&&S.encargos.some(x=>x.id===e.id))c.descartados=[...(c.descartados||[]),e.id];
+  toast("Llamada apuntada");cruzar(true)}
+/* Aviso en Hoy (Stiwhar, 04/11/2026): compradores dados de alta en los últimos 7 días que encajan con tus encargos o tus noticias con precio. */
+const DIAS_COMP_NUEVO=7;
+function pisosMios(){const yo=S.yo&&S.yo.nombre;if(!yo)return [];
+  return [...S.encargos.filter(e=>e.estado==="Activo"&&e.asesor===yo).map(e=>({col:"encargos",e:{...e,cp:e.cp||(encMun(e)?"":cpEnc(e))}})),
+    ...S.contactos.filter(c=>c.asesor===yo&&c.etapa!=="KO"&&c.etapa!=="Encargo"&&!c.vendida&&(+c.precioPropietario||+c.precioValorado)).map(c=>({col:"contactos",e:{id:c.id,direccion:c.direccion,zona:c.zona,clase:"Vivienda",estado:"Activo",cp:cpEnc(c),precio:c.precioPropietario||c.precioValorado}}))]}
+function compNuevosParaMi(){
+  if(!veTodo()&&!S.poolComp&&!compNuevosParaMi.cargando){compNuevosParaMi.cargando=1;poolCruce().then(L=>{S.poolComp=L;render()}).catch(()=>{}).finally(()=>{setTimeout(()=>{compNuevosParaMi.cargando=0;S.poolComp=null},600000)})}
+  const pool=veTodo()?S.compradores.filter(compActivo):(S.poolComp||[]),hoy=hoyISO(),P=pisosMios();if(!P.length)return [];
+  return pool.filter(c=>c.creado&&dias(String(c.creado).slice(0,10),hoy)<=DIAS_COMP_NUEVO).map(c=>({c,P:P.filter(p=>encaja(c,p.e)&&!descartado(c,p.e)&&!ultLlam(c,p.e.id))})).filter(x=>x.P.length)
+    .sort((a,b)=>porPrio(a.c,b.c)||String(b.c.creado).localeCompare(String(a.c.creado)))}
+function rowCompNuevo({c,P}){return `<div class="row" style="cursor:default"><span class="t">${prioComp(c)?"★ ":""}${esc(c.nombre||"")}${c.telefono?` · <a style="white-space:nowrap" href="tel:${esc(String(c.telefono).replace(/[^\d+]/g,""))}">${esc(c.telefono)}</a>`:""}</span><span class="r">${c.precioMax?"hasta "+eur(c.precioMax):""}</span>
+  <span class="m"><span>Alta ${fmtF(String(c.creado).slice(0,10))}</span>${P.map(p=>`<button class="pill ok" type="button" data-open="${p.col}" data-id="${esc(p.e.id)}" style="border:0;cursor:pointer">${esc(p.e.direccion||"")}</button>`).join("")}</span></div>`}
+/* Hojas por asesor (Stiwhar, 04/11/2026): una pestaña por asesor con sus encargos activos y los compradores que encajan (sin visitar ni descartados). */
+async function hojasPorAsesor(){const X=await cargarXLSX(),wb=X.utils.book_new(),C=S.compradores.filter(compActivo);
+  const por={};for(const e of S.encargos.filter(e=>e.estado==="Activo")){const L=C.filter(c=>encaja(c,e)&&!descartado(c,e)&&!visitasDe(c,e).length).sort(porPrio);
+    for(const c of L)(por[e.asesor||"Sin asesor"]=por[e.asesor||"Sin asesor"]||[]).push({"Piso":e.direccion||"","Precio piso (€)":+e.precio||"","Comprador":c.nombre||"","Teléfono":c.telefono||"","Busca en":buscaEn(c).join(", "),"Hasta (€)":+c.precioMax||"","Hab. mín.":+c.habMin||"","Financiación":c.financiacion||"","Finanhogar":prioComp(c)?"Sí · prioridad 1":"","Última llamada":txtLlam(ultLlam(c,e.id))})}
+  const ks=Object.keys(por).sort();if(!ks.length)return toast("Ningún encargo activo tiene compradores que encajen");
+  for(const k of ks){const ws=X.utils.json_to_sheet(por[k]);ws["!cols"]=[30,12,24,14,30,11,8,24,16,26].map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws,k.replace(/[\\\/?*\[\]:]/g," ").slice(0,31))}
+  X.writeFile(wb,"Cruces_por_asesor_"+hoyISO()+".xlsx")}
 /* Cruce de compradores desde una noticia o un encargo (Stiwhar, 04/11/2026): para sacar visitas aunque no haya exclusiva ni fotos.
    Se abre en una ventana aparte para no cargar más la ficha. El asesor no ve la tabla de compradores: le llegan de
    cruce_compradores() en Supabase (solo nombre, teléfono y qué busca, sin DNI, email ni notas). */
@@ -1261,14 +1292,14 @@ async function poolCruce(){if(veTodo())return S.compradores.filter(compActivo);
 const imprescindibles=c=>["ascensor","terraza","garaje"].filter(k=>c[k]==="Imprescindible").map(k=>k.charAt(0).toUpperCase()+k.slice(1));
 /* Hoja de compradores para los asesores: sin DNI, email ni notas. */
 async function hojaCompradores(L,nombre,titulo){const X=await cargarXLSX();
-  const filas=L.map(c=>({"Nombre":c.nombre||"","Teléfono":c.telefono||"","Busca en":buscaEn(c).join(", "),"Hasta (€)":+c.precioMax||"","Habitaciones mín.":+c.habMin||"","Baños mín.":+c.banosMin||"","Imprescindible":imprescindibles(c).join(", "),"Financiación":c.financiacion||"","Finanhogar":prioComp(c)?"Sí · prioridad 1":"","Urgencia":c.urgencia||"","Estado":c.estado||""}));
-  const ws=X.utils.json_to_sheet(filas);ws["!cols"]=[24,14,34,11,9,8,18,26,16,18,11].map(w=>({wch:w}));
+  const filas=L.map(c=>({"Nombre":c.nombre||"","Teléfono":c.telefono||"","Busca en":buscaEn(c).join(", "),"Hasta (€)":+c.precioMax||"","Habitaciones mín.":+c.habMin||"","Baños mín.":+c.banosMin||"","Imprescindible":imprescindibles(c).join(", "),"Financiación":c.financiacion||"","Finanhogar":prioComp(c)?"Sí · prioridad 1":"","Urgencia":c.urgencia||"","Estado":c.estado||"","Última llamada":txtLlam(ultLlam(c))}));
+  const ws=X.utils.json_to_sheet(filas);ws["!cols"]=[24,14,34,11,9,8,18,26,16,18,11,26].map(w=>({wch:w}));
   const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,String(titulo||"Compradores").replace(/[\\\/?*\[\]:]/g," ").slice(0,31));X.writeFile(wb,nombre)}
 function ventanaCruce(){let w=$("#dlgCru");if(w)return w;
   w=document.createElement("div");w.id="dlgCru";w.className="modal";w.setAttribute("role","dialog");w.setAttribute("aria-modal","true");w.hidden=true;
   w.innerHTML='<form id="frmCru" novalidate></form>';document.body.appendChild(w);
   w.addEventListener("click",e=>{if(e.target===w){w.hidden=true;return}const a=e.target.closest("[data-cru]");if(!a)return;e.preventDefault();
-    if(a.dataset.cru==="cerrar")w.hidden=true;else if(a.dataset.cru==="re")cruzar(true);else if(a.dataset.cru==="hoja")hojaCompradores(CRU.L,"Cruce_"+String(CRU.e.direccion||"piso").replace(/[^\wÀ-ÿ]+/g,"_").slice(0,40)+".xlsx","Cruce").catch(err=>toast("No se ha podido descargar: "+(err.message||err)))});
+    if(a.dataset.cru==="cerrar")w.hidden=true;else if(a.dataset.cru==="re")cruzar(true);else if(a.dataset.cru==="llam"){a.disabled=true;apuntarLlamada(a.dataset.c,a.dataset.r)}else if(a.dataset.cru==="hoja")hojaCompradores(CRU.L,"Cruce_"+String(CRU.e.direccion||"piso").replace(/[^\wÀ-ÿ]+/g,"_").slice(0,40)+".xlsx","Cruce").catch(err=>toast("No se ha podido descargar: "+(err.message||err)))});
   w.addEventListener("change",e=>{if(e.target.id&&e.target.id.startsWith("cru-"))cruzar(true)});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!w.hidden){e.stopPropagation();w.hidden=true}},true);
   return w}
@@ -1288,12 +1319,13 @@ async function cruzar(re){const w=$("#dlgCru"),F=$("#frmCru");if(!w||!CRU)return
   const L=CRU.L=pool.filter(c=>ok(c)&&!(e.id&&descartado(c,e))).sort((a,b)=>porPrio(a,b)||vis(a)-vis(b)||String(b.creado||"").localeCompare(String(a.creado||"")));
   const wa=t=>{const n=String(t||"").replace(/\D/g,"");return n.length===9?"34"+n:n};
   const row=c=>`<div class="row" style="cursor:default"><span class="t">${prioComp(c)?"★ ":""}${esc(c.nombre||"")}</span><span class="r">${c.precioMax?"hasta "+eur(c.precioMax):""}</span>
-    <span class="m">${c.telefono?`<a class="pill acc" href="tel:${esc(String(c.telefono).replace(/[^\d+]/g,""))}">📞 ${esc(c.telefono)}</a><a class="pill ok" href="https://wa.me/${esc(wa(c.telefono))}" target="_blank" rel="noopener">WhatsApp</a>`:""}${prioComp(c)?'<span class="pill ok">Finanhogar</span>':""}${vis(c)?'<span class="pill">Ya la ha visitado</span>':""}${buscaEn(c).slice(0,2).map(b=>`<span>${esc(b)}</span>`).join("")}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}</span></div>`;
+    <span class="m">${c.telefono?`<a class="pill acc" href="tel:${esc(String(c.telefono).replace(/[^\d+]/g,""))}">📞 ${esc(c.telefono)}</a><a class="pill ok" href="https://wa.me/${esc(wa(c.telefono))}" target="_blank" rel="noopener">WhatsApp</a>`:""}${prioComp(c)?'<span class="pill ok">Finanhogar</span>':""}${vis(c)?'<span class="pill">Ya la ha visitado</span>':""}${buscaEn(c).slice(0,2).map(b=>`<span>${esc(b)}</span>`).join("")}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${(l=>l?`<span class="pill ${l.res==="Quiere visita"?"ok":l.res==="No le interesa"?"bad":"warn"}">${esc(txtLlam(l))}${l.piso!==e.id&&l.dir?" ("+esc(l.dir)+")":""}</span>`:"")(ultLlam(c,e.id)||ultLlam(c))}</span>
+    <span class="m">${RES_LLAM.map(r=>`<button class="btn small" type="button" data-cru="llam" data-c="${esc(c.id)}" data-r="${r}" style="padding:4px 10px">${r}</button>`).join("")}</span></div>`;
   const mun=encMun(e),opts=[["*","Toda Fuenlabrada"],...BARRIOS_CP.map(([cp,n])=>[cp,cp+" · "+n])];
   F.innerHTML=`<div class="dh">Cruce de compradores <span class="pill ok">${L.length}</span></div>
     <div class="db"><div class="full" style="grid-column:1/-1">
     <div class="vb-t">${esc(e.direccion||"")}</div>
-    <div class="vb-s">Compradores buscando a los que les encaja (precio hasta un 5% más). Llámales para sacar visitas.</div>
+    <div class="vb-s">Compradores buscando a los que les encaja (precio hasta un 5% más). Llámales para sacar visitas y apunta cómo ha ido.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
       <label style="flex:1 1 100px">Precio (€)<input id="cru-precio" type="number" inputmode="decimal" value="${esc(e.precio||"")}"></label>
       <label style="flex:1 1 70px">Hab.<input id="cru-hab" type="number" inputmode="numeric" value="${esc(e.habitaciones||"")}" placeholder="${CRU.noticia?"¿cuántas?":""}"></label>
@@ -1325,7 +1357,7 @@ function vCompradores(){
       <input id="bf-pmax" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit" type="number" inputmode="numeric" placeholder="Presupuesto hasta €" value="${esc(f.pmax||"")}">
       <select id="bf-fin" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit" title="Financiación"><option value="">Financiación</option>${["Finanhogar",...FIN_COMP.filter(Boolean)].map(x=>`<option${ff===x?" selected":""}>${esc(x)}</option>`).join("")}</select>
       ${hayF?'<button class="btn small" type="button" id="bf-quitar">Quitar filtros</button>':""}</div></details>
-    <button class="btn small primary" type="button" id="bf-hoja"${L.length?"":" disabled"}>Descargar hoja (${L.length})</button></div>
+    ${soloLeeComp()?"":'<button class="btn small" type="button" id="bf-hojas">Hojas por asesor</button>'}<button class="btn small primary" type="button" id="bf-hoja"${L.length?"":" disabled"}>Descargar hoja (${L.length})</button></div>
   <h2>Compradores <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowComp),S.compradores.length?"Ningún comprador coincide con el filtro.":"Aún no hay compradores. Pulsa «+ Nuevo».")+pg.ctrl)(paginar("compradores",L))}</section>
   <section><h2>Próximas visitas <span class="n">${prox.length}</span></h2>${hoyLista("bvprox",prox,rowVisita,"No hay visitas programadas.")}</section>
   <section><h2>Visitas hechas <span class="n">${pas.length}</span></h2>${hoyLista("bvpas",pas,rowVisita,"Aún no hay visitas.")}</section>`}
@@ -1992,6 +2024,7 @@ $("#view").addEventListener("click",async e=>{if(!e.target.closest("#b-form"))re
 $("#view").addEventListener("change",e=>{const id=e.target.id||"";if(!id.startsWith("bf-"))return;S.bf[id.slice(3)]=e.target.value;render()});
 $("#view").addEventListener("toggle",e=>{if(e.target.id==="bf-box")S.bfOpen=e.target.open},true);
 $("#view").addEventListener("click",e=>{if(e.target.closest("#bf-quitar")){Object.assign(S.bf,{zona:"",pmin:"",pmax:"",hab:"",fin:""});render();return}
+  if(e.target.closest("#bf-hojas")){hojasPorAsesor().catch(err=>toast("No se ha podido descargar: "+(err.message||err)));return}
   if(!e.target.closest("#bf-hoja"))return;const L=vCompradores.L||[];
   hojaCompradores(L,"Compradores_"+hoyISO()+".xlsx","Compradores").catch(err=>toast("No se ha podido descargar: "+(err.message||err)))});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id!=="b-q"&&id!=="e-q")return;if(id==="b-q")S.bf.q=e.target.value;else S.eq=e.target.value;clearTimeout(render.t2);render.t2=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)});
