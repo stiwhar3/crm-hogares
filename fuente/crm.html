@@ -692,7 +692,7 @@ function hoyBloques(B,vacios,tras){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   ${tras||""}<div class="hoy-bloques">${vis.map(bloque).join("")}</div>
   ${vacios.length?`<p class="aldia"><b>Al día:</b> ${vacios.join(" · ")}</p>`:""}`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-hoyb]");if(!t)return;const k=t.dataset.hoyb;S.hoyAbierto=S.hoyAbierto===k?null:k;render();const d=$("#hb-"+k);if(d)d.scrollIntoView({block:"nearest",behavior:"smooth"})});
-document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("hb"))return;const k=d.id.slice(3);
+document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("hb")||!d.id.startsWith("hb-"))return;const k=d.id.slice(3);
   if(d.open)S.hoyAbierto=k;else if(S.hoyAbierto===k||S.hoyAbierto===undefined)S.hoyAbierto=null;
   document.querySelectorAll("[data-hoyb]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.hoyb===S.hoyAbierto))},true);
 const capNuevas=()=>{const d=new Date();d.setDate(d.getDate()-7);const h=iso(d);return S.captaciones.filter(k=>k.estado==="Pendiente"&&capFecha(k)>=h).sort((a,b)=>capFecha(b).localeCompare(capFecha(a)))};
@@ -1421,7 +1421,7 @@ function vCompradores(){
   const hoy=hoyISO(),prox=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||""))),
     pas=S.visitas.filter(v=>v.fecha<hoy).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   return `<section><div class="chips" role="tablist">${chips.map(([v,l])=>`<button type="button" class="chip" data-best="${esc(v)}" aria-pressed="${f.estado===v}">${esc(l)} <span>${base.filter(c=>pasa(c,v)).length}</span></button>`).join("")}</div>
-  <div class="tools"><input type="search" id="b-q" placeholder="Buscar nombre, teléfono, DNI, qué busca…" value="${esc(f.q)}">${soloLeeComp()?`<button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Crear ficha de comprador">Pedir ficha de comprador</button>`:""}<button class="btn small" type="button" data-nuevo="visitas">+ Visita</button><button class="btn small" type="button" id="b-form">Copiar enlace del formulario para compradores</button></div>
+  <div class="tools"><input type="search" id="b-q" placeholder="Buscar nombre, teléfono, DNI, qué busca…" value="${esc(f.q)}">${soloLeeComp()?`<button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Crear ficha de comprador">Pedir ficha de comprador</button>`:""}<button class="btn small" type="button" data-nuevo="visitas">+ Visita</button></div>
   <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin:0 0 10px">
     <details id="bf-box" style="flex:1 1 220px"${hayF||S.bfOpen?" open":""}><summary class="btn small" style="list-style:none;display:inline-flex">Filtros${hayF?` · ${[fz,fmin||fmax,fh,ff].filter(Boolean).length}`:""} ▾</summary>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px">
@@ -1431,10 +1431,15 @@ function vCompradores(){
       <input id="bf-pmax" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit" type="number" inputmode="numeric" placeholder="Presupuesto hasta €" value="${esc(f.pmax||"")}">
       <select id="bf-fin" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit" title="Financiación"><option value="">Financiación</option>${["Finanhogar",...FIN_COMP.filter(Boolean)].map(x=>`<option${ff===x?" selected":""}>${esc(x)}</option>`).join("")}</select>
       ${hayF?'<button class="btn small" type="button" id="bf-quitar">Quitar filtros</button>':""}</div></details>
-    ${soloLeeComp()?"":`<button class="btn small primary" type="button" id="bf-env">Enviar compradores a los asesores</button><button class="btn small" type="button" id="bf-hoja"${L.length?"":" disabled"}>Descargar hoja (${L.length})</button>`}</div>
-  <h2>Compradores <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowComp),S.compradores.length?"Ningún comprador coincide con el filtro.":"Aún no hay compradores. Pulsa «+ Nuevo».")+pg.ctrl)(paginar("compradores",L))}</section>
-  <section><h2>Próximas visitas <span class="n">${prox.length}</span></h2>${hoyLista("bvprox",prox,rowVisita,"No hay visitas programadas.")}</section>
-  <section><h2>Visitas hechas <span class="n">${pas.length}</span></h2>${hoyLista("bvpas",pas,rowVisita,"Aún no hay visitas.")}</section>`}
+    <details id="bm-box" style="flex:0 1 auto"${S.bmOpen?" open":""}><summary class="btn small" style="list-style:none;display:inline-flex">Más acciones ▾</summary>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${soloLeeComp()?"":`<button class="btn small primary" type="button" id="bf-env">Enviar compradores a los asesores</button><button class="btn small" type="button" id="bf-hoja"${L.length?"":" disabled"}>Descargar hoja (${L.length})</button>`}<button class="btn small" type="button" id="b-form">Copiar enlace del formulario para compradores</button></div></details></div>
+  </section><div class="hoy-bloques">
+  ${bkBloque("lista",`Compradores · ${esc((chips.find(x=>x[0]===f.estado)||[,"Todos"])[1])}`,L.length,(pg=>pg.ctrl+listOr(pg.items.map(rowComp),S.compradores.length?"Ningún comprador coincide con el filtro.":"Aún no hay compradores. Pulsa «+ Nuevo».")+pg.ctrl)(paginar("compradores",L)))}
+  ${bkBloque("prox","Próximas visitas",prox.length,hoyLista("bvprox",prox,rowVisita,"No hay visitas programadas."))}
+  ${bkBloque("pas","Visitas hechas",pas.length,hoyLista("bvpas",pas,rowVisita,"Aún no hay visitas."))}</div>`}
+/* Pestaña Compradores en desplegables (Stiwhar, 04/11/2026): lista, próximas visitas y visitas hechas se pliegan; se recuerda cuál está abierto. */
+function bkBloque(k,t,n,html){const A=S.bkAb||(S.bkAb={lista:true});return `<details class="hb" id="bk-${k}" data-bk="${k}"${A[k]?" open":""}><summary><h2>${t}</h2><span class="cnt">${n}</span></summary><div class="hb-in">${html}</div></details>`}
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.bk)(S.bkAb||(S.bkAb={lista:true}))[d.dataset.bk]=d.open},true);
 function vHoyCoord(){
   const pend=compPendientes(),cr=cruces(),crG=crucesPorCasa(cr),hoy=hoyISO();
   const vis=S.visitas.filter(v=>v.fecha>=hoy).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")));
@@ -2160,7 +2165,7 @@ $("#view").addEventListener("click",e=>{const n=e.target.closest("[data-nuevo]")
 const URL_FORM_COMP="https://stiwhar3.github.io/crm-hogares/alta.html";
 $("#view").addEventListener("click",async e=>{if(!e.target.closest("#b-form"))return;try{await navigator.clipboard.writeText(URL_FORM_COMP);toast("Enlace copiado: pégalo en WhatsApp o en el email al comprador")}catch(_){toast("Enlace: "+URL_FORM_COMP)}});
 $("#view").addEventListener("change",e=>{const id=e.target.id||"";if(!id.startsWith("bf-"))return;S.bf[id.slice(3)]=e.target.value;render()});
-$("#view").addEventListener("toggle",e=>{if(e.target.id==="bf-box")S.bfOpen=e.target.open},true);
+$("#view").addEventListener("toggle",e=>{if(e.target.id==="bf-box")S.bfOpen=e.target.open;if(e.target.id==="bm-box")S.bmOpen=e.target.open},true);
 $("#view").addEventListener("click",e=>{if(e.target.closest("#bf-quitar")){Object.assign(S.bf,{zona:"",pmin:"",pmax:"",hab:"",fin:""});render();return}
   if(e.target.closest("#bf-env")){abrirReparto();return}
   if(!e.target.closest("#bf-hoja"))return;const L=vCompradores.L||[];
