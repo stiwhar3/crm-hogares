@@ -83,6 +83,16 @@ th:first-child,td:first-child{text-align:left}
 .db input,.db select,.db textarea{font:inherit;font-size:15px;font-weight:400;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
 .db textarea{min-height:90px;resize:vertical}
 .db label.check input{width:auto}
+#frm .db{flex:1 1 auto;align-content:start}@media (min-width:701px){#frm:has(.ftabs){height:min(780px,100%)}}.fpane{display:contents}.fpane[hidden]{display:none!important}
+.ftabs{flex:none;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line);background:var(--surface);padding:0 12px}
+.dh.fres{border-bottom:0!important;padding-bottom:6px!important}.fres .ft{display:block;font-size:19px;line-height:1.25}.fres .fs{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;margin-top:6px;font-family:var(--body);font-size:14px;font-weight:400;color:var(--muted)}.fres .fs a.tel{color:var(--fg);font-weight:600;text-decoration:none}.fres .fs .btn{padding:4px 10px;min-height:0;font-size:13px}
+.ftabs::-webkit-scrollbar{display:none}
+.ftabs button{flex:none;font:inherit;font-size:14px;font-weight:600;color:var(--muted);background:none;border:0;border-bottom:3px solid transparent;padding:11px 10px 8px;cursor:pointer;white-space:nowrap}
+.ftabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.ftabs .n{display:inline-block;min-width:18px;margin-left:5px;padding:0 5px;border-radius:9px;background:var(--accent-soft);color:var(--fg);font-size:12px;font-weight:600;text-align:center}
+.ftabs .n.av{background:#f6e2b3;color:#6b4b00}
+details.fmas{grid-column:1/-1}details.fmas>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);padding:2px 0;list-style:none}details.fmas>summary::-webkit-details-marker{display:none}details.fmas>summary::before{content:"▸ "}details.fmas[open]>summary::before{content:"▾ "}
+details.fmas>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .df{display:flex;justify-content:space-between;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
 .df .right{display:flex;gap:8px;margin-left:auto}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -1730,7 +1740,7 @@ $("#view").addEventListener("click",e=>{const b=e.target.closest("[data-act2]");
 
 function abrirNuevo(col,pre){abrir(col);if(!pre)return;for(const [k,v] of Object.entries(pre)){const el=$("#fld-"+k);if(el){if(el.type==="checkbox")el.checked=!!v;else el.value=v}}}
 async function guardarLlamadaVend(){const v=leerForm();if(!v.direccion)return toast("Pon la dirección");
-  if(!v.noCenso&&!v.censoId){toast("Elige la vivienda en la lista del censo o marca «No está en el censo»");$("#fld-direccion").focus();return}
+  if(!v.noCenso&&!v.censoId){toast("Elige la vivienda en la lista del censo o marca «No está en el censo»");enfocar("#fld-direccion");return}
   const cid=v.noCenso?"":v.censoId,quien=S.yo?S.yo.nombre:"la oficina",ya=cid&&S.contactos.find(c=>c.censoId===cid);
   if(ya){const ok=await guardar("contactos",ya.id,{proxAccion:"Llamar al propietario (llamada recibida por "+quien+")",proxFecha:hoyISO(),nombre:ya.nombre||v.nombre,telefono:ya.telefono||v.telefono,notas:[ya.notas,`Llamada recibida (${hoyISO()}): ${[v.nombre,v.telefono].filter(Boolean).join(" · ")}${v.notas?". "+v.notas:""}`].filter(Boolean).join("\n")},"Llamada recibida en la oficina (ya era noticia).");
     if(ok){await enviarAviso({para:ya.asesor||"Stiwhar",tipo:"Llamada de vendedor",col:"contactos",refId:ya.id,direccion:ya.direccion||v.direccion,nombre:v.nombre,telefono:v.telefono,texto:v.notas||""});$("#dlg").close();toast("Ya era noticia de "+(ya.asesor||"sin asesor")+": le he añadido la llamada y le he avisado")}return}
@@ -1745,8 +1755,8 @@ async function antesDeGuardar(data){ /* compradores y visitas: completa datos; d
     if(!cur.id){const t=String(data.telefono||"").replace(/\D/g,"").slice(-9),dup=t.length>=9&&S.compradores.find(c=>String(c.telefono||"").replace(/\D/g,"").slice(-9)===t);
       if(dup){$("#dlg").close();toast("Ese teléfono ya es un comprador: te abro su ficha");setTimeout(()=>abrir("compradores",dup.id),150);return false}}
     if(old&&old.descartados)data.descartados=old.descartados;
-    if(!data.direccionActual){toast("Pon la dirección donde vive (aunque sea casa familiar)");$("#fld-direccionActual").focus();return false}
-    if(data.dirNuestra&&!data.censoIdActual){toast("Elige su vivienda en la lista del censo o desmarca «Es de nuestra zona»");$("#fld-direccionActual").focus();return false}
+    if(!data.direccionActual){toast("Pon la dirección donde vive (aunque sea casa familiar)");enfocar("#fld-direccionActual");return false}
+    if(data.dirNuestra&&!data.censoIdActual){toast("Elige su vivienda en la lista del censo o desmarca «Es de nuestra zona»");enfocar("#fld-direccionActual");return false}
     if(!data.dirNuestra){data.censoIdActual="";data.zonaActual=""}
     for(const k of ["noticiaId","pasadaOficina"])if(old&&old[k])data[k]=old[k];
     if(compNoticia(data)&&data.dirNuestra&&!data.noticiaId){const zn=data.zonaActual||"",as=(S.ajustes.asesores.find(x=>x.zona===zn)||{}).nombre||"",alq=data.viveEn==="De alquiler";
@@ -1754,14 +1764,14 @@ async function antesDeGuardar(data){ /* compradores y visitas: completa datos; d
         proxAccion:alq?"Localizar al propietario: su inquilino está comprando y dejará el piso":`Llamar: está comprando con nosotros y tiene que ${data.necesitaVender==="Alquilar"?"alquilar":"vender"} su casa`,proxFecha:hoyISO(),necesitaSti:false,notaSti:"",
         notas:`Comprador: ${data.nombre||""}${data.telefono?" · "+data.telefono:""}. ${alq?"Vive de alquiler.":"Necesita "+(data.necesitaVender||"").toLowerCase()+" su casa."} (Desde la ficha de comprador de ${S.yo?S.yo.nombre:"Daniel"}.)`});
       if(nid){data.noticiaId=nid;toast(`Noticia creada para ${as||"la zona "+zn.toLowerCase()}`)}}}
-  if(cur.col==="visitas"){const e=S.encargos.find(x=>x.id===data.encargoId);if(!e){toast("Elige el inmueble");$("#fld-encargoId").focus();return false}
+  if(cur.col==="visitas"){const e=S.encargos.find(x=>x.id===data.encargoId);if(!e){toast("Elige el inmueble");enfocar("#fld-encargoId");return false}
     const vAnt=cur.id&&S.visitas.find(x=>x.id===cur.id);if(encSinVisitas(e)&&(!vAnt||vAnt.encargoId!==e.id)){toast(`Ese inmueble está ${e.estado.toLowerCase()}: no se pueden apuntar visitas`);return false}
     const c=S.compradores.find(x=>x.id===data.compradorId);data.direccion=e.direccion;data.asesor=e.asesor||"";
     if(c){data.compradorNombre=c.nombre;data.telComprador=c.telefono||""}
     else{/* Sin ficha (Stiwhar): basta nombre y teléfono; después de la visita se recomienda darle de alta como comprador. */
       data.compradorNombre=(data.compradorNombre||"").trim();const t9=tel9(data.telComprador);
-      if(!data.compradorNombre){toast("Elige el comprador o pon su nombre");$("#fld-compradorNombre").focus();return false}
-      if(t9.length<9){toast("Pon el teléfono del comprador");$("#fld-telComprador").focus();return false}
+      if(!data.compradorNombre){toast("Elige el comprador o pon su nombre");enfocar("#fld-compradorNombre");return false}
+      if(t9.length<9){toast("Pon el teléfono del comprador");enfocar("#fld-telComprador");return false}
       const ya=S.compradores.find(x=>tel9(x.telefono)===t9);if(ya){data.compradorId=ya.id;data.compradorNombre=ya.nombre;data.telComprador=ya.telefono||"";toast("Ese teléfono ya tiene ficha: visita apuntada a "+ya.nombre)}}
     if(c&&c.estado==="Activo")setTimeout(()=>guardar("compradores",c.id,{estado:"Visitando"},"Primera visita: "+e.direccion+"."),300)}
   return true}
@@ -1799,6 +1809,51 @@ function field([k,l,t,opt],v){
   else inp=`<input id="fld-${k}" name="${k}" type="${t}"${t==="number"?' step="any" inputmode="decimal"':""} value="${esc(v)}"${o.req?" required":""}>`;
   return `<label class="${cls}">${l}${inp}</label>`;
 }
+/* ---------- Fichas por pestañas (Stiwhar 04/11): arriba lo esencial y acciones; el resto en pestañas ---------- */
+const PEST={
+  contactos:{top:["etapa","proxAccion","proxFecha","_acc","_nota"],tabs:[
+    ["datos","Datos",["direccion","nombre","telefono","asesor","zona","origen","referidoPor","publicado","fechaPublicado","motivo","fechaValoracion","precioValorado","precioPropietario","necesitaSti","notaSti"]],
+    ["censo","Censo",["_viv","_fus","viviendaLocalizada"]],["notas","Notas",["notas","_hist"]]]},
+  encargos:{top:["estado","precio","_acc","_nota"],tabs:[
+    ["datos","Datos",["direccion","asesor","zona","fechaCaptacion","exclusiva","finExclusiva","honorarioPrevisto","ultimaRevisionPrecio","riesgo"]],
+    ["comp","Compradores",["_lcomp"]],["vis","Visitas",["_lvis","_visacc"]],["notas","Notas",["notas","_hist"]]]},
+  compradores:{top:["_fus","estado","finanhogar","_acc","_nota"],tabs:[
+    ["busca","Qué busca",["tipoInm","zonasBusca","precioMax","tipoVivienda","habMin","banosMin","ascensor","terraza","garaje","busca"]],
+    ["enc","Le encajan",["_lenc"]],["vis","Visitas",["_lvis"]],
+    ["vive","Contacto",["nombre","telefono","email","dni","origen","viveEn","necesitaVender","dirNuestra","direccionActual","censoIdActual","zonaActual","oficinaDestino"]],
+    ["fin","Financiación",["financiacion","entrada","urgencia","fechaReserva"]],["notas","Notas",["notas","_hist"]]]}};
+const ACC_SEC=["informe","calProx","calVal","descartesFuera"],pestUlt={};
+function claveHijo(c){
+  if(c.id==="vivbox")return "_viv";if(c.id==="fusbox"||(c.classList.contains("vivbox")&&c.querySelector("[data-act=fusComp]")))return "_fus";
+  if(c.classList.contains("hist"))return "_hist";if(c.querySelector("#fld-nuevaNota"))return "_nota";
+  const hl=c.querySelector(":scope>.hl");if(hl){const t=hl.textContent;return /^Compradores/.test(t)?"_lcomp":/encajan/.test(t)?"_lenc":"_lvis"}
+  if(c.querySelector("[data-act=visitaEnc]")||(c.querySelector(".pg-m")&&!c.querySelector("[data-act]")))return "_visacc";
+  if(c.querySelector("a.wa"))return "_wa";
+  const ch=c.querySelector("[id^=chips-]");if(ch)return ch.id.slice(6);
+  const f=c.matches("[id^=fld-]")?c:c.querySelector("[id^=fld-],input[name]");if(f)return f.id?f.id.slice(4):f.name;
+  if(c.querySelector("[data-act],.pill"))return "_acc";
+  return c.querySelector("input,select,textarea,button")?"_otro":"_h"}
+function resumenFicha(col,d){const tel=d.telefono?`<a class="tel" href="tel:${esc(String(d.telefono).replace(/\s/g,""))}">${esc(d.telefono)}</a>`:"",pill=t=>t?`<span class="pill">${esc(t)}</span>`:"";
+  if(col==="contactos")return [d.direccion,[pill(d.etapa),esc(d.nombre||""),tel,d.asesor&&esc(d.asesor)]];
+  if(col==="encargos")return [d.direccion,[pill(d.estado),d.precio&&eur(d.precio),d.asesor&&esc(d.asesor)]];
+  return [d.nombre,[pill(d.estado),tel,d.precioMax&&("hasta "+eur(d.precioMax)),prioComp(d)&&"★ Finanhogar"]]}
+function organizarFicha(col,id,d){const P=PEST[col],db=$("#frm .db");if(!P||!id||!db)return;
+  const T=[["prin","Principal",P.top],...P.tabs],donde={};T.forEach(([,,L],i)=>L.forEach(x=>donde[x]=i));
+  const panes=T.map(([k])=>{const p=document.createElement("div");p.className="fpane";p.dataset.pane=k;return p});let wa=null;
+  for(const c of [...db.children]){const k=claveHijo(c);if(k==="_h"){c.remove();continue}if(k==="_wa"){wa=c;c.remove();continue}panes[donde[k]??1].appendChild(c);
+    if(k==="_acc"){const sec=[...c.querySelectorAll("[data-act]")].filter(b=>ACC_SEC.includes(b.dataset.act));
+      if(sec.length){const m=document.createElement("details");m.className="fmas";m.innerHTML="<summary>Más acciones</summary><div></div>";sec.forEach(b=>m.lastChild.appendChild(b));panes[0].appendChild(m)}}}
+  const [tit,sub]=resumenFicha(col,d),dh=$("#frm .dh");
+  dh.classList.add("fres");dh.innerHTML=`<span class="ft">${esc(tit||"Sin nombre")}</span><span class="fs">${sub.filter(Boolean).join(" · ").replace(/<\/span> · /,"</span> ")}${wa?wa.innerHTML:""}</span>`;
+  const cuenta=p=>{const n=p.querySelectorAll(".list>.row").length;return p.querySelector("#fusbox")?'<span class="n av">!</span>':n?`<span class="n">${n}</span>`:""};
+  const bar=document.createElement("div");bar.className="ftabs";bar.setAttribute("role","tablist");
+  bar.innerHTML=T.map(([k,t],i)=>`<button type="button" role="tab" data-ftab="${k}">${t}${cuenta(panes[i])}</button>`).join("");
+  dh.after(bar);db.replaceChildren(...panes);verPestana(T.some(t=>t[0]===pestUlt[col+id])?pestUlt[col+id]:"prin",true)}
+function verPestana(k,inicio){const fr=$("#frm");fr.querySelectorAll(".fpane").forEach(p=>p.hidden=p.dataset.pane!==k);
+  fr.querySelectorAll("[data-ftab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.ftab===k?"true":"false"));
+  if(cur&&!inicio)pestUlt[cur.col+cur.id]=k}
+function enfocar(sel){const el=$(sel);if(!el)return;const p=el.closest(".fpane");if(p&&p.hidden)verPestana(p.dataset.pane);el.focus()}
+$("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-ftab]");if(!b)return;e.preventDefault();verPestana(b.dataset.ftab);$("#frm .db").scrollTop=0});
 function abrir(col,id){
   const F=FORMS[col]; const d=id?S[col].find(x=>x.id===id):DEFAULTS[col]();
   if(!d) return; cur={col,id};
@@ -1809,7 +1864,7 @@ function abrir(col,id){
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}${col==="visitas"?`<button class="btn" type="button" data-act="visCancelar">${d.cancelada?"Reactivar la visita":"Visita cancelada"}</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
-  $("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
+  organizarFicha(col,id,d);$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
   if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
   if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
@@ -1940,10 +1995,10 @@ $("#frm").addEventListener("submit",async ev=>{
   if(cur.col==="aviso"){return guardarAviso()}
   if(!(await antesDeGuardar(data)))return;
   if(cur.col==="captaciones"&&!data.asesor&&esCoord()){const z=zonaDe(data.direccion)||data.zona;data.asesor=(S.ajustes.asesores.find(a=>a.zona===z)||{}).nombre||""}
-  if(cur.col==="contactos"&&data.etapa!=="KO"&&data.etapa!=="Encargo"&&!data.proxFecha){toast("Pon fecha a la próxima acción");$("#fld-proxFecha").focus();return}
+  if(cur.col==="contactos"&&data.etapa!=="KO"&&data.etapa!=="Encargo"&&!data.proxFecha){toast("Pon fecha a la próxima acción");enfocar("#fld-proxFecha");return}
   if(CON_ZONA.includes(cur.col)){const z=zonaDe(data.direccion);if(z)data.zona=z}
   if(cur.col==="contactos"&&data.publicado&&!data.fechaPublicado)data.fechaPublicado=hoyISO();
-  if(cur.col==="contactos"){const err=reglasVivienda(data);if(err){toast(err);$("#viv-q")?.focus();return}
+  if(cur.col==="contactos"){const err=reglasVivienda(data);if(err){toast(err);enfocar("#viv-q");return}
     const otra=data.censoId&&S.contactos.find(c=>c.censoId===data.censoId&&c.id!==cur.id);if(otra&&!cur.id){$("#dlg").close();toast("Esa vivienda ya tiene noticia: te la abro");setTimeout(()=>abrir("contactos",otra.id),150);return}}
   const nota=($("#fld-nuevaNota")?.value||"").trim();
   if(!cur.id&&cur.col==="contactos"&&data.censoId){}else if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
@@ -1960,7 +2015,7 @@ $("#frm").addEventListener("change",chipAdd);$("#frm").addEventListener("input",
 $("#frm").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.dataset&&e.target.dataset.chips){e.preventDefault();chipAdd(e)}});
 $("#frm").addEventListener("click",e=>{const x=e.target.closest("[data-chipx]");if(x){e.preventDefault();x.parentElement.remove()}});
 $("#frm").addEventListener("input",e=>{if(e.target.id==="fld-direccion")pistaZona();if(e.target.id==="viv-q"){clearTimeout(pintarVivRes.t);pintarVivRes.t=setTimeout(pintarVivRes,200)}});
-$("#frm").addEventListener("change",e=>{if(e.target.id==="viv-manual"){cur.manual=e.target.checked;cur.vq=$("#viv-q")?.value;pintarVivBox();if(cur.manual)$("#fld-direccion").focus()}});
+$("#frm").addEventListener("change",e=>{if(e.target.id==="viv-manual"){cur.manual=e.target.checked;cur.vq=$("#viv-q")?.value;pintarVivBox();if(cur.manual)enfocar("#fld-direccion")}});
 function reglasVivienda(data){ /* devuelve texto de error o "" y completa data */
   if(cur.censoId){data.censoId=cur.censoId;const r=buscarViv(cur.censoId);if(r){data.direccion=dirViv(r);if(r.zona!=="BLANCA")data.zona=r.zona} /* zona BLANCA = censo sin color: la noticia conserva su zona */return ""}
   data.censoId="";
@@ -1991,17 +2046,17 @@ $("#frm").addEventListener("click",async ev=>{
   if(a==="pgRevisar"){pgRevisar();return}
   if(a==="pgSaltar"){const r=cur&&cur.pg&&cur.pg.resto;if(r)pgSiguiente(r);return}
   if(a==="vivVer"){const id=cur.censoId;$("#dlg").close();setTimeout(()=>abrirViv(id),100);return}
-  if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>$("#viv-q")?.focus(),50);return}
+  if(a==="vivCambiar"){cur.vq=$("#fld-direccion").value;cur.censoId="";cur.manual=false;pintarVivBox();setTimeout(()=>enfocar("#viv-q"),50);return}
   /* Stiwhar (03/11): «Visita cancelada» no borra: la deja en gris aquí y en el calendario */
   if(a==="visCancelar"){const v=anterior(cur.col,cur.id);if(!v)return;const on=!v.cancelada,m=($("#fld-nuevaNota")?.value||"").trim();
     if(await guardar(cur.col,cur.id,{cancelada:on?new Date().toISOString():""},(on?"Visita cancelada":"Visita reactivada")+(m?": "+m:""))){$("#dlg").close();toast(on?"Visita cancelada: queda en gris":"Visita reactivada")}return}
-  if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");$("#fld-nuevaNota")?.focus();return}
+  if(a==="borrar"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué hay que borrarlo");enfocar("#fld-nuevaNota");return}
     if(borraYa(cur.col)){ if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para borrar";return}
       const old=anterior(cur.col,cur.id);
       try{await S.db.collection("borrados").doc().set({col:cur.col,docId:cur.id,f:new Date().toISOString(),motivo:m.slice(0,200),por:S.yo?S.yo.nombre:"",datos:JSON.parse(JSON.stringify(old||{}))});
         await S.db.collection(cur.col).doc(cur.id).delete();$("#dlg").close();toast("Borrado. Queda una copia en el registro de borrados")}catch(e){console.error("borrar",e);toast("No se ha borrado")} return }
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200)}},"Solicitud de borrado: "+m)){$("#dlg").close();toast("Solicitud de borrado enviada. Apruébala desde Hoy")}return}
-  if(a==="aCenso"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué no era noticia");$("#fld-nuevaNota")?.focus();return}
+  if(a==="aCenso"){const m=($("#fld-nuevaNota")?.value||"").trim();if(!m){toast("Escribe en «Nueva nota» por qué no era noticia");enfocar("#fld-nuevaNota");return}
     if(await guardar(cur.col,cur.id,{borrarSolicitado:{f:new Date().toISOString(),motivo:m.slice(0,200),tipo:"censo"}},"Pide que vuelva al censo (no era noticia): "+m)){$("#dlg").close();toast("Solicitud enviada. Apruébala desde Hoy")}return}
   if(a==="rechazarBorrar"){const m=($("#fld-nuevaNota")?.value||"").trim(),ow=anterior(cur.col,cur.id);if(await guardar(cur.col,cur.id,{borrarSolicitado:null},"Borrado rechazado"+(m?": "+m:"."))){if(ow&&ow.asesor)enviarAviso({para:ow.asesor,tipo:"Borrado rechazado",col:cur.col,refId:cur.id,direccion:ow.direccion||ow.inmueble||"",texto:"Stiwhar no ha aprobado el borrado; el registro se queda."+(m?" "+m:"")});$("#dlg").close();toast("Solicitud rechazada: el registro se queda")}return}
   if(a==="aprobarBorrar"){ if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para borrar";return}
@@ -2019,7 +2074,7 @@ $("#frm").addEventListener("click",async ev=>{
     try{await S.db.collection("borrados").doc().set({col:cur.col,docId:cur.id,f:new Date().toISOString(),motivo:old?.borrarSolicitado?.motivo||"",datos:JSON.parse(JSON.stringify(old||{}))});
       await S.db.collection(cur.col).doc(cur.id).delete();if(old&&old.asesor)enviarAviso({para:old.asesor,tipo:"Borrado aprobado",direccion:old.direccion||old.inmueble||"",texto:msg});$("#dlg").close();toast(msg)}catch(e){toast("No se ha borrado")} return }
   if(a==="nota"){const t=$("#fld-notas");t.value=`${fmtF(hoyISO())} · \n`+t.value;t.focus();t.setSelectionRange(t.value.indexOf("\n"),t.value.indexOf("\n"));return}
-  if(a==="ctoHoy"){$("#fld-ult").value=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});$("#fld-nuevaNota").focus();return}
+  if(a==="ctoHoy"){$("#fld-ult").value=new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});enfocar("#fld-nuevaNota");return}
   if(a==="aNoticia"){const v=leerForm(),r=cur.viv,id=cur.id,nota=($("#fld-nuevaNota")?.value||"").trim();const ok=await guardar("censoEdits",id,{...v,noticia:true},nota||(S.censoEd[id]?.noticia?"":"Pasada a noticia."));if(!ok)return;$("#dlg").close();
     const dir=[r.b.via,r.b.num,r.u.esc&&("Esc "+r.u.esc),r.u.planta&&(r.u.planta+"º"),r.u.puerta].filter(Boolean).join(" ");
     const ya=S.contactos.find(c=>c.censoId===id)||S.contactos.find(c=>claveDir(c.direccion)===claveDir(dir));
@@ -2027,7 +2082,7 @@ $("#frm").addEventListener("click",async ev=>{
     const as=(S.ajustes.asesores.find(x=>x.zona===r.zona)||{}).nombre||"";
     const nid=await guardar("contactos",null,{direccion:dir,nombre:v.prop||v.abre,telefono:v.tel,asesor:as,zona:r.zona,etapa:"Desarrollo",origen:"",motivo:"",proxAccion:"",proxFecha:hoyISO(),necesitaSti:false,notaSti:"",notas:(v.com||"")+"\n(Desde el censo.)",censoId:id},nota);
     if(nid){S.view="contactos";S.f.etapa="Desarrollo";render();setTimeout(()=>abrir("contactos",nid),300)}return}
-  if(a==="aSeg"){const v=leerForm();v.etapa="Seguimiento";{const err=reglasVivienda(v);if(err){toast(err.startsWith("Ya está")?"Para pasar a Seguimiento, elige primero su vivienda en el censo.":err);$("#viv-q")?.focus();return}}if(!v.proxFecha)v.proxFecha=hoyISO();const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,n||"Propietario localizado: pasa a Seguimiento.")){$("#dlg").close();toast("Pasada a Seguimiento")}return}
+  if(a==="aSeg"){const v=leerForm();v.etapa="Seguimiento";{const err=reglasVivienda(v);if(err){toast(err.startsWith("Ya está")?"Para pasar a Seguimiento, elige primero su vivienda en el censo.":err);enfocar("#viv-q");return}}if(!v.proxFecha)v.proxFecha=hoyISO();const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,n||"Propietario localizado: pasa a Seguimiento.")){$("#dlg").close();toast("Pasada a Seguimiento")}return}
   if(a==="vendida"){if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez";return}const v=leerForm();v.etapa="KO";v.vendida=hoyISO();v.vendidaVista=false;const n=($("#fld-nuevaNota")?.value||"").trim();if(await guardar("contactos",cur.id,v,"Se ha vendido"+(n?": "+n:"."))){$("#dlg").close();toast("Marcada como vendida. Le llega el aviso a Stiwhar")}return}
   if(a==="vistoVend"){if(await guardar("contactos",cur.id,{vendidaVista:true},"Stiwhar enterado de la venta.")){$("#dlg").close();toast("Aviso quitado")}return}
   if(a==="capLocalizar"){const v=leerForm();$("#dlg").close();const z=zonaDe(v.direccion);
