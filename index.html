@@ -1958,10 +1958,14 @@ async function fusionar(dupId,destId){
   else{await guardar("contactos",dupId,{borrarSolicitado:{f:new Date().toISOString(),motivo}},motivo);msg="Datos unidos. Stiwhar borrará la repetida desde Hoy"}
   $("#dlg").close();toast(msg);render();setTimeout(()=>abrir("contactos",destId),200)}
 function fmtFH(iso){const d=new Date(iso);return d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}
+function heVisita(v){const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId),n=(c&&c.nombre)||v.compradorNombre||"comprador sin ficha",fut=v.fecha>=hoyISO();
+  return `<div class="he" style="cursor:pointer" data-open="visitas" data-id="${esc(v.id)}"><span class="hf">${fmtF(v.fecha)}${v.hora?" "+esc(v.hora):""}</span><b>${v.cancelada?"Visita cancelada":fut?"Visita prevista":"Visita"}</b> · ${esc(n)}${v.asesor?` <span style="color:var(--muted)">(${esc(v.asesor)})</span>`:""}${v.interes?` · interés: ${esc(v.interes.toLowerCase())}`:""}${!fut&&!v.cancelada&&v.informeEnviado?' · <span class="pill ok">Informe enviado</span>':""}${v.opinion?`<div class="hc">${esc(String(v.opinion).slice(0,300))}</div>`:""}</div>`}
 function bloqueHist(d,conHist){
-  const H=[...((d&&d.historial)||[])].reverse();
+  /* Stiwhar (04/11): en los encargos, las visitas también salen en el historial, por fecha */
+  const V=cur&&cur.col==="encargos"&&cur.id&&d?visitasDe(null,d).filter(v=>v.fecha).map(v=>({f:v.fecha+"T"+(v.hora||"00:00"),vis:v})):[];
+  const H=[...((d&&d.historial)||[]),...V].sort((a,b)=>String(a.f).localeCompare(String(b.f))).reverse();
   return `<label class="full">Nueva nota (se guarda con fecha en el historial)<textarea id="fld-nuevaNota" placeholder="Qué ha pasado hoy…"></textarea></label>
-  ${conHist?`<div class="full hist"><div class="hl">Historial</div>${H.length?H.map(h=>`<div class="he"><span class="hf">${h.d?new Date(h.f).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"}):fmtFH(h.f)}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join(""):`<div class="he" style="color:var(--muted)">Aún no hay cambios guardados desde el CRM.</div>`}</div>`:""}`;
+  ${conHist?`<div class="full hist"><div class="hl">Historial</div>${H.length?H.map(h=>h.vis?heVisita(h.vis):`<div class="he"><span class="hf">${h.d?new Date(h.f).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"}):fmtFH(h.f)}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join(""):`<div class="he" style="color:var(--muted)">Aún no hay cambios guardados desde el CRM.</div>`}</div>`:""}`;
 }
 function leerForm(){
   const F=FORMS[cur.col],o={};
@@ -2322,7 +2326,7 @@ document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf
     if(L.length>40&&!e.target.dataset.sure){e.target.dataset.sure=1;e.target.textContent=`Son ${L.length} portales. Pulsa otra vez`;return}
     imprimirTaratura(L);return}});
 $("#btn-new").addEventListener("click",()=>abrir({encargos:"encargos",operaciones:"operaciones",captaciones:"captaciones",compradores:"compradores"}[S.view]||(esCoord()?"compradores":"contactos")));
-$("#frm").addEventListener("click",e=>{const r=e.target.closest("button[data-open]");if(!r)return;e.preventDefault();e.stopPropagation();const c=r.dataset.open,i=r.dataset.id;$("#dlg").close();setTimeout(()=>abrir(c,i),150)},true);
+$("#frm").addEventListener("click",e=>{const r=e.target.closest("[data-open]");if(!r)return;e.preventDefault();e.stopPropagation();const c=r.dataset.open,i=r.dataset.id;$("#dlg").close();setTimeout(()=>abrir(c,i),150)},true);
 $("#view").addEventListener("click",e=>{const n=e.target.closest("[data-nuevo]");if(n){if(n.dataset.tipo)abrirNuevo(n.dataset.nuevo,avisoPre(n.dataset.tipo));else abrir(n.dataset.nuevo);return}const be=e.target.closest("[data-best]");if(be){S.bf.estado=be.dataset.best;render()}});
 const URL_FORM_COMP="https://stiwhar3.github.io/crm-hogares/alta.html";
 $("#view").addEventListener("click",async e=>{if(!e.target.closest("#b-form"))return;try{await navigator.clipboard.writeText(URL_FORM_COMP);toast("Enlace copiado: pégalo en WhatsApp o en el email al comprador")}catch(_){toast("Enlace: "+URL_FORM_COMP)}});
