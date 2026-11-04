@@ -1224,6 +1224,39 @@ function crucesPorCasa(cr){const M=new Map();for(const x of cr){if(!M.has(x.e.id
 function rowCruceCasa(g){const e=g.e,fin=g.L.filter(prioComp).length;
   return `<details class="cru-casa" style="border:1px solid var(--line,#ddd);border-radius:10px;margin:0 0 8px;padding:0 10px"><summary style="cursor:pointer;padding:10px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(e.direccion||"")}</b>${e.precio?`<span>${eur(e.precio)}</span>`:""}${e.habitaciones?`<span>${esc(e.habitaciones)} hab.</span>`:""}<span class="pill">${g.L.length} comprador${g.L.length>1?"es":""}</span>${fin?`<span class="pill ok">★ ${fin} Finanhogar</span>`:""}${e.asesor?`<span style="color:var(--muted)">${esc(e.asesor)}</span>`:""}</summary>
     ${hoyLista("cru-"+e.id,g.L,c=>`<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${prioComp(c)?"★ ":""}${esc(c.nombre||"")}${c.telefono?" · "+esc(c.telefono):""}</span><span class="r">Busca hasta ${c.precioMax?eur(c.precioMax):"—"}</span></button>`,"")}</details>`}
+/* Cruce de compradores desde una noticia o un encargo (Stiwhar, 04/11/2026): para sacar visitas aunque no haya exclusiva ni fotos.
+   El asesor no ve la tabla de compradores: le llegan de cruce_compradores() en Supabase (solo nombre, teléfono y qué busca, sin DNI ni notas). */
+let POOL_CRUCE=null;
+async function poolCruce(){if(veTodo())return S.compradores.filter(compActivo);
+  if(POOL_CRUCE&&Date.now()-POOL_CRUCE.t<120000)return POOL_CRUCE.L;
+  const L=(await window.compradoresCruce()).filter(compActivo);POOL_CRUCE={t:Date.now(),L};return L}
+async function cruceComp(re){
+  if(!cur)return;const v=leerForm(),d=(cur.id&&S[cur.col].find(x=>x.id===cur.id))||{};
+  let box=$("#cruce-box");
+  if(!box){const b=$('#frm [data-act="cruceComp"]');if(!b)return;box=document.createElement("div");box.id="cruce-box";box.className="full";box.style.cssText="grid-column:1/-1;border:1px solid var(--line);border-radius:10px;padding:10px";b.parentElement.after(box)}
+  const g=k=>{const el=$("#cru-"+k);return el?el.value:""};
+  const e=cur.col==="contactos"?{clase:"Vivienda",zona:v.zona||d.zona||"",precio:v.precioPropietario||v.precioValorado||"",habitaciones:"",cp:"",municipio:""}:{...d,...v};
+  e.id=cur.id||"";e.estado="Activo";
+  if(re){e.precio=g("precio");e.habitaciones=g("hab");const z=g("cp");if(z){e.cp=z;e.municipio=""}}
+  else if(!encMun(e))e.cp=cpEnc(e);
+  const todaF=e.cp==="*";
+  box.innerHTML='<div class="vb-s">Buscando compradores…</div>';
+  let pool;try{pool=await poolCruce()}catch(err){box.innerHTML=`<div class="vb-s" style="color:var(--bad)">No se han podido cargar los compradores: ${esc(err.message||err)}</div>`;return}
+  const vis=c=>(c.visitados||[]).includes(e.id)||!!(e.id&&veTodo()&&visitasDe(c,e).length);
+  const ok=c=>todaF?(cpsBusca(c).length||!munsBusca(c).length)&&encaja(c,{...e,cp:cpsBusca(c)[0]||""}):encaja(c,e);
+  const L=pool.filter(c=>ok(c)&&!(e.id&&descartado(c,e))).sort((a,b)=>porPrio(a,b)||vis(a)-vis(b)||String(b.creado||"").localeCompare(String(a.creado||"")));
+  const wa=t=>{const n=String(t||"").replace(/\D/g,"");return n.length===9?"34"+n:n};
+  const row=c=>`<div class="row" style="cursor:default"><span class="t">${prioComp(c)?"★ ":""}${esc(c.nombre||"")}${c.telefono?` · <a style="white-space:nowrap" href="tel:${esc(String(c.telefono).replace(/[^\d+]/g,""))}">${esc(c.telefono)}</a>`:""}</span><span class="r">${c.precioMax?"hasta "+eur(c.precioMax):""}</span>
+    <span class="m">${prioComp(c)?'<span class="pill ok">Finanhogar · prioridad 1</span>':""}${vis(c)?'<span class="pill">Ya la ha visitado</span>':""}${c.estado==="Visitando"?'<span class="pill warn">Visitando</span>':""}${buscaEn(c).slice(0,3).map(b=>`<span>${esc(b)}</span>`).join("")}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${c.urgencia?`<span>${esc(c.urgencia)}</span>`:""}${c.telefono?`<a class="pill ok" href="https://wa.me/${esc(wa(c.telefono))}" target="_blank" rel="noopener">WhatsApp</a>`:""}</span></div>`;
+  const mun=encMun(e),opts=[["*","Toda Fuenlabrada"],...BARRIOS_CP.map(([cp,n])=>[cp,cp+" · "+n])];
+  box.innerHTML=`<div class="vb-h">Cruce de compradores <span class="pill ok">${L.length}</span></div>
+    <div class="vb-s">Compradores que están buscando y a los que les encaja este piso (zona, precio hasta un 5% por encima, habitaciones). Llámales para sacar visitas.${cur.col==="contactos"?" En una noticia no hay habitaciones: ponlas si las sabes.":""}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:8px 0">
+      <label style="flex:1 1 110px">Precio (€)<input id="cru-precio" type="number" inputmode="decimal" value="${esc(e.precio||"")}"></label>
+      <label style="flex:1 1 80px">Habitaciones<input id="cru-hab" type="number" inputmode="numeric" value="${esc(e.habitaciones||"")}"></label>
+      <label style="flex:2 1 180px">Zona<select id="cru-cp">${mun?`<option value="">${esc(mun)}</option>`:""}${opts.map(([a,b])=>`<option value="${a}"${a===String(e.cp||"")?" selected":""}>${esc(b)}</option>`).join("")}</select></label>
+      <button class="btn small" type="button" data-act="cruceRe">Volver a cruzar</button></div>
+    ${L.length?L.map(row).join(""):'<div class="vb-s">Ningún comprador encaja. Prueba a quitar el precio o las habitaciones, o elige «Toda Fuenlabrada».</div>'}`}
 function vCompradores(){
   const f=S.bf||(S.bf={estado:"activos",q:""}),q=f.q.toLowerCase();
   const base=S.compradores.filter(c=>!q||[c.nombre,c.telefono,c.email,c.dni,c.busca,c.notas].join(" ").toLowerCase().includes(q));
@@ -1429,9 +1462,9 @@ function field([k,l,t,opt],v){
 function abrir(col,id){
   const F=FORMS[col]; const d=id?S[col].find(x=>x.id===id):DEFAULTS[col]();
   if(!d) return; cur={col,id};
-  const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button><button class="btn small" type="button" data-act="informe">Informe de mercado</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
+  const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button><button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="informe">Informe de mercado</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
   const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
-  const extraEnc=col==="encargos"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
+  const extraEnc=col==="encargos"&&id?`<button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
   const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button><button class="btn small" type="button" data-act="resenaHoy">Reseña pedida hoy</button><button class="btn small" type="button" data-act="felicitadoHoy">Aniversario felicitado hoy</button>`:"";
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
@@ -1690,6 +1723,8 @@ $("#frm").addEventListener("click",async ev=>{
     const ya=S.encargos.find(e=>e.contactoId===cid);if(ya){toast("Esta noticia ya tiene encargo: te lo abro");S.view="encargos";render();setTimeout(()=>abrir("encargos",ya.id),300);return}
     const nid=await guardar("encargos",null,{direccion:c.direccion,asesor:c.asesor,zona:c.zona,precio:c.precioPropietario||c.precioValorado||null,exclusiva:"Sí",estado:"Activo",fechaCaptacion:hoyISO(),honorarioPrevisto:6000,contactoId:cid,notas:""});
     if(nid){S.view="encargos";render();setTimeout(()=>abrir("encargos",nid),300)}return}
+  if(a==="cruceComp"){cruceComp(false);return}
+  if(a==="cruceRe"){cruceComp(true);return}
   if(a==="aOp"){const e=leerForm(),encId=cur.id;$("#dlg").close();
     const nid=await guardar("operaciones",null,{inmueble:e.direccion,asesor:e.asesor,tipo:"Venta",ladoCobrado:"Ambos",precio:e.precio,honorarios:null,estado:"Reserva",encargoId:encId,notas:""});
     if(nid){S.view="operaciones";render();setTimeout(()=>abrir("operaciones",nid),300)}return}
