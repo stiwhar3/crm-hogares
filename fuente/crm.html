@@ -1739,7 +1739,7 @@ function pintarVivRes(){const el=$("#viv-res"),qi=$("#viv-q");if(!el||!qi)return
   const R=candidatosViv(q,true),U=R.u.slice(0,40);
   el.innerHTML=U.length?U.map(x=>{const v={...x.u,...(S.censoEd[x.u._id]||{})},n=notiDe(x.u._id);return `<button type="button" class="vb-o" data-vivsel="${esc(x.u._id)}"><b>${esc(dirViv(x))}</b> <span>${esc([v.prop||v.abre,v.ocu].filter(Boolean).join(" · "))}</span>${n&&n.id!==cur.id?` <span class="pill warn">ya es noticia</span>`:""}</button>`}).join("")+(R.u.length>40?`<div class="vb-s">Hay ${R.u.length}: añade piso y puerta para afinar.</div>`:"")
    :`<div class="vb-s">${R.edificios?"Ese piso no aparece en ese portal del censo.":"No encuentro esa calle en el censo."} Si aún no sabes qué piso es, marca la casilla de abajo.</div>`}
-/* ---------- Dirección del comprador: buscador del censo (sirve al coordinador, que no ve el censo) ---------- */
+/* ---------- Dirección del comprador: buscador del censo ---------- */
 const CDIR={compradores:{dir:"direccionActual",cid:"censoIdActual",z:"zonaActual",ck:"dirNuestra",on:true},llamadaVend:{dir:"direccion",cid:"censoId",z:"zonaCenso",ck:"noCenso",on:false}};
 const cdCfg=()=>cur&&CDIR[cur.col],cdActivo=c=>{const ck=$("#fld-"+c.ck);return ck?ck.checked===c.on:true};
 function pintarCompDir(inicio){const c=cdCfg();if(!c)return;const di=$("#fld-"+c.dir),est=$("#cd-est"),res=$("#cd-res");if(!di||!est)return;
@@ -2125,7 +2125,7 @@ function abrirBuscar(){let o=$("#buscar");if(!o){o=document.createElement("div")
     o.innerHTML='<div class="bq-caja" role="dialog" aria-label="Buscar en todo el CRM"><div class="bq-top"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg><input type="search" id="bq-q" placeholder="Dirección, nombre o teléfono…" autocomplete="off"><button type="button" class="btn small" id="bq-x">Cerrar</button></div><div id="bq-res" class="bq-res"></div></div>';
     document.body.appendChild(o);o.addEventListener("click",e=>{if(e.target===o||e.target.id==="bq-x")return cerrarBuscar();const r=e.target.closest("[data-open],[data-viv]");if(!r)return;cerrarBuscar();if(r.dataset.viv)abrirViv(r.dataset.viv);else abrir(r.dataset.open,r.dataset.id)});
     $("#bq-q").addEventListener("input",()=>pintarBuscar())}
-  o.hidden=false;document.body.style.overflow="hidden";menu(false);if(!S.censo&&S.db&&typeof cargarCenso==="function"&&(!S.yo||S.yo.rol!=="coordinador"))cargarCenso().then(()=>pintarBuscar());pintarBuscar();setTimeout(()=>$("#bq-q").focus(),30)}
+  o.hidden=false;document.body.style.overflow="hidden";menu(false);if(!S.censo&&S.db&&typeof cargarCenso==="function")cargarCenso().then(()=>pintarBuscar());pintarBuscar();setTimeout(()=>$("#bq-q").focus(),30)}
 function cerrarBuscar(){const o=$("#buscar");if(o){o.hidden=true;document.body.style.overflow=""}}
 function pintarBuscar(){const q=($("#bq-q").value||"").trim().toLowerCase(),qn=q.replace(/\s/g,""),R=$("#bq-res");
   if(q.length<2){R.innerHTML='<p class="bq-vacio">Escribe al menos 2 letras o números. Busca en noticias, encargos, captaciones, operaciones'+(S.compradores.length?", compradores":"")+' y en el censo.</p>';return}

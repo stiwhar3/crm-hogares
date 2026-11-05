@@ -65,7 +65,7 @@ const esResp=()=>S.yo&&S.yo.rol==="responsable";
 window.leerPapelera=async desde=>{const {data,error}=await sb.from("borrados").select("id,d").gte("creado",desde).order("creado",{ascending:false}).limit(500);if(error)throw fallo(error);return data};
 function ajustarPorRol(){
   $("#yo-nombre").textContent=S.yo?S.yo.nombre:"";
-  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","censo","localizar","equipo","papelera"]:["equipo","papelera"];
+  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","localizar","equipo","papelera"]:["equipo","papelera"];
   document.querySelectorAll("#tabs button").forEach(b=>b.hidden=ocultas.includes(b.dataset.v));
   if(ocultas.includes(S.view))S.view="hoy";
   if(!esResp())S.f.asesor="";
