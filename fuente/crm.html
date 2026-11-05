@@ -114,6 +114,7 @@ details.bld .nb{border:0;border-top:1px solid var(--line);border-radius:0}
 details.bld .tbl-wrap{border:0;border-radius:0;border-top:1px solid var(--line)}
 .pager{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}.pager label{display:flex;gap:6px;align-items:center}.pager select{width:auto;padding:4px 8px}
 .nsbox .ns-seg{display:flex;gap:6px;flex-wrap:wrap}.nsbox .ns-seg .btn{flex:1 1 0;min-width:90px;justify-content:center}.nsbox .ns-seg .btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.nsbox .vb-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.recbox .rec-f{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center}.recbox .rec-f>*{width:100%;min-width:0;box-sizing:border-box;margin:0}.recbox .rec-f #rec-fecha,.recbox .rec-f input[type=text],.recbox .rec-f [data-recadd]{grid-column:1/-1}.recbox [hidden]{display:none!important}@media (min-width:700px){.recbox .rec-f{display:flex}.recbox .rec-f>*{width:auto}.recbox .rec-f select{flex:0 0 120px}.recbox .rec-f input[type=date]{flex:0 0 150px}.recbox .rec-f input[type=time]{flex:0 0 120px}.recbox .rec-f input[type=text]{flex:1}.recbox .rec-f [data-recadd]{flex:0 0 auto}}.recbox .rec-f select,.recbox .rec-f input{font:inherit;padding:6px 8px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}.recbox .rec-q{display:flex;gap:6px;flex-wrap:wrap}.recbox .list{margin:2px 0}.row.rec .rec-h{font-size:17px;margin-right:6px;font-variant-numeric:tabular-nums}.row.rec .rec-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .vivbox{border:1px solid var(--line);padding:10px 12px;display:grid;gap:6px;background:var(--card,transparent)}.titbox .tit-l{display:grid;gap:6px}.titbox .tit-l[hidden]{display:none}.titbox .tit-rows{display:grid;gap:6px}.tit-f{display:grid;grid-template-columns:1.4fr 1fr 1.2fr auto auto;gap:6px;align-items:center}.tit-f input{min-width:0}.tit-f .tit-tel{text-decoration:none}@media (max-width:640px){.tit-f{grid-template-columns:1fr auto auto;padding-bottom:6px;border-bottom:1px dashed var(--line)}.tit-f [data-tf=nombre]{grid-column:1/-1}.tit-f [data-tf=nota]{grid-column:1/-1;order:5}}.vivbox .vb-h{font-weight:600;display:flex;gap:8px;align-items:center}.vivbox .vb-t{font-weight:600}.vivbox .vb-s{font-size:13px;color:var(--muted)}.vivbox .vb-c{font-size:13px;white-space:pre-wrap;max-height:90px;overflow:auto;color:var(--muted)}.vivbox .vb-b{display:flex;gap:8px;flex-wrap:wrap}.vb-res{display:grid;gap:4px;max-height:240px;overflow:auto}.vb-o{all:unset;cursor:pointer;padding:7px 9px;border:1px solid var(--line);font-size:14px}.vb-o:hover,.vb-o:focus{border-color:var(--accent)}.vb-o span{color:var(--muted);font-size:12px}
 .portal{display:grid;gap:6px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px}.portal .pi{display:flex;flex-wrap:wrap;gap:4px}.portal .po{color:var(--muted)}.portal .btn{justify-self:start}
 .pbar{display:flex;height:6px;background:var(--line);overflow:hidden;max-width:320px}.pbar i{display:block;height:100%}
@@ -715,6 +716,7 @@ function vHoy(){
   const av=misAvisos(),al=alertasPend();
   const B=[
     {k:"avisos",t:"Lo primero: avisos para ti",n:av.length+al.length,tono:"bad",nota:"Llamadas que te han pasado y avisos automáticos. Pulsa «Hecho» o «Visto» cuando lo hayas atendido.",html:bloqueAvisos(av,al)},
+    ...(R=>[{k:"rec",t:"Llamadas con hora",n:R.length,tono:R.some(a=>a.cuando<=new Date().toISOString())?"bad":"warn",nota:"Los recordatorios que te has puesto para hoy, por orden de hora. Se ponen desde la ficha: «⏰ Recordarme llamar».",html:`<div class="list">${R.map(a=>recFila(a,false)).join("")}</div>`}])(recsHoy()),
     ...(P=>[{k:"ped",t:"Compradores que te han enviado",n:P.length,tono:"bad",nota:"Una lista por piso. Ábrela, llama y apunta cómo ha ido. Se cierra sola cuando todos tienen respuesta.",html:P.map(a=>detPed(a,true)).join("")}])(misPedidos()),
     ...(veTodo()?(P=>[{k:"pedEnv",t:"Listas enviadas a los asesores",n:P.length,info:1,nota:"Lo que ha apuntado cada asesor de los compradores que le has enviado.",html:P.map(a=>detPed(a,false)).join("")}])(pedEnviados()):[]),
     {k:"urg",t:"Publicadas sin localizar",n:urg.length,tono:"bad",nota:"Localiza la vivienda y enlázala a su ficha del censo: 2 días si es agencia o portal, 1 si es particular. Pasa a Seguimiento cuando hables con el propietario.",html:hoyLista("urg",urg,rowContacto,"")},
@@ -1089,7 +1091,7 @@ FORMS.aviso={titulo:"aviso",fields:[
 DEFAULTS.aviso=()=>({tipo:"Mensaje"});
 const soloLeeComp=()=>!!(S.yo&&S.yo.rol==="asesor");
 const avisoPre=tipo=>tipo==="Crear ficha de comprador"?{tipo,para:"Daniel y Stiwhar"}:{tipo};
-const misAvisos=()=>{const yo=S.yo&&S.yo.nombre;if(!yo)return[];return S.avisos.filter(a=>!a.hecho&&a.tipo!=="Compradores para llamar"&&(a.para===yo||(a.cc||[]).includes(yo))).sort((a,b)=>String(b.creado||"").localeCompare(String(a.creado||"")))};
+const misAvisos=()=>{const yo=S.yo&&S.yo.nombre;if(!yo)return[];return S.avisos.filter(a=>!a.hecho&&a.tipo!=="Compradores para llamar"&&a.tipo!=="Recordatorio"&&(a.para===yo||(a.cc||[]).includes(yo))).sort((a,b)=>String(b.creado||"").localeCompare(String(a.creado||"")))};
 async function enviarAviso(a){const yo=S.yo?S.yo.nombre:"";if(!a.para||a.para===yo)return null;
   return guardar("avisos",null,{...a,de:yo,hecho:""},"Aviso de "+(yo||"la oficina")+" para "+a.para+".")}
 function rowAviso(a){const c=a.compradorId&&S.compradores.find(x=>x.id===a.compradorId),tel=a.telefono||(c&&c.telefono)||"";
@@ -1126,6 +1128,73 @@ document.addEventListener("click",async e=>{
 function avisosNuevos(prev,L){if(!prev||!S.yo)return;const yo=S.yo.nombre,nuevos=L.filter(a=>!prev.has(a.id)&&!a.hecho&&(a.para===yo||(a.cc||[]).includes(yo))&&a.de!==yo);
   for(const a of nuevos){const t=(a.tipo||"Aviso")+" de "+(a.de||"?"),b=[a.direccion,a.nombre,a.telefono,a.texto].filter(Boolean).join(" · ");toast(t+(b?": "+b.slice(0,80):""));
     try{if(!(window.pushActivo&&window.pushActivo())&&typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(t,{body:b.slice(0,200),tag:"aviso-"+a.id})}catch(_){}}}
+/* ---------- Recordatorios de llamada con hora (Stiwhar, 05/11/2026): cada uno se pone en una ficha a qué hora tiene que llamar.
+   Se guardan como avisos de tipo «Recordatorio» de uno para sí mismo (de = para), con fecha, hora y «cuando» (ISO).
+   Salen en Hoy ordenados por hora y, a esa hora, llega una notificación (push desde el servidor; si la app está abierta, también aquí). ---------- */
+const TIPO_REC="Recordatorio";
+const misRecs=()=>{const yo=S.yo&&S.yo.nombre;if(!yo)return[];return S.avisos.filter(a=>a.tipo===TIPO_REC&&!a.hecho&&a.para===yo).sort((a,b)=>String(a.cuando||"").localeCompare(String(b.cuando||"")))};
+const recsHoy=()=>{const fin=new Date();fin.setHours(23,59,59,999);const f=fin.toISOString();return misRecs().filter(a=>String(a.cuando||"")<=f)};
+const recsDe=(col,id)=>misRecs().filter(a=>a.col===col&&a.refId===id);
+const recCuando=(fecha,hora)=>new Date(`${fecha}T${hora}:00`).toISOString();
+const hhmm=d=>pad2(d.getHours())+":"+pad2(d.getMinutes());
+function recDia(a){const f=a.fecha||"",h=hoyISO();return f===h?"Hoy":f===masDias(1)?"Mañana":f<h?fmtF(f):new Date(f+"T12:00").toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"numeric"})}
+function recEstado(a){const m=Math.round((new Date(a.cuando)-Date.now())/6e4);
+  if(m<=0)return {cls:"bad",txt:m>-2?"Es la hora":"Hace "+(m>-60?(-m)+" min":Math.floor(-m/60)+" h"+((-m)%60?" "+((-m)%60)+" min":""))};
+  if(m<=30)return {cls:"warn",txt:"En "+m+" min"};
+  return {cls:"",txt:a.fecha===hoyISO()?"En "+(m<60?m+" min":Math.floor(m/60)+" h"+(m%60?" "+m%60+" min":"")):recDia(a)}}
+/* A quién se llama desde cada ficha */
+function recDatos(col,d){
+  if(col==="contactos")return {nombre:d.nombre||"",telefono:d.telefono||"",direccion:d.direccion||""};
+  if(col==="captaciones")return {nombre:d.propietario||d.nombre||"",telefono:d.telefono||"",direccion:d.direccion||""};
+  if(col==="compradores")return {nombre:d.nombre||"",telefono:d.telefono||"",direccion:""};
+  if(col==="encargos"){const c=d.contactoId&&S.contactos.find(x=>x.id===d.contactoId);return {nombre:(c&&c.nombre)||d.propietario||"",telefono:(c&&c.telefono)||d.telefono||"",direccion:d.direccion||""}}
+  return {nombre:d.nombre||"",telefono:d.telefono||"",direccion:d.direccion||""}}
+const REC_COLS=["contactos","encargos","compradores","captaciones"],REC_TIT={contactos:"noticia",encargos:"encargo",compradores:"comprador",captaciones:"captación"};
+function recFila(a,enFicha){const e=recEstado(a),tel=a.telefono||"";
+  return `<div class="row aviso rec"><span class="t"><b class="rec-h">${esc(a.hora||"")}</b> ${enFicha?esc(recDia(a)):`Llamar${a.nombre?" a "+esc(a.nombre):""}${a.direccion?" · "+esc(a.direccion):""}`}</span>
+    <span class="r"><span class="pill ${e.cls}">${esc(e.txt)}</span></span>
+    ${!enFicha&&tel?`<span class="m"><a href="tel:${esc(String(tel).replace(/\s/g,""))}">${esc(tel)}</a>${waURL(tel,"")?` · <a target="_blank" rel="noopener" href="${esc(waURL(tel,`Hola ${pNombre(a.nombre)}, ${yoFirma()}. `))}">WhatsApp</a>`:""}${!enFicha&&a.fecha!==hoyISO()?" · "+esc(recDia(a)):""}</span>`:""}
+    ${a.texto?`<span class="m" style="white-space:pre-wrap">${esc(a.texto)}</span>`:""}
+    <span class="rec-b">${!enFicha&&a.col&&a.refId&&(S[a.col]||[]).some(x=>x.id===a.refId)?`<button class="btn small" type="button" data-open="${esc(a.col)}" data-id="${esc(a.refId)}">Abrir la ficha</button>`:""}<button class="btn small primary" type="button" data-rechecho="${esc(a.id)}">Hecho</button><button class="btn small" type="button" data-recmas="${esc(a.id)}" data-min="15">+15 min</button><button class="btn small" type="button" data-recmas="${esc(a.id)}" data-min="60">+1 h</button>${enFicha?`<button class="btn small" type="button" data-recquitar="${esc(a.id)}">Quitar</button>`:""}</span></div>`}
+/* Caja en la pestaña Principal de la ficha */
+function pintarRec(col,id,d){if(!REC_COLS.includes(col)||!id||!S.yo)return;const db=$("#frm .db");if(!db)return;$("#recbox")?.remove();
+  const L=recsDe(col,id),now=new Date(),h1=new Date(now.getTime()+60*6e4);
+  const box=document.createElement("div");box.id="recbox";box.className="vivbox recbox full";box.style.gridColumn="1/-1";
+  box.innerHTML=`<div class="vb-h">⏰ Recordarme llamar${L.length?` <span class="n">${L.length}</span>`:""}</div>
+    ${L.length?`<div class="list">${L.map(a=>recFila(a,true)).join("")}</div>`:`<div class="vb-s">Elige a qué hora y te sale en Hoy, ordenado por hora, con una notificación en el móvil a esa hora.</div>`}
+    <div class="rec-f"><select id="rec-dia" aria-label="Día"><option value="0">Hoy</option><option value="1">Mañana</option><option value="x">Otro día</option></select><input type="date" id="rec-fecha" aria-label="Fecha" hidden><input type="time" id="rec-hora" aria-label="Hora" step="300" value="${hhmm(h1)}"><input type="text" id="rec-txt" placeholder="Para qué (opcional)" maxlength="160"><button class="btn small primary" type="button" data-recadd>Guardar recordatorio</button></div>
+    <div class="rec-q">${[["En 30 min",30],["En 1 h",60],["En 2 h",120]].map(([t,n])=>`<button class="btn small" type="button" data-recen="${n}">${t}</button>`).join("")}${["10:00","13:00","17:00","19:00"].map(t=>`<button class="btn small" type="button" data-reca="${t}">${t}</button>`).join("")}</div>`;
+  const p=db.querySelector('.fpane[data-pane="prin"]')||db,nt=p.querySelector("#fld-nuevaNota")?.closest("label"),m=p.querySelector("details.fmas");
+  (m||nt)?(m||nt).before(box):p.appendChild(box);
+  const cnt=$('#frm [data-ftab="prin"]');if(cnt&&L.length&&!cnt.querySelector(".n"))cnt.insertAdjacentHTML("beforeend",`<span class="n">${L.length}</span>`)}
+async function recGuardar(){if(!cur||!REC_COLS.includes(cur.col)||!cur.id)return;const d=anterior(cur.col,cur.id);if(!d)return;
+  const dia=$("#rec-dia").value,hora=$("#rec-hora").value;if(!hora)return toast("Pon la hora");
+  const fecha=dia==="x"?$("#rec-fecha").value:masDias(+dia);if(!fecha)return toast("Elige el día");
+  const cuando=recCuando(fecha,hora);if(cuando<new Date(Date.now()-6e4).toISOString())return toast("Esa hora ya ha pasado");
+  const yo=S.yo.nombre,dat=recDatos(cur.col,d);
+  const id=await guardar("avisos",null,{tipo:TIPO_REC,de:yo,para:yo,col:cur.col,refId:cur.id,...dat,texto:($("#rec-txt").value||"").trim(),fecha,hora,cuando,hecho:""},"Recordatorio de llamada para "+recDia({fecha})+" a las "+hora+".");
+  if(id){toast("Te avisaremos "+recDia({fecha}).toLowerCase()+" a las "+hora);pintarRec(cur.col,cur.id,d)}}
+async function recAplazar(a,min){const base=Math.max(Date.now(),new Date(a.cuando).getTime()),n=new Date(base+min*6e4);
+  if(await guardar("avisos",a.id,{fecha:iso(n),hora:hhmm(n),cuando:n.toISOString()},"Aplazado a las "+hhmm(n)+"."))toast("Te lo recuerdo a las "+hhmm(n))}
+document.addEventListener("click",async e=>{
+  const t=e.target.closest("[data-recadd],[data-rechecho],[data-recmas],[data-recquitar],[data-recen],[data-reca]");if(!t)return;e.preventDefault();
+  if(t.matches("[data-recen]")){const n=new Date(Date.now()+ +t.dataset.recen*6e4);$("#rec-dia").value=iso(n)===hoyISO()?"0":"1";$("#rec-fecha").hidden=true;$("#rec-hora").value=hhmm(n);return}
+  if(t.matches("[data-reca]")){$("#rec-hora").value=t.dataset.reca;if($("#rec-dia").value==="0"&&t.dataset.reca<hhmm(new Date()))$("#rec-dia").value="1";return}
+  if(t.matches("[data-recadd]")){t.disabled=true;try{await recGuardar()}finally{t.disabled=false}return}
+  const a=S.avisos.find(x=>x.id===(t.dataset.rechecho||t.dataset.recmas||t.dataset.recquitar));if(!a)return;
+  if(t.dataset.rechecho)await guardar("avisos",a.id,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:""},"Llamada hecha."),toast("Recordatorio hecho");
+  else if(t.dataset.recquitar)await guardar("avisos",a.id,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:"",quitado:true},"Recordatorio quitado."),toast("Recordatorio quitado");
+  else await recAplazar(a,+t.dataset.min);
+  if($("#dlg").open&&cur&&$("#recbox"))pintarRec(cur.col,cur.id,anterior(cur.col,cur.id));else render()});
+document.addEventListener("change",e=>{if(e.target.id==="rec-dia"){const f=$("#rec-fecha");f.hidden=e.target.value!=="x";if(!f.hidden){f.min=hoyISO();if(!f.value)f.value=masDias(2);f.focus()}}});
+/* Con la app abierta: aviso en pantalla a la hora (y notificación del sistema si no está el push del servidor) */
+setInterval(()=>{if(!S.yo||!S.avisos)return;const ya=lsGet("crm_rec_vistos"),ahora=new Date().toISOString(),lim=new Date(Date.now()-12*3600e3).toISOString();let cambio=false;
+  for(const a of misRecs()){const k=a.id+"|"+a.cuando;if(ya[k]||!a.cuando||a.cuando>ahora||a.cuando<lim)continue;ya[k]=1;cambio=true;
+    const t="Llamar ahora"+(a.nombre?": "+a.nombre:""),b=[a.hora,a.direccion,a.telefono,a.texto].filter(Boolean).join(" · ");toast(t+(b?" · "+b.slice(0,80):""));
+    try{if(!(window.pushActivo&&window.pushActivo())&&typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(t,{body:b.slice(0,200),tag:"rec:"+a.id})}catch(_){}}
+  if(cambio)lsSet("crm_rec_vistos",ya);
+  /* En Hoy, se refresca cada minuto para que «En 10 min» vaya bajando (sin tocar nada si estás escribiendo) */
+  const m=new Date().getMinutes(),act=document.activeElement;if((cambio||m!==S.recMin)&&recsHoy().length&&S.view==="hoy"&&!$("#dlg").open&&!(act&&/INPUT|TEXTAREA|SELECT/.test(act.tagName)))render();S.recMin=m},30e3);
 /* ---------- Avisos automáticos: los calcula cada dispositivo con los datos que ya ve. Cada uno avisa una sola vez (notificación) y sigue en «Hoy» hasta que se resuelve o se pulsa «Visto». ---------- */
 const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||"{}")}catch(_){return{}}},lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
 const haceH=h=>new Date(Date.now()-h*3600e3).toISOString();
@@ -1469,6 +1538,7 @@ function vHoyCoord(){
   const rowOfi=c=>`<button class="row" type="button" data-open="compradores" data-id="${esc(c.id)}"><span class="t">${esc(c.nombre||"")}</span><span class="r">${esc(c.oficinaDestino||"")}</span><span class="m"><span>${esc(c.direccionActual||"")}</span><span class="pill warn">${esc(c.viveEn==="De alquiler"?"Vive de alquiler":(c.necesitaVender||"")+" su casa")}</span></span></button>`;
   const B=[
     {k:"avisos",t:"Lo primero: avisos para ti",n:av.length+al.length,tono:"bad",nota:"Mensajes y llamadas que te han pasado y avisos automáticos. Pulsa «Hecho» o «Visto» cuando lo hayas atendido.",html:bloqueAvisos(av,al)},
+    ...(R=>[{k:"rec",t:"Llamadas con hora",n:R.length,tono:R.some(a=>a.cuando<=new Date().toISOString())?"bad":"warn",nota:"Los recordatorios que te has puesto para hoy, por orden de hora. Se ponen desde la ficha: «⏰ Recordarme llamar».",html:`<div class="list">${R.map(a=>recFila(a,false)).join("")}</div>`}])(recsHoy()),
     {k:"bpend",t:"Seguimientos y consultas de compradores",n:pend.length,tono:pend.some(c=>(pasoComp(c)||{}).cls==="bad")?"bad":"warn",nota:"Visitas sin seguimiento, visitas de hoy y compradores con 3 meses sin visitas a los que hay que preguntar si han comprado.",html:hoyLista("bpend",pend,rowComp,"")},
     {k:"bvis",t:"Visitas de hoy y próximas",n:vis.length,html:hoyLista("bvis",vis,rowVisita,"")},
     {k:"binf",t:"Informes al vendedor pendientes",n:inf.length,tono:"warn",html:hoyLista("binf",inf,rowVisita,"")},
@@ -1838,7 +1908,7 @@ function abrir(col,id){
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}${col==="visitas"?`<button class="btn" type="button" data-act="visCancelar">${d.cancelada?"Reactivar la visita":"Visita cancelada"}</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
-  titAuto();organizarFicha(col,id,d);historialLateral(id);{const pp=$("#fld-_props"),dl=$("#fld-direccion")?.closest("label");if(pp&&dl)dl.after(pp)}pintarNS();$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
+  titAuto();organizarFicha(col,id,d);pintarRec(col,id,d);historialLateral(id);{const pp=$("#fld-_props"),dl=$("#fld-direccion")?.closest("label");if(pp&&dl)dl.after(pp)}pintarNS();$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
   if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
   if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
