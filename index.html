@@ -93,6 +93,12 @@ th:first-child,td:first-child{text-align:left}
 .ftabs .n.av{background:#f6e2b3;color:#6b4b00}
 details.fmas{grid-column:1/-1}details.fmas>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);padding:2px 0;list-style:none}details.fmas>summary::-webkit-details-marker{display:none}details.fmas>summary::before{content:"▸ "}details.fmas[open]>summary::before{content:"▾ "}
 details.fmas>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+details.recbox>summary{cursor:pointer;list-style:none}details.recbox>summary::-webkit-details-marker{display:none}details.recbox>summary::after{content:"▾";margin-left:auto;color:var(--muted)}details.recbox[open]>summary{margin-bottom:6px}
+.row.aviso.compacto{display:flex;align-items:center;gap:10px;cursor:default}.compacto .av-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit}.compacto button.av-t{cursor:pointer}.compacto .av-t .m{color:var(--muted);font-size:13px}.av-ok{flex:0 0 auto;width:38px;height:38px;padding:0;border-radius:50%;font-size:17px;justify-content:center}
+.hg{margin:14px 4px 2px;font:600 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}.hoy-bloques .hg:first-child{margin-top:0}
+.aldia2{color:var(--muted);font-size:13px}.aldia2>summary{cursor:pointer;color:var(--ok);font-weight:600;list-style:none}.aldia2>summary::-webkit-details-marker{display:none}.aldia2 p{margin:4px 0 0}
+details.ayuda{float:right;margin:-4px 0 4px 8px}details.ayuda>summary{list-style:none;cursor:pointer;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;color:var(--muted)}details.ayuda>summary::-webkit-details-marker{display:none}details.ayuda[open]{float:none;margin:0 0 6px}details.ayuda[open]>summary{display:none}
+nav#tabs .ngr{font:600 11px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 14px 2px}nav#tabs .ngr:first-child{padding-top:4px}
 .df{display:flex;justify-content:space-between;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
 .df .right{display:flex;gap:8px;margin-left:auto}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -383,18 +389,21 @@ main{gap:18px;padding-block:16px 60px}
       <span class="yo"><span id="yo-nombre"></span><button class="btn small" id="btn-pass" type="button">Contraseña</button><button class="btn small" id="btn-salir" type="button">Salir</button></span><button class="btn primary small" id="btn-new" type="button">+ Nuevo</button>
     </div>
     <nav id="tabs" aria-label="Secciones">
+      <span class="ngr">Trabajo</span>
       <button data-v="hoy" type="button">Hoy</button>
       <button data-v="contactos" type="button">Noticias</button>
-      <button data-v="captaciones" type="button">Captaciones</button>
-      <button data-v="compradores" type="button">Compradores</button>
-      <button data-v="encargos" type="button">Encargos</button>
-      <button data-v="operaciones" type="button">Operaciones</button>
       <button data-v="censo" type="button">Censo</button>
+      <button data-v="encargos" type="button">Encargos</button>
+      <button data-v="compradores" type="button">Compradores</button>
+      <span class="ngr">Negocio</span>
+      <button data-v="captaciones" type="button">Captaciones</button>
+      <button data-v="operaciones" type="button">Operaciones</button>
+      <button data-v="resultados" type="button">Resultados</button>
+      <button data-v="resumenes" type="button">Resúmenes</button>
+      <span class="ngr">Herramientas</span>
       <button data-v="localizar" type="button">Localizar</button>
       <button data-v="equipo" type="button">Equipo</button>
-      <button data-v="resultados" type="button">Resultados</button>
       <button data-v="tutoriales" type="button">Tutoriales</button>
-      <button data-v="resumenes" type="button">Resúmenes</button>
       <button data-v="papelera" type="button">Papelera</button>
     </nav>
   </div>
@@ -913,12 +922,21 @@ function bloqueNs(){const L=nsPendientes(),P=L.filter(o=>o.est==="Por pedir"),Q=
   const sub=(t,n)=>`<div class="hl" style="font-weight:600;margin:10px 0 4px;padding:0 12px">${t} <span style="color:var(--muted);font-weight:500">${n}</span></div>`;
   return {k:"ns",t:"Notas simples",n:L.length,tono:Q.some(o=>o.dias>=7)?"warn":"",nota:"Las que hay que pedir y las pedidas que faltan por recoger. Cuando la tengas, ábrela y pulsa «La tenemos» para subir el PDF.",
     html:(P.length?sub("Por pedir",P.length)+hoyLista("nsp",P,rowNsPend,""):"")+(Q.length?sub("Por recoger",Q.length)+hoyLista("nsr",Q,rowNsPend,""):"")}}
+/* Una sola etiqueta extra por fila (la más urgente) y «+N» con el resto al pasar el dedo o el ratón */
+function etiquetasNoticia(c){const u=urgPub(c),ns=nsPill(c);
+  const F=[c.vendida&&!c.vendidaVista&&["bad","Vendida "+fmtF(c.vendida)],u&&[u.cls,u.txt+(c.publicado==="Particular"?" · particular":"")],c.necesitaSti&&["warn","STI"],
+    c.publicado&&c.etapa==="Desarrollo"&&(c.censoId||c.viviendaLocalizada)&&["warn","Hablar con el propietario"],
+    !c.censoId&&!c.viviendaLocalizada&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"&&["warn","Sin ficha del censo"],
+    c.etapa==="Desarrollo"&&sinBusq(c)&&["warn","Sin buscar en Tecnofind"]].filter(Boolean);
+  const html=[...F.map(([k,t])=>`<span class="pill ${k}">${esc(t)}</span>`),...(ns?[ns]:[])];if(!html.length)return "";
+  const resto=[...F.slice(1).map(x=>x[1]),...(ns&&F.length?["Nota simple"]:[])];
+  return html[0]+(resto.length?`<span class="pill" title="${esc(resto.join(" · "))}">+${resto.length}</span>`:"")}
 function rowContacto(c){
   const p=proxEstado(c);
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
     <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
     <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
-    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.publicado&&c.etapa==="Desarrollo"&&(c.censoId||c.viviendaLocalizada)?`<span class="pill warn">Publicada · localizada, falta hablar con el propietario</span>`:""}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${nsPill(c)}${c.etapa==="Desarrollo"&&sinBusq(c)?`<span class="pill warn">Sin buscar en Tecnofind / Inglobaly</span>`:""}${!c.censoId&&!c.viviendaLocalizada&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${etiquetasNoticia(c)}</span>
   </button>`;
 }
 function rowEncargo(e){
@@ -940,8 +958,8 @@ function paginar(key,arr){const P=S.pag[key]||(S.pag[key]={n:30,p:0});const tot=
   const a=P.p*P.n,items=arr.slice(a,a+P.n);
   const ctrl=tot<=TAMS[0]?"":`<div class="pager" data-pager="${key}"><span>${a+1}–${Math.min(a+P.n,tot)} de ${tot}</span><button class="btn small" type="button" data-pagp="${key}" data-d="-1"${P.p?"":" disabled"}>‹ Anterior</button><button class="btn small" type="button" data-pagp="${key}" data-d="1"${P.p<pags-1?"":" disabled"}>Siguiente ›</button><label>Filas <select data-pagn="${key}">${TAMS.map(n=>`<option${n===P.n?" selected":""}>${n}</option>`).join("")}</select></label></div>`;
   return {items,ctrl}}
-function hoyLista(key,arr,fn,vacio){const mas=S.hoyMas[key],v=mas?arr:arr.slice(0,5);
-  return listOr(v.map(fn),vacio)+(arr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="${key}">${mas?"Ver menos":`Ver ${arr.length-5} más`}</button></div>`:"")}
+function hoyLista(key,arr,fn,vacio,lim=5){const mas=S.hoyMas[key],v=mas?arr:arr.slice(0,lim);
+  return listOr(v.map(fn),vacio)+(arr.length>lim?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="${key}">${mas?"Ver menos":`Ver ${arr.length-lim} más`}</button></div>`:"")}
 const listOr=(rows,vacio)=>`<div class="list">${rows.length?rows.join(""):`<div class="empty">${vacio}</div>`}</div>`;
 function kpi(l,v,s,pct){return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:""}${pct!=null?`<div class="bar"><i style="width:${Math.min(100,Math.max(0,pct))}%"></i></div>`:""}</div>`}
 
@@ -953,13 +971,19 @@ function hoyBloques(B,vacios,tras){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const fecha=new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
   /* La agenda va siempre la última (Stiwhar, 02/11/2026). */
   const ag=vis.find(b=>b.k==="agenda");if(ag){vis.splice(vis.indexOf(ag),1);vis.push(ag)}
-  const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${b.nota?`<p class="nota">${b.nota}</p>`:""}${b.html}</div></details>`;
+  /* La explicación gris sale los 3 primeros días que abres cada apartado; después, detrás de «?» */
+  const AY=lsGet("crm-ayuda"),ayuda=b=>!b.nota?"":((AY[b.k]||[0])[0]<3)?`<p class="nota">${b.nota}</p>`:`<details class="ayuda"><summary title="Qué es esto" aria-label="Qué es esto">?</summary><p class="nota">${b.nota}</p></details>`;
+  const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${ayuda(b)}${b.html}</div></details>`;
+  /* Tres grupos fijos (la agenda, al final) */
+  const G=[["Para hacer hoy",["avisos","rec","pend","bvis","ped","bpend","sti","res"]],["Para revisar",["borr","ns","capn","encAl","binf","bsinf","bofi","bcap","urg","vend","pedEnv"]],["Oportunidades",["llamar","cruces","compn","cli"]]];
+  const grupoDe=k=>{if(k==="agenda")return 3;const i=G.findIndex(g=>g[1].includes(k));return i<0?1:i};
+  const grupos=G.map((g,i)=>[g[0],vis.filter(b=>grupoDe(b.k)===i)]).filter(g=>g[1].length),resto=vis.filter(b=>grupoDe(b.k)===3);
   return `<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Mensaje" style="float:right">Enviar mensaje</button><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
-  ${tras||""}<div class="hoy-bloques">${vis.map(bloque).join("")}</div>
-  ${vacios.length?`<p class="aldia"><b>Al día:</b> ${vacios.join(" · ")}</p>`:""}`}
+  ${tras||""}<div class="hoy-bloques">${grupos.map(([t,L])=>`<h3 class="hg">${t}</h3>${L.map(bloque).join("")}`).join("")}${resto.map(bloque).join("")}</div>
+  ${vacios.length?`<details class="aldia2"><summary>✓ ${vacios.length} apartado${vacios.length>1?"s":""} al día</summary><p>${vacios.join(" · ")}</p></details>`:""}`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-hoyb]");if(!t)return;const k=t.dataset.hoyb;S.hoyAbierto=S.hoyAbierto===k?null:k;render();const d=$("#hb-"+k);if(d)d.scrollIntoView({block:"nearest",behavior:"smooth"})});
 document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("hb")||!d.id.startsWith("hb-"))return;const k=d.id.slice(3);
-  if(d.open)S.hoyAbierto=k;else if(S.hoyAbierto===k||S.hoyAbierto===undefined)S.hoyAbierto=null;
+  if(d.open){S.hoyAbierto=k;const A=lsGet("crm-ayuda"),h=hoyISO(),v=A[k]||[0,""];if(v[1]!==h){A[k]=[v[0]+1,h];lsSet("crm-ayuda",A)}}else if(S.hoyAbierto===k||S.hoyAbierto===undefined)S.hoyAbierto=null;
   document.querySelectorAll("[data-hoyb]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.hoyb===S.hoyAbierto))},true);
 const capNuevas=()=>{const d=new Date();d.setDate(d.getDate()-7);const h=iso(d);return S.captaciones.filter(k=>k.estado==="Pendiente"&&capFecha(k)>=h).sort((a,b)=>capFecha(b).localeCompare(capFecha(a)))};
 function vHoy(){
@@ -1019,17 +1043,14 @@ function vResultados(){
     ${kpi("Esta semana",eur(F.semana),`Objetivo ${eur(O.semana)} (${fr(P.semana)})`,O.semana?F.semana/O.semana*100:0)}
     ${kpi("Este mes",eur(F.mes),`Objetivo ${eur(O.mes)} · equilibrio ${eur(eq)}`,O.mes?F.mes/O.mes*100:0)}
     ${kpi("Este trimestre",eur(F.trimestre),`Objetivo ${eur(O.trimestre)} (${fr(P.trimestre)})`,O.trimestre?F.trimestre/O.trimestre*100:0)}
-    ${kpi("Periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,A.objetivoPeriodo?fp/A.objetivoPeriodo*100:0)}
+    ${A.periodoInicio===P.trimestre[0]&&A.periodoFin===P.trimestre[1]?"":kpi("Periodo",eur(fp),`Objetivo ${eur(A.objetivoPeriodo)} (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,A.objetivoPeriodo?fp/A.objetivoPeriodo*100:0)}
     ${kpi("Pendiente de cobro",eur(sinCobrar.reduce((s,o)=>s+(+o.honorarios||0),0)),`${sinCobrar.length} operaciones aceptadas sin cobrar`)}
     ${kpi("Encargos activos",act.length,`${act.filter(e=>e.exclusiva==="Sí").length} en exclusiva`)}</div></section>`
    :`<section class="kpis">${kpi("Encargos activos",act.length,`${act.filter(e=>e.exclusiva==="Sí").length} en exclusiva`)}</section>`;
   const fila=(t,m,l)=>`<tr><td style="text-align:left">${t}</td><td>${eur(m)}</td><td>${eur(l)}</td><td>${pc(l,m)}</td></tr>`;
-  const obj=resp?`<section><h2>Objetivos</h2><div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Objetivo de facturación</th><th>Meta</th><th>Llevamos</th><th>Cumplido</th></tr></thead><tbody>
-    ${fila(`Semana (${fr(P.semana)})`,O.semana,F.semana)}${fila("Mes",O.mes,F.mes)}${fila("Punto de equilibrio del mes",eq,F.mes)}${fila(`Trimestre (${fr(P.trimestre)})`,O.trimestre,F.trimestre)}${fila(`Periodo (${fmtF(A.periodoInicio)} – ${fmtF(A.periodoFin)})`,A.objetivoPeriodo,fp)}
-    </tbody></table></div>
-    <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th style="text-align:left">Metas de actividad por asesor</th><th>Semana</th><th>Mes</th><th>Trimestre</th></tr></thead><tbody>
+  const obj=resp?`<section><h2>Metas de actividad por asesor</h2><div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Meta</th><th>Semana</th><th>Mes</th><th>Trimestre</th></tr></thead><tbody>
     ${(m=>METAS_ET.map(([k,t])=>`<tr><td style="text-align:left">${t}</td><td>${m.semana[k]}</td><td>${m.mes[k]}</td><td>${m.trimestre[k]}</td></tr>`).join(""))({semana:metasPer("semana"),mes:metasPer("mes"),trimestre:metasPer("trimestre")})}
-    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">El mes usa su objetivo de «Objetivos por mes» si lo tiene; la semana sale del objetivo de su mes (×12/52); el trimestre, del objetivo del periodo si coincide con él, o de la suma de sus tres meses. Las metas de actividad se ponen por semana en Ajustes y se escalan al mes y al trimestre.</p></section>`:"";
+    </tbody></table></div><p style="margin:8px 0 0;color:var(--muted);font-size:13px">Se ponen por semana en Ajustes.</p></section>`:"";
   if(esCoord())return fact+sel+vMetasCoord(per);
   const rk=vRanking(per);
   return fact+sel+(rk||`<section><h2>${resp?"Ranking":"Tus objetivos"} ${PER_ET[per][0]}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+(resp?vMetasCoord(per):"")+obj;
@@ -1043,12 +1064,14 @@ function vContactos(){
   const esPub=c=>!!c.publicado&&c.etapa!=="KO";
   let L=base.filter(c=>f.etapa==="activos"?enCurso(c):f.etapa==="__urg"?!!urgPub(c):f.etapa==="__pub"?esPub(c):c.etapa===f.etapa);
   L.sort((a,b)=>(a.proxFecha||"0").localeCompare(b.proxFecha||"0"));
-  const chips=[["activos","Todas en curso",base.filter(enCurso).length],...["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo"].map(e=>[e,e==="Valorada"?"Valoradas":e==="Paralizado"?"Paralizados":e,base.filter(c=>c.etapa===e).length]),["__pub","Todas las publicadas",base.filter(esPub).length],["__urg","Publicadas sin localizar",base.filter(urgPub).length]];
+  const chips=[["activos","Todas en curso",base.filter(enCurso).length],...["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo"].map(e=>[e,e==="Valorada"?"Valoradas":e==="Paralizado"?"Paralizados":e,base.filter(c=>c.etapa===e).length])].filter(([v,,n])=>n||v==="activos"||v===f.etapa);
+  const nPub=base.filter(esPub).length,nUrg=base.filter(urgPub).length;
   return `<section><div class="chips" role="tablist">${chips.map(([v,l,n])=>`<button type="button" class="chip" data-etapa="${esc(v)}" aria-pressed="${f.etapa===v}">${esc(l)} <span>${n}</span></button>`).join("")}</div>
   <div class="tools">
     <input type="search" id="f-q" placeholder="Buscar dirección, nombre, teléfono, nota…" value="${esc(f.q)}">
     <select id="f-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}<option value="__none"${f.asesor==="__none"?" selected":""}>Sin asesor</option></select>
     <select id="f-paso"><option value="">Cualquier próximo paso</option><option value="vencidos"${f.paso==="vencidos"?" selected":""}>Vencidos u hoy</option><option value="sinpaso"${f.paso==="sinpaso"?" selected":""}>Sin próximo paso</option></select>
+    <select id="f-pub"><option value="activos">Publicadas: sin filtrar</option><option value="__pub"${f.etapa==="__pub"?" selected":""}>Todas las publicadas (${nPub})</option><option value="__urg"${f.etapa==="__urg"?" selected":""}>Publicadas sin localizar (${nUrg})</option></select>
   </div>
   <h2>Noticias <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowContacto),S.contactos.length?"Ninguna noticia coincide con el filtro.":"Aún no hay noticias. Pulsa «+ Nuevo» para añadir la primera.")+pg.ctrl)(paginar("noticias",L))}</section>`;
 }
@@ -1366,12 +1389,12 @@ function rowAviso(a){const c=a.compradorId&&S.compradores.find(x=>x.id===a.compr
     <span class="r"><span class="pill bad">De ${esc(a.de||"?")}</span></span>
     <span class="m">${esc(cuando)}${tel?` · <a href="tel:${esc(String(tel).replace(/\s/g,""))}">${esc(tel)}</a>${waURL(tel,"")?` · <a target="_blank" rel="noopener" href="${esc(waURL(tel,`Hola ${pNombre(a.nombre||(c&&c.nombre))}, ${yoFirma()}. `))}">WhatsApp</a>`:""}`:""}</span>
     ${a.texto?`<span class="m" style="white-space:pre-wrap">${esc(a.texto)}</span>`:""}
-    <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${abrirB}${a.de&&a.de!==(S.yo&&S.yo.nombre)?`<button class="btn small" type="button" data-avresp="${esc(a.de)}">Responder</button>`:""}<button class="btn small" type="button" data-avhecho="${esc(a.id)}">Hecho</button></span></div>`}
+    <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${abrirB}${a.de&&a.de!==(S.yo&&S.yo.nombre)?`<button class="btn small" type="button" data-avresp="${esc(a.de)}">Responder</button>`:""}<button class="btn small av-ok" type="button" data-avhecho="${esc(a.id)}" title="Hecho" aria-label="Hecho">✓</button></span></div>`}
 const esIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
 const esApp=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
 function bloqueAvisos(L,A){const sop=window.pushSoportado&&window.pushSoportado(),act=window.pushActivo&&window.pushActivo(),den=typeof Notification!=="undefined"&&Notification.permission==="denied";
   const perm=!act&&!den&&(sop||(esIOS()&&!esApp()));
-  return hoyLista("avisos",[...L.map(a=>({a})),...(A||[]).map(x=>({x}))],o=>o.a?rowAviso(o.a):rowAlerta(o.x),"")+(perm?`<div class="tools" style="margin-top:8px">${esIOS()&&!esApp()?`<span class="m">Para recibir notificaciones en el iPhone, primero añade el CRM a la pantalla de inicio (Compartir → «Añadir a pantalla de inicio») y ábrelo desde ese icono.</span>`:`<button class="btn small primary" type="button" data-avperm>Activar notificaciones en este dispositivo</button>`}</div>`:"")}
+  return hoyLista("avisos",[...L.map(a=>({a})),...(A||[]).map(x=>({x}))],o=>o.a?rowAviso(o.a):rowAlerta(o.x),"",3)+(perm?`<div class="tools" style="margin-top:8px">${esIOS()&&!esApp()?`<span class="m">Para recibir notificaciones en el iPhone, primero añade el CRM a la pantalla de inicio (Compartir → «Añadir a pantalla de inicio») y ábrelo desde ese icono.</span>`:`<button class="btn small primary" type="button" data-avperm>Activar notificaciones en este dispositivo</button>`}</div>`:"")}
 async function guardarAviso(){const v=leerForm();if(!v.para)return toast("Elige para quién es");if(!v.texto&&!v.telefono&&!v.compradorId)return toast("Cuenta qué ha pasado");
   const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);
   const a={tipo:v.tipo,compradorId:v.compradorId||"",nombre:v.nombre||(c?c.nombre:""),telefono:v.telefono||(c?c.telefono:""),texto:v.texto||""};
@@ -1420,14 +1443,16 @@ function recFila(a,enFicha){const e=recEstado(a),tel=a.telefono||"";
     <span class="rec-b">${!enFicha&&a.col&&a.refId&&(S[a.col]||[]).some(x=>x.id===a.refId)?`<button class="btn small" type="button" data-open="${esc(a.col)}" data-id="${esc(a.refId)}">Abrir la ficha</button>`:""}<button class="btn small primary" type="button" data-rechecho="${esc(a.id)}">Hecho</button><button class="btn small" type="button" data-recmas="${esc(a.id)}" data-min="15">+15 min</button><button class="btn small" type="button" data-recmas="${esc(a.id)}" data-min="60">+1 h</button>${enFicha?`<button class="btn small" type="button" data-recquitar="${esc(a.id)}">Quitar</button>`:""}</span></div>`}
 /* Caja en la pestaña Principal de la ficha */
 function pintarRec(col,id,d){if(!REC_COLS.includes(col)||!id||!S.yo)return;const db=$("#frm .db");if(!db)return;$("#recbox")?.remove();
-  const L=recsDe(col,id),now=new Date(),h1=new Date(now.getTime()+60*6e4);
-  const box=document.createElement("div");box.id="recbox";box.className="vivbox recbox full";box.style.gridColumn="1/-1";
-  box.innerHTML=`<div class="vb-h">⏰ Recordarme llamar${L.length?` <span class="n">${L.length}</span>`:""}</div>
-    ${L.length?`<div class="list">${L.map(a=>recFila(a,true)).join("")}</div>`:`<div class="vb-s">Elige a qué hora y te sale en Hoy, ordenado por hora, con una notificación en el móvil a esa hora.</div>`}
+  const L=recsDe(col,id),now=new Date(),h1=new Date(now.getTime()+60*6e4),lista=L.length?`<div class="list">${L.map(a=>recFila(a,true)).join("")}</div>`:"";
+  const p=db.querySelector('.fpane[data-pane="prin"]')||db,px=p.querySelector("#pxhora");
+  /* Noticias: la hora va en el próximo paso; aquí solo se ven los avisos que ya hay */
+  if(col==="contactos"&&px){if(L.length){const box=document.createElement("div");box.id="recbox";box.className="vivbox recbox full";box.style.gridColumn="1/-1";box.innerHTML=`<div class="vb-h">⏰ Te avisaremos <span class="n">${L.length}</span></div>${lista}`;px.after(box)}}
+  else{const box=document.createElement("details");box.id="recbox";box.className="vivbox recbox full";box.style.gridColumn="1/-1";if(L.length)box.open=true;
+  box.innerHTML=`<summary class="vb-h">⏰ Recordarme llamar a una hora${L.length?` <span class="n">${L.length}</span>`:""}</summary>${lista}
     <div class="rec-f"><select id="rec-dia" aria-label="Día"><option value="0">Hoy</option><option value="1">Mañana</option><option value="x">Otro día</option></select><input type="date" id="rec-fecha" aria-label="Fecha" hidden><input type="time" id="rec-hora" aria-label="Hora" step="300" value="${hhmm(h1)}"><input type="text" id="rec-txt" placeholder="Para qué (opcional)" maxlength="160"><button class="btn small primary" type="button" data-recadd>Guardar recordatorio</button></div>
     <div class="rec-q">${[["En 30 min",30],["En 1 h",60],["En 2 h",120]].map(([t,n])=>`<button class="btn small" type="button" data-recen="${n}">${t}</button>`).join("")}${["10:00","13:00","17:00","19:00"].map(t=>`<button class="btn small" type="button" data-reca="${t}">${t}</button>`).join("")}</div>`;
-  const p=db.querySelector('.fpane[data-pane="prin"]')||db,nt=p.querySelector("#fld-nuevaNota")?.closest("label"),m=p.querySelector("details.fmas");
-  (m||nt)?(m||nt).before(box):p.appendChild(box);
+  const nt=p.querySelector("#fld-nuevaNota")?.closest("label"),m=p.querySelector("details.fmas");
+  (m||nt)?(m||nt).before(box):p.appendChild(box)}
   const cnt=$('#frm [data-ftab="prin"]');if(cnt&&L.length&&!cnt.querySelector(".n"))cnt.insertAdjacentHTML("beforeend",`<span class="n">${L.length}</span>`)}
 async function recGuardar(){if(!cur||!REC_COLS.includes(cur.col)||!cur.id)return;const d=anterior(cur.col,cur.id);if(!d)return;
   const dia=$("#rec-dia").value,hora=$("#rec-hora").value;if(!hora)return toast("Pon la hora");
@@ -1436,6 +1461,10 @@ async function recGuardar(){if(!cur||!REC_COLS.includes(cur.col)||!cur.id)return
   const yo=S.yo.nombre,dat=recDatos(cur.col,d);
   const id=await guardar("avisos",null,{tipo:TIPO_REC,de:yo,para:yo,col:cur.col,refId:cur.id,...dat,texto:($("#rec-txt").value||"").trim(),fecha,hora,cuando,hecho:""},"Recordatorio de llamada para "+recDia({fecha})+" a las "+hora+".");
   if(id){toast("Te avisaremos "+recDia({fecha}).toLowerCase()+" a las "+hora);pintarRec(cur.col,cur.id,d)}}
+async function recPx(id,data,h){if(!h||!id||!S.yo)return;if(!data.proxFecha)return toast("Para el aviso a una hora, pon también la fecha");
+  const cuando=recCuando(data.proxFecha,h);if(cuando<new Date(Date.now()-6e4).toISOString())return toast("La hora del aviso ya ha pasado: no lo he puesto");
+  const yo=S.yo.nombre,ok=await guardar("avisos",null,{tipo:TIPO_REC,de:yo,para:yo,col:"contactos",refId:id,...recDatos("contactos",data),texto:data.proxAccion||"",fecha:data.proxFecha,hora:h,cuando,hecho:""},"Recordatorio de llamada para "+recDia({fecha:data.proxFecha})+" a las "+h+".");
+  if(ok)toast("Guardado. Te avisaremos "+recDia({fecha:data.proxFecha}).toLowerCase()+" a las "+h)}
 async function recAplazar(a,min){const base=Math.max(Date.now(),new Date(a.cuando).getTime()),n=new Date(base+min*6e4);
   if(await guardar("avisos",a.id,{fecha:iso(n),hora:hhmm(n),cuando:n.toISOString()},"Aplazado a las "+hhmm(n)+"."))toast("Te lo recuerdo a las "+hhmm(n))}
 document.addEventListener("click",async e=>{
@@ -1504,8 +1533,9 @@ function alertasAuto(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const rol=S.yo
   }
   return out}
 const alertasPend=()=>{const vis=lsGet("crm-al-visto");return alertasAuto().filter(a=>!vis[a.k])};
-function rowAlerta(x){return `<div class="row aviso"><span class="t">${esc(x.t)}</span><span class="r"><span class="pill ${x.cls}">Automático</span></span>${x.txt?`<span class="m">${esc(x.txt)}</span>`:""}
-  <span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${x.open&&x.open[0]!=="hoy"&&x.open[0]!=="resultados"?`<button class="btn small" type="button" data-open="${esc(x.open[0])}" data-id="${esc(x.open[1])}">Abrir</button>`:x.open&&x.open[0]==="resultados"?`<button class="btn small" type="button" data-alver="resultados">Ver resultados</button>`:x.open?`<button class="btn small" type="button" data-alver="pend">Ver la lista</button>`:""}<button class="btn small" type="button" data-alvisto="${esc(x.k)}">Visto</button></span></div>`}
+/* Aviso automático en una fila: tocarla abre; «✓» = visto */
+function rowAlerta(x){const ab=x.open&&x.open[0]!=="hoy"&&x.open[0]!=="resultados"?`data-open="${esc(x.open[0])}" data-id="${esc(x.open[1])}"`:x.open&&x.open[0]==="resultados"?'data-alver="resultados"':x.open?'data-alver="pend"':"";
+  return `<div class="row aviso compacto">${ab?`<button type="button" class="av-t" ${ab}>`:'<span class="av-t">'}<span class="t">${esc(x.t)}</span>${x.txt?`<span class="m">${esc(x.txt)}</span>`:""}${ab?"</button>":"</span>"}<button class="btn small av-ok" type="button" data-alvisto="${esc(x.k)}" title="Visto" aria-label="Visto">✓</button></div>`}
 function revisarAlertas(){if(!S.yo||!S.db)return;const N=lsGet("crm-al-notif"),hoy=hoyISO(),L=alertasPend();let cambio=false;
   const prim=!N._ini;
   for(const a of L)if(!N[a.k]){N[a.k]=hoy;cambio=true;if(prim)continue;toast(a.t+(a.txt?": "+a.txt.slice(0,80):""));
@@ -2143,15 +2173,19 @@ function organizarFicha(col,id,d){const P=PEST[col],db=$("#frm .db");if(!P||!id|
   const panes=T.map(([k])=>{const p=document.createElement("div");p.className="fpane";p.dataset.pane=k;return p});let wa=null;
   for(const c of [...db.children]){const k=claveHijo(c);if(k==="_h"){c.remove();continue}if(k==="_wa"){wa=c;c.remove();continue}panes[donde[k]??1].appendChild(c);
     if((MITAD[col]||[]).includes(k)&&!c.classList.contains("full"))c.classList.add("mitad");
-    if(k==="_acc"){c.classList.add("facc");const sec=[...c.querySelectorAll("[data-act]")].filter(b=>ACC_SEC.includes(b.dataset.act));
-      if(sec.length){const m=document.createElement("details");m.className="fmas";m.innerHTML="<summary>Más acciones</summary><div></div>";sec.forEach(b=>m.lastChild.appendChild(b));panes[0].appendChild(m)}}}
+    if(k==="_acc"){c.classList.add("facc");const sec=[...c.querySelectorAll("[data-act]")].filter(b=>col==="contactos"?b.dataset.act!=="aSeg":ACC_SEC.includes(b.dataset.act));
+      if(sec.length){const m=document.createElement("details");m.className="fmas";m.innerHTML="<summary>Más acciones</summary><div></div>";sec.forEach(b=>m.lastChild.appendChild(b));panes[0].appendChild(m)}if(!c.querySelector("[data-act]"))c.remove()}}
   /* Pie más limpio: «No era noticia» y «Borrar» pasan a «Más acciones» (si hay un borrado pendiente de aprobar, el pie se queda igual) */
   const df=$("#frm .df"),pie=df&&!df.querySelector(".pill.bad")?[...df.querySelectorAll("[data-act=aCenso],[data-act=borrar]")]:[];
   if(pie.length){let m=panes[0].querySelector("details.fmas");if(!m){m=document.createElement("details");m.className="fmas";m.innerHTML="<summary>Más acciones</summary><div></div>";const nt=panes[0].querySelector("#fld-nuevaNota");nt?nt.closest("label").before(m):panes[0].appendChild(m)}
     pie.forEach(b=>{b.classList.add("small");m.lastChild.appendChild(b)})}
   if(col==="contactos"){const pf=panes[0].querySelector("#fld-proxFecha")?.closest("label"),et=panes[0].querySelector("#fld-etapa")?.closest("label");
     if(pf&&et){et.after(pf);const q=document.createElement("div");q.className="fdias";q.style.gridColumn="1/-1";
-      q.innerHTML=[["Mañana",1],["+3 días",3],["+1 semana",7],["+15 días",15]].map(([t,n])=>`<button type="button" class="btn small" data-dias="${n}">${t}</button>`).join("");pf.after(q)}}
+      q.innerHTML=[["Mañana",1],["+3 días",3],["+1 semana",7],["+15 días",15]].map(([t,n])=>`<button type="button" class="btn small" data-dias="${n}">${t}</button>`).join("");pf.after(q);
+      /* Un solo «próximo paso»: si le pones hora, es también el recordatorio con aviso al móvil */
+      const hr=document.createElement("label");hr.id="pxhora";hr.className="mitad";hr.innerHTML='Hora del aviso (opcional)<input type="time" id="px-hora" step="300">';q.after(hr)}
+    /* La nota, lo primero de la ficha */
+    const nt=panes[0].querySelector("#fld-nuevaNota")?.closest("label");if(nt)panes[0].prepend(nt)}
   const [tit,sub]=resumenFicha(col,d),dh=$("#frm .dh");
   dh.classList.add("fres");dh.innerHTML=`<span class="ft">${esc(tit||"Sin nombre")}</span><span class="fs">${sub.filter(Boolean).join(" · ").replace(/<\/span> · /,"</span> ")}${wa?wa.innerHTML:""}</span>`;
   const cuenta=p=>{const n=p.querySelectorAll(".list>.row").length;return p.querySelector("#fusbox")?'<span class="n av">!</span>':n?`<span class="n">${n}</span>`:""};
@@ -2172,7 +2206,7 @@ $("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-ftab]");i
 function abrir(col,id){
   const F=FORMS[col]; const d=id?S[col].find(x=>x.id===id):DEFAULTS[col]();
   if(!d) return; cur={col,id};TIT_D=d;
-  const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small" type="button" data-act="mas7">Próximo paso +7 días</button><button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="informe">Informe de mercado</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
+  const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="informe">Informe de mercado</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
   const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
   const extraEnc=col==="encargos"&&id?`<button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button>`:"";
   const extraOp=col==="operaciones"&&id?`<button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: vendido</button><button class="btn small" type="button" data-act="resenaHoy">Reseña pedida hoy</button><button class="btn small" type="button" data-act="felicitadoHoy">Aniversario felicitado hoy</button>`:"";
@@ -2323,8 +2357,9 @@ $("#frm").addEventListener("submit",async ev=>{
   const nota=($("#fld-nuevaNota")?.value||"").trim();
   if(!cur.id&&cur.col==="contactos"&&data.censoId){}else if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
     if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
+  const pxh=cur.col==="contactos"?($("#px-hora")?.value||""):"";
   const nid=await guardar(cur.col,cur.id,data,nota);
-  if(nid){$("#dlg").close();toast(cur.col==="contactos"&&sinBusq(data)?"Guardado. Recuerda buscarla en Tecnofind o Inglobaly":"Guardado");if(cur.col==="contactos")sincronizarCenso(data);
+  if(nid){$("#dlg").close();toast(cur.col==="contactos"&&sinBusq(data)?"Guardado. Recuerda buscarla en Tecnofind o Inglobaly":"Guardado");if(cur.col==="contactos"){sincronizarCenso(data);if(pxh)recPx(nid,data,pxh)}
     if(cur.col==="compradores"&&cur.avisoId&&await guardar("avisos",cur.avisoId,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:"",compradorId:nid},"Ficha creada."))toast("Ficha creada y aviso cerrado");
     if(cur.col==="compradores"&&cur.visitaId&&await guardar("visitas",cur.visitaId,{compradorId:nid,compradorNombre:data.nombre||"",telComprador:data.telefono||""},"Dado de alta como comprador."))toast("Comprador dado de alta y unido a su visita")}
 });
@@ -2626,7 +2661,7 @@ $("#view").addEventListener("click",e=>{const eg=e.target.closest("[data-etapa-g
 function leerLoc(){for(const k of ["zona","calle","num","m2","dm2","anio","danio","tipo","planta","rc"]){const el=$("#l-"+k);if(el)S.lf[k]=el.value}render()}
 $("#view").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id&&e.target.id.startsWith("l-")){e.preventDefault();leerLoc()}});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id==="f-q"||id==="c-q"||id==="k-q"){if(id==="f-q")S.f.q=e.target.value;else if(id==="k-q")S.kf.q=e.target.value;else S.cf.q=e.target.value;clearTimeout(render.t);render.t=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)}});
-$("#view").addEventListener("change",e=>{const m={"f-asesor":"asesor","f-paso":"paso","f-estado":"estado"}[e.target.id];if(m){S.f[m]=e.target.value;render()}if(["l-zona","l-tipo"].includes(e.target.id))leerLoc();if(e.target.id==="k-zona"){S.kf.zona=e.target.value;render()}if(e.target.id==="k-asesor"){S.kf.asesor=e.target.value;render()}if(e.target.id==="c-zona"){S.cf.zona=e.target.value;render()}if(e.target.id==="c-ko"){S.cf.ko=e.target.checked;render()}});
+$("#view").addEventListener("change",e=>{const m={"f-asesor":"asesor","f-paso":"paso","f-estado":"estado","f-pub":"etapa"}[e.target.id];if(m){S.f[m]=e.target.value;render()}if(["l-zona","l-tipo"].includes(e.target.id))leerLoc();if(e.target.id==="k-zona"){S.kf.zona=e.target.value;render()}if(e.target.id==="k-asesor"){S.kf.asesor=e.target.value;render()}if(e.target.id==="c-zona"){S.cf.zona=e.target.value;render()}if(e.target.id==="c-ko"){S.cf.ko=e.target.checked;render()}});
 document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf.mapa;if(S.cf.mapa&&!S.geo&&S.db)S.db.doc("geo/parcelas").onSnapshot(s=>{S.geo=s.exists?s.data():{};if(S.view==="censo"&&S.cf.mapa)render()},()=>{S.geo={}});render();return}
   const cq=e.target.closest("[data-cq]");if(cq){S.cf.mapa=false;S.cf.q=cq.dataset.cq;render();window.scrollTo(0,0);return}
   const rp=e.target.closest("[data-resper]");if(rp){S.resPer=rp.dataset.resper;render();return}
