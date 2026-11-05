@@ -2978,7 +2978,12 @@ $("#btn-pass").addEventListener("click",()=>{cur={col:"__pass"};
   $("#dlg").showModal();
   $("#np-ok").onclick=async()=>{const a=$("#np1").value,b=$("#np2").value;if(a.length<8)return toast("Mínimo 8 caracteres");if(a!==b)return toast("No coinciden");
     const {error}=await sb.auth.updateUser({password:a});if(error)return toast(tradErr(error));$("#dlg").close();toast("Contraseña guardada")}});
-$("#btn-salir").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
+/* Salir: cierra la sesión solo en este dispositivo y borra lo guardado aunque Supabase conteste con error
+   (403 «sesión no encontrada» si ya se cerró en otro sitio), para que nunca se quede dentro. */
+async function salir(){try{await sb.auth.signOut({scope:"local"})}catch(_){}
+  try{for(const k of Object.keys(localStorage))if(/^sb-.*-auth-token/.test(k))localStorage.removeItem(k)}catch(_){}
+  location.replace(location.pathname)}
+$("#btn-salir").addEventListener("click",salir);
 $("#view").addEventListener("click",e=>{if(e.target.id==="btn-importar")importar()});
 
 /* Notificaciones push: este dispositivo se apunta para recibir avisos aunque el CRM esté cerrado. */
@@ -2999,7 +3004,7 @@ async function arrancar(sesion){
   if(arrancado)return;
   const {data:yo,error}=await sb.from("perfiles").select("nombre,rol,zona,activo").eq("id",sesion.user.id).maybeSingle();
   if(error||!yo||yo.activo===false){verLogin("Tu email ("+sesion.user.email+") no está dado de alta en el CRM. Pídele a Stiwhar que te añada.");$("#l-paso1").hidden=true;
-    if(!$("#l-otro")){$("#l-msg").insertAdjacentHTML("afterend",'<button class="btn" type="button" id="l-otro">Entrar con otro email</button>');$("#l-otro").onclick=async()=>{await sb.auth.signOut();location.reload()}}return}
+    if(!$("#l-otro")){$("#l-msg").insertAdjacentHTML("afterend",'<button class="btn" type="button" id="l-otro">Entrar con otro email</button>');$("#l-otro").onclick=salir}return}
   arrancado=true;$("#login").hidden=true;S.yo=yo;ajustarPorRol();
   const db=dbSupabase;S.dbIntentado=true;S.db=db;
   for(const col of ["contactos","encargos","operaciones","captaciones","compradores","visitas"]){
