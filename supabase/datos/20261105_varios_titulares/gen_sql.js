@@ -3,6 +3,7 @@ const NOW="2026-11-05T13:10:00.000Z";const q=s=>"'"+String(s).replace(/'/g,"''")
 const out=[],rev=[];let n=0;
 for(const l of fs.readFileSync("cand.tsv","utf8").split("\n").filter(Boolean)){const [t,id,nom,tel]=l.split("\t");if(!["contactos","captaciones","compradores"].includes(t))continue;
  let r=separarTitulares(nom,tel);
+ if(id==="mw13lu4g5yng52")r={nombre:"Enrique Martín Reyeros",telefono:tel,otros:[{nombre:"Nelly Mercedes Peña Lazo",telefono:"",nota:""}],porOrden:false};
  if(id==="vsf_c963226fd67")r={nombre:"NOELIA",telefono:tel,otros:[{nombre:"RAUL",telefono:"",nota:""}],porOrden:false};
  if(!r)continue;
  if(id==="ama-seg-0241")r.otros[0].nota="padres";
