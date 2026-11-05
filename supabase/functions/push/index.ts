@@ -1,5 +1,6 @@
 // Notificaciones push del CRM. La llaman la base de datos (al crear un aviso o una visita)
 // y un cron cada media hora (desarrollos 12:00, visitas de mañana 17:00, seguimientos 18:30, hora de Madrid).
+// Otro cron, cada minuto, para los recordatorios de llamada con hora.
 // Solo acepta llamadas con la cabecera x-secreto guardada en push_config.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -80,6 +81,23 @@ async function horario() {
   return { dia, hm, out };
 }
 
+// Recordatorios de llamada con hora (avisos tipo «Recordatorio», de uno para sí mismo). Los llama el cron
+// «push-recordatorios» cada minuto, solo si hay alguno que ya toca. Avisa una vez por hora puesta (avisado = cuando);
+// si lo aplazan, «cuando» cambia y vuelve a avisar. Los de hace más de 12 horas ya no se avisan.
+async function recordatorios() {
+  const ahora = new Date().toISOString(), lim = new Date(Date.now() - 12 * 3600e3).toISOString();
+  const { data, error } = await db.from("avisos").select("id,d").eq("d->>tipo", "Recordatorio").lte("d->>cuando", ahora).gte("d->>cuando", lim);
+  if (error) throw error;
+  let n = 0;
+  for (const r of data || []) {
+    const a = r.d;
+    if (a.hecho || !a.para || a.avisado === a.cuando) continue;
+    await db.from("avisos").update({ d: { ...a, avisado: a.cuando } }).eq("id", r.id);
+    n += await enviar([a.para], { title: "Llamar ahora" + (a.nombre ? ": " + a.nombre : ""), body: [a.hora, a.direccion, a.telefono, a.texto].filter(Boolean).join(" · ").slice(0, 240), tag: "rec:" + r.id });
+  }
+  return { n };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
   try {
@@ -103,6 +121,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, n: await enviar([a], { title: "Visita nueva en tu casa" + fin, body: [v.direccion, v.fecha ? fmt(v.fecha) : "", v.hora, v.compradorNombre].filter(Boolean).join(" · "), tag: "vis:" + b.id }) });
     }
     if (b.tabla === "horario") return json({ ok: true, ...(await horario()) });
+    if (b.tabla === "recordatorios") return json({ ok: true, ...(await recordatorios()) });
     if (b.tabla === "prueba") return json({ ok: true, n: await enviar([b.para], { title: b.title || "Prueba del CRM", body: b.body || "Las notificaciones funcionan en este dispositivo." }) });
     if (b.tabla === "prueba-cifrado") { // comprueba que el cifrado funciona enviando a una suscripción dada
       await webpush.sendNotification(b.sub, JSON.stringify({ title: "x", body: "y" }), { TTL: 60 }).catch((e: unknown) => { throw new Error("envío: " + ((e as { statusCode?: number }).statusCode ?? String(e))); });
