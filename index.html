@@ -2106,8 +2106,8 @@ $("#frm").addEventListener("click",e=>{if(e.target.closest("[data-act=nsVer]")){
 $("#frm").addEventListener("change",e=>{if(e.target.matches("[data-nsfile]")){const f=e.target.files&&e.target.files[0];e.target.value="";subirNS(f)}});
 /* ---------- Fichas por pestañas (Stiwhar 04/11): arriba lo esencial y acciones; el resto en pestañas ---------- */
 const PEST={
-  contactos:{top:["etapa","proxAccion","proxFecha","notaSimple","_acc","_nota"],tabs:[
-    ["datos","Datos",["direccion","nombre","telefono","variosTitulares","asesor","zona","origen","referidoPor","publicado","fechaPublicado","motivo","fechaValoracion","precioValorado","precioPropietario","necesitaSti","notaSti"]],
+  contactos:{top:["etapa","proxAccion","proxFecha","_acc","_nota"],tabs:[
+    ["datos","Datos",["direccion","nombre","telefono","variosTitulares","asesor","zona","origen","referidoPor","publicado","fechaPublicado","motivo","notaSimple","fechaValoracion","precioValorado","precioPropietario","necesitaSti","notaSti"]],
     ["censo","Censo",["_viv","_fus","viviendaLocalizada"]],["notas","Notas",["notas","_hist"]]]},
   encargos:{top:["estado","precio","_acc","_nota"],tabs:[
     ["datos","Datos",["direccion","_props","asesor","zona","fechaCaptacion","exclusiva","finExclusiva","honorarioPrevisto","ultimaRevisionPrecio","riesgo"]],
