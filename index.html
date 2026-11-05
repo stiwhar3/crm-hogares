@@ -918,7 +918,7 @@ function rowContacto(c){
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
     <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
     <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
-    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.publicado&&c.etapa==="Desarrollo"&&(c.censoId||c.viviendaLocalizada)?`<span class="pill warn">Publicada · localizada, falta hablar con el propietario</span>`:""}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${nsPill(c)}${!c.censoId&&!c.viviendaLocalizada&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${(u=>u?`<span class="pill ${u.cls}">${esc(u.txt)}${c.publicado==="Particular"?" · particular":""}</span>`:"")(urgPub(c))}${c.publicado&&c.etapa==="Desarrollo"&&(c.censoId||c.viviendaLocalizada)?`<span class="pill warn">Publicada · localizada, falta hablar con el propietario</span>`:""}${c.vendida&&!c.vendidaVista?`<span class="pill bad">Vendida ${fmtF(c.vendida)}</span>`:""}${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${c.necesitaSti?`<span class="pill warn">STI</span>`:""}${nsPill(c)}${c.etapa==="Desarrollo"&&sinBusq(c)?`<span class="pill warn">Sin buscar en Tecnofind / Inglobaly</span>`:""}${!c.censoId&&!c.viviendaLocalizada&&c.etapa!=="Desarrollo"&&c.etapa!=="KO"?`<span class="pill warn">Sin ficha del censo</span>`:""}</span>
   </button>`;
 }
 function rowEncargo(e){
@@ -1258,7 +1258,7 @@ const FORMS={
     ["direccion","Dirección del inmueble *","text",{full:1,req:1}],["nombre","Propietario","text"],["telefono","Teléfono","tel"],["titulares","Hay más de un propietario","tit",{chk:"variosTitulares",nk:"nombre",tk:"telefono",que:"propietario",prim:"Propietario"}],
     ["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
     ["etapa","Etapa","sel",()=>ETAPAS],["origen","Origen","sel",()=>["",...ORIGENES]],["referidoPor","Recomendado por (cliente)","text"],["publicado","Publicada en venta","sel",()=>["","Agencia / portal","Particular"]],["fechaPublicado","Fecha en que se vio publicada","date"],["viviendaLocalizada","Localizada aunque no es vivienda del censo (local hecho piso, calle fuera del censo…)","check"],["motivo","Situación","sel",()=>MOTIVOS],
-    ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],["notaSimple","Nota simple","ns"],
+    ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],["notaSimple","Nota simple","ns"],["buscadoEn","Buscado en","busq"],
     ["fechaValoracion","Fecha de valoración","date"],["precioValorado","Precio valorado (€)","number"],["precioPropietario","Precio que pide el propietario (€)","number"],
     ["necesitaSti","Necesita a Stiwhar","check"],["notaSti","Qué necesita de Stiwhar","text",{full:1}],
     ["notas","Notas generales","textarea",{full:1}]]},
@@ -1973,6 +1973,7 @@ function field([k,l,t,opt],v){
   if(t==="tit"){const A=Array.isArray(v)?v:[],on=!!((TIT_D&&TIT_D[o.chk])||A.length);
     return `<div class="full vivbox titbox" style="grid-column:1/-1" data-tit="${k}"><label class="check"><input type="checkbox" id="fld-${o.chk}" data-titon="${k}"${on?" checked":""}> ${l}</label><div class="tit-l" id="tit-${k}"${on?"":" hidden"}><div class="vb-s">El primero es el de arriba (${esc(o.prim)}). Aquí van los demás.</div><div class="tit-rows">${A.map(titFila).join("")}</div><button type="button" class="btn small" data-titadd="${k}">+ Añadir ${esc(o.que)}</button><div class="tit-auto vb-s"></div></div></div>`}
   if(t==="hid") return `<input type="hidden" id="fld-${k}" value="${esc(v??"")}">`;
+  if(t==="busq"){const A=Array.isArray(v)?v:[];return `<div class="full vivbox" id="busqbox" style="grid-column:1/-1"><div class="vb-h">¿La has buscado en Tecnofind o Inglobaly?</div><div class="ns-seg">${BUSQ.map(x=>`<label class="check" style="flex:1 1 120px;margin:0;padding:8px 12px;min-height:0;border:1px solid var(--line);border-radius:999px;display:flex;gap:8px;align-items:center"><input type="checkbox" name="${k}" value="${x}"${A.includes(x)?" checked":""}> ${x}</label>`).join("")}</div><div class="vb-s" id="busq-av"></div></div>`}
   if(t==="ns") return `<div class="full vivbox nsbox" style="grid-column:1/-1"><input type="hidden" id="fld-${k}" value="${esc(nsNorm(v))}"><input type="file" id="ns-file" accept="application/pdf,.pdf" data-nsfile hidden><div class="vb-h">Nota simple</div><div class="ns-seg" role="group" aria-label="Estado de la nota simple">${NS_EST.map(x=>`<button type="button" class="btn small" data-ns="${x}" aria-pressed="${x===nsNorm(v)}">${x}</button>`).join("")}</div><div id="ns-pdf"></div></div>`;
   if(t==="compdir") return `<div class="full" style="grid-column:1/-1"><label class="full">${l}<input id="fld-${k}" value="${esc(v??"")}" autocomplete="off" placeholder="Calle, número y piso"></label><div id="cd-est" class="vb-s"></div><div id="cd-res" class="vb-res"></div></div>`;
   if(t==="multikv"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div style="display:flex;gap:6px 14px;flex-wrap:wrap">${opt().map(([val,lab])=>`<label class="check"><input type="checkbox" name="${k}" value="${esc(val)}"${A.includes(val)?" checked":""}> ${esc(lab)}</label>`).join("")}</div></div>`}
@@ -2052,6 +2053,11 @@ $("#frm").addEventListener("click",e=>{const a=e.target.closest("[data-titadd]")
   const x=e.target.closest("[data-titx]");if(x){e.preventDefault();x.closest(".tit-f").remove()}});
 $("#frm").addEventListener("change",e=>{const c=e.target.closest("[data-titon]");if(!c)return;const k=c.dataset.titon,l=$("#tit-"+k);l.hidden=!c.checked;if(c.checked&&!l.querySelector(".tit-f"))l.querySelector(".tit-rows").insertAdjacentHTML("beforeend",titFila({}))});
 /* ---------- Nota simple (Stiwhar 05/11): Por pedir / Pedida / Recibida y, al recibirla, el PDF ---------- */
+const BUSQ=["Tecnofind","Inglobaly"]; /* Stiwhar 05/11: en Desarrollo, recordar buscar al propietario (no obliga) */
+const sinBusq=d=>(d.etapa||"Desarrollo")==="Desarrollo"&&!(Array.isArray(d.buscadoEn)&&d.buscadoEn.length);
+function pintarBusq(){const b=$("#busqbox");if(!b)return;const et=($("#fld-etapa")||{}).value||"Desarrollo";b.hidden=et!=="Desarrollo";
+  const n=document.querySelectorAll('#frm input[name="buscadoEn"]:checked').length,av=$("#busq-av");if(av)av.innerHTML=n?"":`<span class="pill warn">Pendiente: búscala antes de pasarla a Seguimiento</span>`}
+$("#frm").addEventListener("change",e=>{if(e.target.id==="fld-etapa"||e.target.name==="buscadoEn")pintarBusq()});
 const NS_EST=["Por pedir","Por recoger","La tenemos"]; /* Stiwhar 05/11: «La tenemos» solo con el PDF subido */
 function nsFicha(){if(!cur)return null;let d=null;if(cur.col==="contactos")d=cur.id?S.contactos.find(x=>x.id===cur.id):null;else if(cur.col==="censoEdits")d={...(cur.viv?cur.viv.u:{}),...(S.censoEd[cur.id]||{})};if(!d)return null;
   return {...d,...(cur.nsQ!==undefined?{notaSimpleQuitar:cur.nsQ}:{}),...(cur.nsSinPdf?{notaSimplePdf:null}:{})}}
@@ -2108,7 +2114,7 @@ $("#frm").addEventListener("change",e=>{if(e.target.matches("[data-nsfile]")){co
 const PEST={
   contactos:{top:["etapa","proxAccion","proxFecha","_acc","_nota"],tabs:[
     ["datos","Datos",["direccion","nombre","telefono","variosTitulares","asesor","zona","origen","referidoPor","publicado","fechaPublicado","motivo","fechaValoracion","precioValorado","precioPropietario","necesitaSti","notaSti"]],
-    ["censo","Censo",["_viv","_fus","viviendaLocalizada"]],["notas","Notas",["notaSimple","notas","_hist"]]]},
+    ["censo","Censo",["_viv","_fus","viviendaLocalizada"]],["notas","Notas",["notaSimple","buscadoEn","notas","_hist"]]]},
   encargos:{top:["estado","precio","_acc","_nota"],tabs:[
     ["datos","Datos",["direccion","_props","asesor","zona","fechaCaptacion","exclusiva","finExclusiva","honorarioPrevisto","ultimaRevisionPrecio","riesgo"]],
     ["comp","Compradores",["_lcomp"]],["vis","Visitas",["_lvis","_visacc"]],["notas","Notas",["notas","_hist"]]]},
@@ -2173,7 +2179,7 @@ function abrir(col,id){
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}${col==="visitas"?`<button class="btn" type="button" data-act="visCancelar">${d.cancelada?"Reactivar la visita":"Visita cancelada"}</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
-  titAuto();organizarFicha(col,id,d);pintarRec(col,id,d);historialLateral(id);{const pp=$("#fld-_props"),dl=$("#fld-direccion")?.closest("label");if(pp&&dl)dl.after(pp)}pintarNS();$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
+  titAuto();organizarFicha(col,id,d);pintarRec(col,id,d);historialLateral(id);{const pp=$("#fld-_props"),dl=$("#fld-direccion")?.closest("label");if(pp&&dl)dl.after(pp)}pintarNS();pintarBusq();$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
   if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
   if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
@@ -2274,7 +2280,7 @@ function bloqueHist(d,conHist){
 }
 function leerForm(){
   const F=FORMS[cur.col],o={};
-  for(const [k,,t,op] of F.fields){if(t==="h")continue;if(t==="tit"){const on=!!$("#fld-"+op.chk)?.checked;o[op.chk]=on;o[k]=on?titLeer(k):[];continue}if(t==="multi"||t==="multikv"){o[k]=[...document.querySelectorAll(`#frm input[name="${k}"]:checked`)].map(e=>e.value);continue}if(t==="chips"){o[k]=[...document.querySelectorAll(`#chips-${k} [data-v]`)].map(e=>e.dataset.v);continue}const el=$("#fld-"+k); if(t==="check") o[k]=el.checked; else if(t==="number") o[k]=el.value===""?null:Number(el.value); else o[k]=el.value.trim();}
+  for(const [k,,t,op] of F.fields){if(t==="h")continue;if(t==="tit"){const on=!!$("#fld-"+op.chk)?.checked;o[op.chk]=on;o[k]=on?titLeer(k):[];continue}if(t==="multi"||t==="multikv"||t==="busq"){o[k]=[...document.querySelectorAll(`#frm input[name="${k}"]:checked`)].map(e=>e.value);continue}if(t==="chips"){o[k]=[...document.querySelectorAll(`#chips-${k} [data-v]`)].map(e=>e.dataset.v);continue}const el=$("#fld-"+k); if(t==="check") o[k]=el.checked; else if(t==="number") o[k]=el.value===""?null:Number(el.value); else o[k]=el.value.trim();}
   return o;
 }
 function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()
@@ -2318,7 +2324,7 @@ $("#frm").addEventListener("submit",async ev=>{
   if(!cur.id&&cur.col==="contactos"&&data.censoId){}else if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
     if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
   const nid=await guardar(cur.col,cur.id,data,nota);
-  if(nid){$("#dlg").close();toast("Guardado");if(cur.col==="contactos")sincronizarCenso(data);
+  if(nid){$("#dlg").close();toast(cur.col==="contactos"&&sinBusq(data)?"Guardado. Recuerda buscarla en Tecnofind o Inglobaly":"Guardado");if(cur.col==="contactos")sincronizarCenso(data);
     if(cur.col==="compradores"&&cur.avisoId&&await guardar("avisos",cur.avisoId,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:"",compradorId:nid},"Ficha creada."))toast("Ficha creada y aviso cerrado");
     if(cur.col==="compradores"&&cur.visitaId&&await guardar("visitas",cur.visitaId,{compradorId:nid,compradorNombre:data.nombre||"",telComprador:data.telefono||""},"Dado de alta como comprador."))toast("Comprador dado de alta y unido a su visita")}
 });
