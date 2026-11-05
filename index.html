@@ -895,7 +895,24 @@ const contactosPendientes=()=>S.contactos.filter(c=>{const p=proxEstado(c);retur
 const sinPaso=()=>S.contactos.filter(c=>{const p=proxEstado(c);return p&&!c.proxFecha});
 
 /* ---------- vistas ---------- */
-const nsPill=d=>d&&d.notaSimple?`<span class="pill ${d.notaSimple==="Recibida"?(d.notaSimplePdf?"ok":"warn"):d.notaSimple==="Pedida"?"":"warn"}">Nota simple ${d.notaSimple==="Recibida"&&!d.notaSimplePdf?"recibida, falta PDF":d.notaSimple.toLowerCase()}</span>`:"";
+function nsNorm(v){return v==="Pedida"?"Por recoger":v==="Recibida"?"La tenemos":(v||"")} /* nombres antiguos del 05/11 */
+const nsPill=d=>{const v=nsNorm(d&&d.notaSimple);if(!v)return "";const ok=v==="La tenemos"&&d.notaSimplePdf;return `<span class="pill ${ok?"ok":v==="Por recoger"?"":"warn"}">${v==="La tenemos"?(ok?"Nota simple: la tenemos":"Nota simple: falta el PDF"):"Nota simple "+v.toLowerCase()}</span>`};
+/* Notas simples por pedir y pedidas por recoger (Stiwhar 05/11): desplegable en Hoy */
+const nsPend=v=>{const e=nsNorm(v&&v.notaSimple);return e==="Por pedir"||e==="Por recoger"?e:""};
+function nsPendientes(){const L=[],hoy=hoyISO(),conNs=new Set();
+  if(window.nsCensoPend&&(!S.nsCensoT||Date.now()-S.nsCensoT>60000)){S.nsCensoT=Date.now();window.nsCensoPend().then(r=>{S.nsCenso=r;if(S.view==="hoy"&&!$("#dlg").open)render()}).catch(()=>{})}
+  for(const c of S.contactos||[]){const e=nsPend(c);if(c.etapa==="KO"||!e)continue;if(c.censoId)conNs.add(c.censoId);L.push({col:"contactos",x:c,est:e})}
+  const C={};for(const r of S.nsCenso||[])C[r.id]={...r.d,_dir:r.dir};for(const [id,v] of Object.entries(S.censoEd||{}))if(C[id]||nsPend(v))C[id]={...(C[id]||{}),...v};
+  for(const [id,v] of Object.entries(C)){const e=nsPend(v);if(!e||conNs.has(id))continue;L.push({col:"censo",x:{...v,id},est:e})}
+  L.forEach(o=>{const f=nsDesde(o.x,o.est);o.f=f?String(f).slice(0,10):"";o.dias=o.f?dias(o.f,hoy):0});
+  return L.sort((a,b)=>b.dias-a.dias)}
+function rowNsPend(o){const x=o.x,r=o.col==="censo"&&S.censo&&buscarViv(x.id),dir=o.col==="censo"?(r?dirViv(r):x._dir||"Vivienda del censo "+x.id.split("-")[0].toLowerCase()):(x.direccion||"");
+  const cls=o.est==="Por recoger"?(o.dias>=7?"warn":""):"warn",txt=o.est==="Por recoger"?(o.f?(o.dias?`Pedida hace ${o.dias} día${o.dias>1?"s":""}`:"Pedida hoy"):"Pedida"):"Por pedir";
+  return `<button class="row" type="button" ${o.col==="censo"?`data-nsviv="${esc(x.id)}"`:`data-open="contactos" data-id="${esc(x.id)}"`}><span class="t">${esc(dir)}${x.nombre?` · <span style="font-weight:500">${esc(x.nombre)}</span>`:""}</span><span class="r"><span class="pill ${cls}">${esc(txt)}</span></span><span class="m"><span class="pill">${o.col==="censo"?"Censo":"Noticia"}</span>${o.col==="contactos"?`<span>${esc(x.asesor||"Sin asesor")}</span><span class="pill acc">${esc(x.etapa||"")}</span>`:zona(x.id.split("-")[0].toUpperCase())}${o.f&&o.est==="Por pedir"?`<span>desde el ${fmtF(o.f)}</span>`:""}</span></button>`}
+function bloqueNs(){const L=nsPendientes(),P=L.filter(o=>o.est==="Por pedir"),Q=L.filter(o=>o.est==="Por recoger");
+  const sub=(t,n)=>`<div class="hl" style="font-weight:600;margin:10px 0 4px;padding:0 12px">${t} <span style="color:var(--muted);font-weight:500">${n}</span></div>`;
+  return {k:"ns",t:"Notas simples",n:L.length,tono:Q.some(o=>o.dias>=7)?"warn":"",nota:"Las que hay que pedir y las pedidas que faltan por recoger. Cuando la tengas, ábrela y pulsa «La tenemos» para subir el PDF.",
+    html:(P.length?sub("Por pedir",P.length)+hoyLista("nsp",P,rowNsPend,""):"")+(Q.length?sub("Por recoger",Q.length)+hoyLista("nsr",Q,rowNsPend,""):"")}}
 function rowContacto(c){
   const p=proxEstado(c);
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
@@ -968,6 +985,7 @@ function vHoy(){
     ...(cn=>[{k:"compn",t:"Compradores nuevos para tus pisos",n:cn.length,tono:"warn",nota:"Se han dado de alta esta semana y encajan con tus encargos o tus noticias con precio. Llámales y apunta la llamada en el «Cruce de compradores» del piso.",html:hoyLista("compn",cn,rowCompNuevo,"")}])(compNuevosParaMi()),
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
+    bloqueNs(),
     {k:"vend",t:"Se han vendido",n:vend.length,tono:"warn",html:hoyLista("vend",vend,rowContacto,"")},
     {k:"borr",t:"Solicitudes de borrado",n:solBorr.length+nsQ.length,tono:"warn",html:`<div class="list">${nsQ.map(rowNsQ).join("")}${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||x.nombre||"")}${col==="visitas"&&x.fecha?" · "+fmtF(x.fecha)+(x.hora?" "+esc(x.hora):""):""}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
     {k:"sti",t:S.yo&&S.yo.rol==="responsable"?"Te esperan a ti":"Esperan a Stiwhar",n:sti.length,tono:"warn",html:hoyLista("sti",sti,rowContacto,"")},
@@ -1118,7 +1136,7 @@ async function cargarCenso(){
     for(const z of Object.values(C)){z.edificios=(z.parts||[]).sort((a,b)=>a[0]-b[0]).flatMap(p=>p[1]);delete z.parts}
     S.censo=C; if(!S.cf.zona) S.cf.zona=Object.keys(C).sort()[0]||"";
     S.db.collection("portales").limit(5000).onSnapshot(sn=>{S.portales={};sn.docs.forEach(x=>S.portales[x.id]=x.data());if(S.view==="censo"&&!$("#dlg").open)render()},()=>{});
-    S.db.collection("censoEdits").limit(1000).onSnapshot(sn=>{S.censoEd={};sn.docs.forEach(x=>S.censoEd[x.id]=x.data());if(S.view==="censo"&&!$("#dlg").open)render()},()=>{});
+    S.db.collection("censoEdits").limit(1000).onSnapshot(sn=>{S.censoEd={};sn.docs.forEach(x=>S.censoEd[x.id]=x.data());if((S.view==="censo"||S.view==="hoy")&&!$("#dlg").open)render()},()=>{});
   }catch(e){toast("No se ha podido cargar el censo")}
   censoCargando=false; if(S.view==="censo"||S.view==="localizar") render();
 }
@@ -1955,7 +1973,7 @@ function field([k,l,t,opt],v){
   if(t==="tit"){const A=Array.isArray(v)?v:[],on=!!((TIT_D&&TIT_D[o.chk])||A.length);
     return `<div class="full vivbox titbox" style="grid-column:1/-1" data-tit="${k}"><label class="check"><input type="checkbox" id="fld-${o.chk}" data-titon="${k}"${on?" checked":""}> ${l}</label><div class="tit-l" id="tit-${k}"${on?"":" hidden"}><div class="vb-s">El primero es el de arriba (${esc(o.prim)}). Aquí van los demás.</div><div class="tit-rows">${A.map(titFila).join("")}</div><button type="button" class="btn small" data-titadd="${k}">+ Añadir ${esc(o.que)}</button><div class="tit-auto vb-s"></div></div></div>`}
   if(t==="hid") return `<input type="hidden" id="fld-${k}" value="${esc(v??"")}">`;
-  if(t==="ns") return `<div class="full vivbox nsbox" style="grid-column:1/-1"><input type="hidden" id="fld-${k}" value="${esc(v??"")}"><div class="vb-h">Nota simple</div><div class="ns-seg" role="group" aria-label="Estado de la nota simple">${NS_EST.map(x=>`<button type="button" class="btn small" data-ns="${x}" aria-pressed="${x===(v??"")}">${x}</button>`).join("")}</div><div id="ns-pdf"></div></div>`;
+  if(t==="ns") return `<div class="full vivbox nsbox" style="grid-column:1/-1"><input type="hidden" id="fld-${k}" value="${esc(nsNorm(v))}"><input type="file" id="ns-file" accept="application/pdf,.pdf" data-nsfile hidden><div class="vb-h">Nota simple</div><div class="ns-seg" role="group" aria-label="Estado de la nota simple">${NS_EST.map(x=>`<button type="button" class="btn small" data-ns="${x}" aria-pressed="${x===nsNorm(v)}">${x}</button>`).join("")}</div><div id="ns-pdf"></div></div>`;
   if(t==="compdir") return `<div class="full" style="grid-column:1/-1"><label class="full">${l}<input id="fld-${k}" value="${esc(v??"")}" autocomplete="off" placeholder="Calle, número y piso"></label><div id="cd-est" class="vb-s"></div><div id="cd-res" class="vb-res"></div></div>`;
   if(t==="multikv"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div style="display:flex;gap:6px 14px;flex-wrap:wrap">${opt().map(([val,lab])=>`<label class="check"><input type="checkbox" name="${k}" value="${esc(val)}"${A.includes(val)?" checked":""}> ${esc(lab)}</label>`).join("")}</div></div>`}
   if(t==="chips"){const A=Array.isArray(v)?v:[];return `<div class="full" style="grid-column:1/-1"><div style="font-size:13px;color:var(--muted);margin-bottom:4px">${l}</div><div id="chips-${k}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${A.map(chipHTML).join("")}</div><input id="chipin-${k}" data-chips="${k}" list="dl-${k}" placeholder="Barrio de Fuenlabrada o municipio" autocomplete="off"><datalist id="dl-${k}">${opt().map(x=>`<option value="${esc(x)}">`).join("")}</datalist></div>`}
@@ -2034,20 +2052,20 @@ $("#frm").addEventListener("click",e=>{const a=e.target.closest("[data-titadd]")
   const x=e.target.closest("[data-titx]");if(x){e.preventDefault();x.closest(".tit-f").remove()}});
 $("#frm").addEventListener("change",e=>{const c=e.target.closest("[data-titon]");if(!c)return;const k=c.dataset.titon,l=$("#tit-"+k);l.hidden=!c.checked;if(c.checked&&!l.querySelector(".tit-f"))l.querySelector(".tit-rows").insertAdjacentHTML("beforeend",titFila({}))});
 /* ---------- Nota simple (Stiwhar 05/11): Por pedir / Pedida / Recibida y, al recibirla, el PDF ---------- */
-const NS_EST=["Por pedir","Pedida","Recibida"];
+const NS_EST=["Por pedir","Por recoger","La tenemos"]; /* Stiwhar 05/11: «La tenemos» solo con el PDF subido */
 function nsFicha(){if(!cur)return null;let d=null;if(cur.col==="contactos")d=cur.id?S.contactos.find(x=>x.id===cur.id):null;else if(cur.col==="censoEdits")d={...(cur.viv?cur.viv.u:{}),...(S.censoEd[cur.id]||{})};if(!d)return null;
   return {...d,...(cur.nsQ!==undefined?{notaSimpleQuitar:cur.nsQ}:{}),...(cur.nsSinPdf?{notaSimplePdf:null}:{})}}
-function nsDesde(d,est){const H=(d&&d.historial)||[];for(let i=H.length-1;i>=0;i--){const c=(H[i].c||[]).find(c=>c.campo==="Nota simple");if(c)return c.despues===est?H[i].f:null}return null}
+function nsDesde(d,est){const H=(d&&d.historial)||[];for(let i=H.length-1;i>=0;i--){const c=(H[i].c||[]).find(c=>c.campo==="Nota simple");if(c)return nsNorm(c.despues)===nsNorm(est)?H[i].f:null}return null}
 function pintarNS(){const el=$("#ns-pdf"),inp=$("#fld-notaSimple");if(!el||!inp)return;const v=inp.value,d=nsFicha()||{},pdf=cur.nsSinPdf?null:(cur.nsPdf||d.notaSimplePdf);
   document.querySelectorAll("#frm [data-ns]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.ns===v?"true":"false"));
-  const guardado=(d.notaSimple||"")===v,f=guardado&&nsDesde(d,v),nd=f?dias(String(f).slice(0,10),hoyISO()):0,cuando=f?` (marcado el ${fmtF(String(f).slice(0,10))})`:"",espera=v==="Pedida"&&nd>=7?` <span class="pill warn">${nd} días esperando</span>`:"";
+  const guardado=nsNorm(d.notaSimple)===v,f=guardado&&nsDesde(d,v),nd=f?dias(String(f).slice(0,10),hoyISO()):0,cuando=f?` (marcado el ${fmtF(String(f).slice(0,10))})`:"",espera=v==="Por recoger"&&nd>=7?` <span class="pill warn">${nd} días esperando</span>`:"";
   const subir=t=>`<label class="btn small${t==="Subir el PDF"?" primary":""}" style="cursor:pointer">${t}<input type="file" accept="application/pdf,.pdf" data-nsfile hidden></label>`;
   const info=pdf?`<div class="vb-s">📄 ${esc(pdf.nombre||"nota simple.pdf")} · subido el ${fmtF(String(pdf.f||"").slice(0,10))}${pdf.por?" por "+esc(pdf.por):""}</div>`:"",ver=pdf?`<button type="button" class="btn small primary" data-act="nsVer">Ver PDF</button>`:"";
   let h="";
-  if(!v)h=`<div class="vb-s">Marca si hay que pedirla, si ya está pedida o si ya la tienes.</div>`;
-  else if(v!=="Recibida")h=`<div class="vb-s">${v==="Por pedir"?"Hay que pedirla":"Pedida, esperando a que llegue"}${cuando}.${guardado?"":" Pulsa Guardar para apuntarlo."}${espera}</div>${pdf?info+`<div class="vb-b">${ver}</div>`:""}`;
+  if(!v)h=`<div class="vb-s">Marca si hay que pedirla o si ya está pedida y falta recogerla. «La tenemos» se marca subiendo el PDF.</div>`;
+  else if(v!=="La tenemos")h=`<div class="vb-s">${v==="Por pedir"?"Hay que pedirla":"Pedida, falta recogerla"}${cuando}.${guardado?"":" Pulsa Guardar para apuntarlo."}${espera}</div>${pdf?info+`<div class="vb-b">${ver}</div>`:""}`;
   else if(cur.col==="contactos"&&!cur.id)h=`<div class="vb-s">Guarda la noticia y vuelve a abrirla para subir el PDF.</div>`;
-  else h=pdf?info+`<div class="vb-b">${ver}${subir("Cambiar PDF")}${nsQuitarBtns(d)}</div>${nsQuitarInfo(d)}`:`<div class="vb-s">Sube el PDF de la nota simple (máximo 15 MB).</div><div class="vb-b">${subir("Subir el PDF")}</div>`;
+  else h=pdf?info+`<div class="vb-b">${ver}${subir("Cambiar PDF")}${nsQuitarBtns(d)}</div>${nsQuitarInfo(d)}`:`<div class="vb-s" style="color:var(--bad)">Falta el PDF: súbelo (máximo 15 MB).</div><div class="vb-b">${subir("Subir el PDF")}</div>`;
   el.innerHTML=h}
 /* Quitar el PDF (Stiwhar 05/11): solo Stiwhar lo quita; los demás lo piden con motivo y le llega a Hoy */
 const nsResp=()=>!S.yo||S.yo.rol==="responsable";
@@ -2064,7 +2082,7 @@ async function nsQuitar(a,b){if(!cur||!cur.id)return;const col=cur.col,id=cur.id
     const motivo=(d.notaSimpleQuitar&&d.notaSimpleQuitar.motivo)||m||"Quitado por Stiwhar";
     try{await window.borrarNotaSimple(pdf.path)}catch(e){toast("No se ha podido quitar: "+(e.message||e));return}
     try{await S.db.collection("borrados").doc().set({col,docId:id,f:new Date().toISOString(),motivo:"PDF de nota simple: "+motivo,por:S.yo?S.yo.nombre:"",datos:{notaSimplePdf:pdf}})}catch(_){}
-    if(await guardar(col,id,{notaSimplePdf:null,notaSimpleQuitar:null},"PDF de la nota simple quitado ("+(pdf.nombre||"")+"): "+motivo)){if(nt)nt.value="";cur.nsPdf=null;cur.nsQ=null;cur.nsSinPdf=true;toast("PDF quitado");pintarNS()}}}
+    if(await guardar(col,id,{notaSimple:"Por recoger",notaSimplePdf:null,notaSimpleQuitar:null},"PDF de la nota simple quitado ("+(pdf.nombre||"")+"): "+motivo)){if(nt)nt.value="";cur.nsPdf=null;cur.nsQ=null;cur.nsSinPdf=true;{const i=$("#fld-notaSimple");if(i)i.value="Por recoger"}toast("PDF quitado");pintarNS()}}}
 $("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-act=nsQuitarPedir],[data-act=nsQuitarNo],[data-act=nsQuitarOk]");if(!b)return;e.preventDefault();e.stopPropagation();nsQuitar(b.dataset.act,b)},true);
 async function subirNS(file){if(!file||!cur||!cur.id)return;
   if(!/pdf$/i.test(file.type||"")&&!/\.pdf$/i.test(file.name||""))return toast("Tiene que ser un PDF");
@@ -2074,13 +2092,16 @@ async function subirNS(file){if(!file||!cur||!cur.id)return;
   if(el)el.innerHTML='<div class="vb-s">Subiendo el PDF…</div>';
   try{await window.subirNotaSimple(path,file)}catch(e){toast("No se ha podido subir: "+(e.message||e));return pintarNS()}
   const pdf={path,nombre:String(file.name||"nota simple.pdf").slice(0,120),f:new Date().toISOString(),por:S.yo?S.yo.nombre:""};
-  const ok=await guardar(col,id,{notaSimple:"Recibida",notaSimplePdf:pdf},"Nota simple recibida: PDF subido ("+pdf.nombre+").");
+  const ok=await guardar(col,id,{notaSimple:"La tenemos",notaSimplePdf:pdf},"Nota simple: la tenemos, PDF subido ("+pdf.nombre+").");
   if(!ok)return pintarNS();
-  if(cur&&cur.col===col&&cur.id===id){cur.nsPdf=pdf;cur.nsSinPdf=false;const i=$("#fld-notaSimple");if(i)i.value="Recibida";pintarNS()}toast("PDF de la nota simple guardado")}
+  if(cur&&cur.col===col&&cur.id===id){cur.nsPdf=pdf;cur.nsSinPdf=false;const i=$("#fld-notaSimple");if(i)i.value="La tenemos";pintarNS()}toast("PDF de la nota simple guardado")}
 async function verNS(){const d=nsFicha()||{},pdf=cur.nsSinPdf?null:(cur.nsPdf||d.notaSimplePdf);if(!pdf||!pdf.path)return;if(!window.urlNotaSimple)return toast("Sin conexión");
   const w=window.open("","_blank");
   try{const u=await window.urlNotaSimple(pdf.path);if(w)w.location.href=u;else location.href=u}catch(e){if(w)w.close();toast("No se puede abrir el PDF: "+(e.message||e))}}
-$("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-ns]");if(!b)return;e.preventDefault();const i=$("#fld-notaSimple");if(!i)return;i.value=i.value===b.dataset.ns?"":b.dataset.ns;pintarNS()});
+$("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-ns]");if(!b)return;e.preventDefault();const i=$("#fld-notaSimple");if(!i)return;
+  if(b.dataset.ns==="La tenemos"&&i.value!=="La tenemos"){const d=nsFicha()||{},pdf=cur.nsSinPdf?null:(cur.nsPdf||d.notaSimplePdf);
+    if(!pdf){if(!cur.id)return toast("Guarda primero la noticia y luego sube el PDF");const f=$("#ns-file");if(f)f.click();toast("Para marcar «La tenemos» sube el PDF");return}}
+  i.value=i.value===b.dataset.ns?"":b.dataset.ns;pintarNS()});
 $("#frm").addEventListener("click",e=>{if(e.target.closest("[data-act=nsVer]")){e.preventDefault();e.stopPropagation();verNS()}},true);
 $("#frm").addEventListener("change",e=>{if(e.target.matches("[data-nsfile]")){const f=e.target.files&&e.target.files[0];e.target.value="";subirNS(f)}});
 /* ---------- Fichas por pestañas (Stiwhar 04/11): arriba lo esencial y acciones; el resto en pestañas ---------- */
@@ -2690,6 +2711,9 @@ window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.r
 window.rankingPeriodo=(periodo)=>sb?sb.rpc("ranking_periodo",{periodo}):Promise.resolve({data:null});
 const esResp=()=>S.yo&&S.yo.rol==="responsable";
 window.subirNotaSimple=async(path,file)=>{const {error}=await sb.storage.from("notas-simples").upload(path,file,{contentType:"application/pdf",upsert:false});if(error)throw fallo(error)};
+window.nsCensoPend=async()=>{const {data,error}=await sb.from("censo_edits").select("id,d").in("d->>notaSimple",["Por pedir","Por recoger","Pedida"]);if(error)throw fallo(error);
+  return Promise.all((data||[]).map(async r=>{const [p,bi,ui]=r.id.split(".");let dir="";if(bi!=null&&/^\d+$/.test(bi))try{const q=await sb.from("censo").select("b:d->edificios->"+bi).eq("id",p).maybeSingle();const b=q.data&&q.data.b,u=b&&b.u&&b.u[+ui];
+      if(b)dir=[b.via,b.num,u&&u.esc&&u.esc!=="T"&&("Esc "+u.esc),u&&u.planta&&(u.planta+"º"),u&&u.puerta].filter(Boolean).join(" ")}catch(_){}return {id:r.id,d:r.d,dir}}))};
 window.borrarNotaSimple=async path=>{const {data,error}=await sb.storage.from("notas-simples").remove([path]);if(error)throw fallo(error);if(!data||!data.length)throw new Error("sin permiso")};
 window.urlNotaSimple=async path=>{const {data,error}=await sb.storage.from("notas-simples").createSignedUrl(path,600);if(error)throw fallo(error);return data.signedUrl};
 window.leerPapelera=async desde=>{const {data,error}=await sb.from("borrados").select("id,d").gte("creado",desde).order("creado",{ascending:false}).limit(500);if(error)throw fallo(error);return data};
