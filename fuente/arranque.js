@@ -1,7 +1,7 @@
 /* ---------- base de datos: Supabase (cada asesor solo recibe lo suyo; lo filtra el servidor) ---------- */
 const SB_URL="https://uugzmmxucxrrmebfggrk.supabase.co",SB_KEY="sb_publishable_4fNBmWrSnvN2dIzZ4a1sfA_VcBvY9lw";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
-const TABLA={contactos:"contactos",captaciones:"captaciones",compradores:"compradores",visitas:"visitas",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados",mercado:"mercado",avisos:"avisos"};
+const TABLA={contactos:"contactos",captaciones:"captaciones",compradores:"compradores",visitas:"visitas",encargos:"encargos",operaciones:"operaciones",censo:"censo",censoEdits:"censo_edits",portales:"portales",borrados:"borrados",mercado:"mercado",avisos:"avisos",resumenes:"resumenes"};
 const DOCS={"ajustes/general":"general","zonas/indice":"zonas_indice","geo/parcelas":"geo_parcelas"};
 const nuevoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 function fila(t,id,d){const r={id,d};if(t==="censo")r.zona=d.zona;if(t==="censo_edits"||t==="portales")r.zona=id.split("-")[0].toUpperCase();return r}
@@ -68,7 +68,7 @@ window.urlNotaSimple=async path=>{const {data,error}=await sb.storage.from("nota
 window.leerPapelera=async desde=>{const {data,error}=await sb.from("borrados").select("id,d").gte("creado",desde).order("creado",{ascending:false}).limit(500);if(error)throw fallo(error);return data};
 function ajustarPorRol(){
   $("#yo-nombre").textContent=S.yo?S.yo.nombre:"";
-  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","localizar","equipo","papelera"]:["equipo","papelera"];
+  const rol=S.yo?S.yo.rol:"",ocultas=rol==="responsable"?[]:rol==="coordinador"?["contactos","localizar","equipo","papelera","resumenes"]:["equipo","papelera","resumenes"];
   document.querySelectorAll("#tabs button").forEach(b=>b.hidden=ocultas.includes(b.dataset.v));
   if(ocultas.includes(S.view))S.view="hoy";
   if(!esResp())S.f.asesor="";
@@ -176,6 +176,8 @@ async function arrancar(sesion){
     db.collection(col).limit(1000).onSnapshot(s=>{S[col]=s.docs.map(d=>{const o={id:d.id,...d.data()};if(ETAPA_ANTIGUA[o.etapa])o.etapa=ETAPA_ANTIGUA[o.etapa];return o});if(!$("#dlg").open)render()},()=>{});
   }
   {let prev=null;db.collection("avisos").limit(1000).onSnapshot(sn=>{const L=sn.docs.map(d=>({id:d.id,...d.data()}));avisosNuevos(prev,L);prev=new Set(L.map(x=>x.id));S.avisos=L;if(!$("#dlg").open)render()},()=>{})}
+  /* Resumen del día de los asesores (mañana y tarde): solo Stiwhar; se guarda hasta que cambia el mes */
+  if(yo.rol==="responsable")db.collection("resumenes").onSnapshot(sn=>{S.resumenes=sn.docs.map(d=>({id:d.id,...d.data()}));if(S.view==="resumenes"&&!$("#dlg").open)render()},()=>{});
   db.doc("zonas/indice").onSnapshot(s=>{if(!s.exists)return;const d=s.data(),I={};for(const [c,v] of Object.entries(d.calles||{})){const P={};for(const t of String(v).split(",")){const m=t.match(/^(\d+[A-Z]?)([A-Z])$/);if(m)P[m[1]]=(d.codigos||{})[m[2]]||""}I[c]=P}S.zidx=I},()=>{});
   db.doc("ajustes/general").onSnapshot(s=>{S.ajustes=s.exists?{...DEF_AJUSTES,...s.data()}:DEF_AJUSTES;render()},()=>{});
   render();

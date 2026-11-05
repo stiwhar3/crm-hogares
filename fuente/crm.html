@@ -127,6 +127,7 @@ tr.viv{cursor:pointer} tr.viv:hover td{background:var(--accent-soft)} tr.viv.ed 
 .he .hn{white-space:pre-wrap} .he .hc{font-size:13px;color:var(--muted)} .he s{opacity:.75}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;font-weight:600;z-index:20}
 @media (prefers-reduced-motion:no-preference){.row{transition:background .12s}}
+.resum{border-top:1px solid var(--line);padding:8px 0}.resum:first-child{border-top:0}.resum summary{cursor:pointer;text-transform:none}.resum-t{margin-top:8px;line-height:1.5;font-size:14px}
 </style>
 
 <header>
@@ -148,6 +149,7 @@ tr.viv{cursor:pointer} tr.viv:hover td{background:var(--accent-soft)} tr.viv.ed 
       <button data-v="equipo" type="button">Equipo</button>
       <button data-v="resultados" type="button">Resultados</button>
       <button data-v="tutoriales" type="button">Tutoriales</button>
+      <button data-v="resumenes" type="button">Resúmenes</button>
       <button data-v="papelera" type="button">Papelera</button>
     </nav>
   </div>
@@ -730,6 +732,14 @@ function vHoy(){
   const vacios=B.filter(b=>!b.n).map(b=>b.t);
   return hoyBloques(B,vacios);
 }
+/* Resumen del día de los asesores: los de este mes, el más reciente primero */
+const resumenesMes=()=>{const m=new Date().toLocaleDateString("sv-SE",{timeZone:"Europe/Madrid"}).slice(0,7);return (S.resumenes||[]).filter(r=>String(r.fecha||"").slice(0,7)===m).sort((a,b)=>String(b.creado||b.fecha).localeCompare(String(a.creado||a.fecha)))};
+const resumHtml=t=>esc(t||"").replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/\n/g,"<br>");
+function vResumenes(){
+  if(S.yo&&S.yo.rol!=="responsable")return `<section><div class="empty">Solo Stiwhar ve los resúmenes.</div></section>`;
+  const R=resumenesMes(),mes=new Date().toLocaleDateString("es-ES",{month:"long",timeZone:"Europe/Madrid"});
+  return `<section><h2>Resúmenes</h2><p style="margin:0 0 8px;color:var(--muted);font-size:13px">Lo que han sacado, hecho y programado los chicos. Sale a las 14:37 (la mañana) y a las 21:37 (la tarde), de lunes a sábado. Aquí quedan los de ${esc(mes)}; al cambiar de mes empiezan de cero. Solo lo ves tú.</p>
+  ${R.length?`<div class="list" style="padding:4px 14px">${R.map((r,i)=>`<details class="resum"${i?"":" open"}><summary><b>${esc(new Date(r.fecha+"T12:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"numeric"}))}</b> · ${esc(r.tramo||"")}</summary><div class="resum-t">${resumHtml(r.texto)}</div></details>`).join("")}</div>`:`<div class="empty">Todavía no hay resúmenes este mes.</div>`}</section>`}
 /* Objetivo de un mes: el de «Objetivos por mes» de Ajustes si lo hay; si no, el objetivo mensual general. */
 const objMes=f=>{const v=(S.ajustes.objetivosMes||{})[String(f).slice(0,7)];return v!=null&&v!==""?+v:(+S.ajustes.objetivoMes||0)};
 function vResultados(){
@@ -942,7 +952,7 @@ function cargarPapelera(){if(S.papCargando||!S.db)return;S.papCargando=true;
   p.then(L=>{S.pap=(L||[]).filter(r=>r.d&&(r.d.f||"")>=desde).sort((a,b)=>String(b.d.f).localeCompare(String(a.d.f)))})
    .catch(e=>{console.error("papelera",e);S.pap=[];toast("No he podido leer la papelera")}).finally(()=>{S.papCargando=false;if(S.view==="papelera")render()})}
 function vPapelera(){
-  if(!(typeof esResp!=="function"||esResp()))return `<section><div class="empty">Solo Stiwhar ve la papelera.</div></section>`;
+  if(S.yo&&S.yo.rol!=="responsable")return `<section><div class="empty">Solo Stiwhar ve la papelera.</div></section>`;
   if(!S.pap){cargarPapelera();return `<section><h2>Papelera</h2><div class="empty">Cargando…</div></section>`}
   const fila=r=>{const d=r.d,x=d.datos||{},q=[x.direccion||x.titulo||x.inmueble||"",x.nombre||"",x.asesor||""].filter(Boolean).join(" · ")||d.docId;
     return `<div class="row" style="cursor:default"><div class="main"><span class="t">${esc(q)}</span><span class="m"><span class="pill">${esc(PAP_COL[d.col]||d.col||"")}</span><span>Borrado ${esc(fmtFH(d.f))}${d.por?" por "+esc(d.por):""}</span>${d.motivo?`<span>${esc(d.motivo)}</span>`:""}</span></div>
@@ -974,7 +984,7 @@ function render(){clearTimeout(render.t);render.t=setTimeout(()=>{try{revisarAle
     :S.soloLectura?`<div class="banner">No se ha podido guardar (${esc(S.soloLectura)}). Puede que esta vista sea solo de lectura. <button class="btn small" type="button" id="btn-perm">Revisar permisos</button></div>`:"";
   setTimeout(()=>{if(S.view==="censo"&&S.cf.mapa&&$("#mapa"))pintarMapa(S.cf.zona)},0);
   pintarSecbar();setTimeout(()=>{pintarBarra();colorUnico($("#view"))},0);
-  $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,compradores:vCompradores,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo,tutoriales:vTutoriales,papelera:vPapelera}[S.view])();
+  $("#view").innerHTML=ban+({hoy:vHoy,resultados:vResultados,contactos:vContactos,captaciones:vCaptaciones,compradores:vCompradores,encargos:vEncargos,operaciones:vOps,censo:vCenso,localizar:vLocalizar,equipo:vEquipo,tutoriales:vTutoriales,papelera:vPapelera,resumenes:vResumenes}[S.view])();
   if((S.view==="censo"||S.view==="localizar")&&!S.censo&&S.db) cargarCenso();
 }
 
@@ -2299,7 +2309,7 @@ $("#view").addEventListener("click",e=>{if(e.target.closest("#bf-quitar")){Objec
   hojaCompradores(L,"Compradores_"+hoyISO()+".xlsx","Compradores").catch(err=>toast("No se ha podido descargar: "+(err.message||err)))});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id!=="b-q"&&id!=="e-q")return;if(id==="b-q")S.bf.q=e.target.value;else S.eq=e.target.value;clearTimeout(render.t2);render.t2=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)});
 
-try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar"||v==="tutoriales"||v==="papelera")S.view=v}catch(_){}
+try{const v=localStorage.getItem("crm-view");if(v&&FORMS[v]||v==="hoy"||v==="equipo"||v==="censo"||v==="localizar"||v==="tutoriales"||v==="papelera"||v==="resumenes")S.view=v}catch(_){}
 render();
 (async()=>{
   const db=window.claude?await window.claude.use("db"):null; S.dbIntentado=true; if(!db) return render();
