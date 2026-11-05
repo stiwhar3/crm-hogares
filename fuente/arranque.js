@@ -63,6 +63,7 @@ window.rankingSemana=()=>sb?sb.rpc("ranking_semana",{semanas_atras:0}):Promise.r
 window.rankingPeriodo=(periodo)=>sb?sb.rpc("ranking_periodo",{periodo}):Promise.resolve({data:null});
 const esResp=()=>S.yo&&S.yo.rol==="responsable";
 window.subirNotaSimple=async(path,file)=>{const {error}=await sb.storage.from("notas-simples").upload(path,file,{contentType:"application/pdf",upsert:false});if(error)throw fallo(error)};
+window.borrarNotaSimple=async path=>{const {data,error}=await sb.storage.from("notas-simples").remove([path]);if(error)throw fallo(error);if(!data||!data.length)throw new Error("sin permiso")};
 window.urlNotaSimple=async path=>{const {data,error}=await sb.storage.from("notas-simples").createSignedUrl(path,600);if(error)throw fallo(error);return data.signedUrl};
 window.leerPapelera=async desde=>{const {data,error}=await sb.from("borrados").select("id,d").gte("creado",desde).order("creado",{ascending:false}).limit(500);if(error)throw fallo(error);return data};
 function ajustarPorRol(){
