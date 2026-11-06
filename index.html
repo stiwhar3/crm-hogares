@@ -103,6 +103,7 @@ details.ayuda{float:right;margin:-4px 0 4px 8px}details.ayuda>summary{list-style
 .ses-go{display:block;width:100%;margin:0 0 12px;padding:12px;font-size:15px}
 .ses-card{display:flex;flex-direction:column;gap:6px;align-items:flex-start}.ses-t{font:600 20px var(--display)}.ses-q{font-size:16px}.ses-tel{font-size:17px;padding:12px 18px;margin:4px 0}
 .ses-b{display:flex;flex-wrap:wrap;gap:8px;width:100%;justify-content:flex-end}.ses-b .btn{flex:1 1 40%;white-space:nowrap}
+.ses-mas{width:100%;border:1px solid var(--line);background:var(--bg);margin:4px 0}.ses-mas>summary{cursor:pointer;padding:11px 12px;font-weight:600;font-size:14px;color:var(--accent);list-style:none;display:flex;align-items:center;gap:8px}.ses-mas>summary::-webkit-details-marker{display:none}.ses-mas>summary::before{content:"▸";transition:transform .15s}.ses-mas[open]>summary::before{transform:rotate(90deg)}.sm-c{padding:2px 12px 12px;display:grid;gap:0}.sm-f{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.4}.sm-f:first-child{border-top:0}.sm-l{color:var(--muted);font-size:13px}.sm-v{min-width:0;overflow-wrap:anywhere}.sm-v a{color:var(--accent);white-space:nowrap}.sm-n .sm-v{white-space:pre-wrap}.sm-hl{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}.sm-h{display:grid;gap:8px;margin-top:8px}@media (max-width:480px){.sm-f{grid-template-columns:88px 1fr;gap:8px}.sm-n{grid-template-columns:1fr;gap:2px}}
 nav#tabs .ngr{font:600 11px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 14px 2px}nav#tabs .ngr:first-child{padding-top:4px}
 .df{display:flex;justify-content:space-between;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
 .df .right{display:flex;gap:8px;margin-left:auto}
@@ -644,9 +645,42 @@ function pintarSesion(){const w=$("#dlgSes"),Ss=S.ses,x=Ss&&Ss.cola[0];if(!w)ret
     :[["noContesta","No contesta",""],["noVende","No vende",""],["abrir","Interesado","primary"],["saltar","Saltar",""]];
   $("#frmSes").innerHTML=cab+`<div class="db"><div class="full ses-card" style="grid-column:1/-1"><span class="pill acc">${esc(tipo)}</span><div class="ses-t">${esc(tit)}</div>${quien?`<div class="ses-q">${esc(quien)}</div>`:""}
     ${t?`<a class="btn primary ses-tel" href="tel:${esc(t)}">Llamar · ${esc(tel)}</a>`:""}${wa?` <a class="btn small" target="_blank" rel="noopener" href="${esc(wa)}">WhatsApp</a>`:""}
-    ${info.filter(Boolean).map(i=>`<div class="vb-s">${esc(i)}</div>`).join("")}<div class="vb-s">${x.t==="not"?"«No contesta» pasa el próximo paso a mañana. «Hablado» abre la ficha para apuntarlo.":"«No contesta» lo apunta en el historial. «Interesado» abre la vivienda para pasarla a noticia."}</div></div>
+    ${info.filter(Boolean).map(i=>`<div class="vb-s">${esc(i)}</div>`).join("")}${sesMas(x)}<div class="vb-s">${x.t==="not"?"«No contesta» pasa el próximo paso a mañana. «Hablado» abre la ficha para apuntarlo.":"«No contesta» lo apunta en el historial. «Interesado» abre la vivienda para pasarla a noticia."}</div></div>
     <label class="full">Qué ha dicho (opcional)<textarea id="ses-nota" placeholder="Se guarda con fecha en el historial"></textarea></label></div>
-    <div class="df"><div class="ses-b">${B.map(([k,l,c])=>`<button class="btn${c?" "+c:""}" type="button" data-ses="${k}">${l}</button>`).join("")}</div></div>`}
+    <div class="df"><div class="ses-b">${B.map(([k,l,c])=>`<button class="btn${c?" "+c:""}" type="button" data-ses="${k}">${l}</button>`).join("")}</div></div>`;
+  const dm=$("#frmSes .ses-mas");if(dm)dm.addEventListener("toggle",()=>{Ss.mas=dm.open})}
+/* Stiwhar (06/11): en la sesión de llamadas, un desplegable con toda la info de la noticia o de la vivienda (propietarios, teléfonos, datos, notas e historial) */
+function sesMas(x){const fila=(l,v)=>v==null||v===""||v===false?"":`<div class="sm-f"><span class="sm-l">${esc(l)}</span><span class="sm-v">${v}</span></div>`,tx=v=>v==null||v===""?"":esc(String(v)),
+    telA=t=>{const n=String(t||"").replace(/[^\d+]/g,"");return n?`<a href="tel:${esc(n)}">${esc(t)}</a>`:""},
+    props=L=>L.filter(p=>p&&(p.nombre||p.telefono)).map(p=>`<div>${p.nombre?`<b>${esc(p.nombre)}</b>`:"Sin nombre"}${p.telefono?" · "+telA(p.telefono):""}${p.nota?` <span class="sm-l">(${esc(p.nota)})</span>`:""}</div>`).join(""),
+    lista=v=>Array.isArray(v)?esc(v.filter(Boolean).join(", ")):tx(v),
+    hist=H=>{H=(H||[]).filter(h=>h&&(h.n||h.alta||(h.c||[]).length)).slice().sort((a,b)=>String(b.f).localeCompare(String(a.f)));
+      return H.length?`<div class="sm-h">${H.map(h=>`<div class="he"><span class="hf">${h.f?(h.d?new Date(h.f).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit"}):fmtFH(h.f)):""}</span>${h.alta?"<b>Ficha creada.</b> ":""}${h.n?`<span class="hn">${esc(h.n)}</span>`:""}${(h.c||[]).map(c=>`<div class="hc">${esc(c.campo)}: <s>${esc(c.antes||"vacío")}</s> → ${esc(c.despues||"vacío")}</div>`).join("")}</div>`).join("")}</div>`:`<div class="vb-s">Sin historial todavía.</div>`},
+    viv=u=>u?[u.m2&&u.m2+" m²",u.anio&&"año "+u.anio,u.ocu&&"ocupada por "+String(u.ocu).toLowerCase()].filter(Boolean).join(" · "):"";
+  let F="",H=[],nH=0;
+  if(x.t==="not"){const c=S.contactos.find(y=>y.id===x.id);if(!c)return "";const r=c.censoId&&buscarViv(c.censoId);
+    F=fila((c.titulares||[]).length?"Propietarios":"Propietario",props([{nombre:c.nombre,telefono:c.telefono},...(c.titulares||[])]))
+     +fila("Etapa",tx(c.etapa))+fila("Situación",tx(c.motivo))
+     +fila("Próximo paso",tx([c.proxAccion,c.proxFecha&&"("+fmtF(c.proxFecha)+")"].filter(Boolean).join(" ")))
+     +fila("Asesor",tx(c.asesor))+fila("Zona",tx(c.zona))
+     +fila("Origen",tx([c.origen,c.referidoPor&&"recomendado por "+c.referidoPor].filter(Boolean).join(" · ")))
+     +fila("Publicada",tx([c.publicado,c.fechaPublicado&&"vista el "+fmtF(c.fechaPublicado)].filter(Boolean).join(" · ")))
+     +fila("Valoración",tx([c.precioValorado&&eur(c.precioValorado),c.fechaValoracion&&"el "+fmtF(c.fechaValoracion)].filter(Boolean).join(" · ")))
+     +fila("Pide",c.precioPropietario?esc(eur(c.precioPropietario)):"")
+     +fila("Nota simple",tx(c.notaSimple))+fila("Buscado en",lista(c.buscadoEn))
+     +fila("Vivienda",tx(r?viv({...r.u,...(S.censoEd[c.censoId]||{})}):""))
+     +fila("Necesita a Stiwhar",c.necesitaSti?tx(c.notaSti||"Sí"):"")
+     +(c.notas?`<div class="sm-f sm-n"><span class="sm-l">Notas</span><span class="sm-v">${esc(c.notas)}</span></div>`:"");
+    H=c.historial}
+  else{const r=buscarViv(x.id);if(!r)return "";const u={...r.u,...(S.censoEd[x.id]||{})};
+    F=fila((u.titulares||[]).length?"Propietarios":"Propietario",props([{nombre:u.prop,telefono:u.tel},...(u.titulares||[])]))
+     +fila("Quién abre",tx(u.abre))+fila("Vivienda",tx([viv(u),r.u.rc&&"RC "+r.u.rc].filter(Boolean).join(" · ")))
+     +fila("Localizado",tx(u.loc))+fila("Último contacto",tx([u.ult,u.tipo].filter(Boolean).join(" · ")))
+     +fila("Valorada",tx(u.val))+fila("Nota simple",tx(u.notaSimple))+fila("Zona",tx(r.zona))
+     +(u.com?`<div class="sm-f sm-n"><span class="sm-l">Comentarios</span><span class="sm-v">${esc(u.com)}</span></div>`:"");
+    H=u.historial}
+  nH=(H||[]).filter(h=>h&&(h.n||h.alta||(h.c||[]).length)).length;
+  return `<details class="ses-mas"${S.ses&&S.ses.mas?" open":""}><summary>Ver toda la info${nH?` · ${nH} en el historial`:""}</summary><div class="sm-c">${F}<div class="sm-hl">Historial</div>${hist(H)}</div></details>`}
 async function sesAccion(k,b){const Ss=S.ses,w=$("#dlgSes");if(k==="cerrar"){w.hidden=true;render();return}const x=Ss&&Ss.cola[0];if(!x)return;
   const nota=($("#ses-nota")?.value||"").trim(),fuera=()=>{Ss.fuera.push(x.id);Ss.cola.shift()};
   if(k==="saltar"){fuera();return pintarSesion()}
