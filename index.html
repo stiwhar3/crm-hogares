@@ -1106,7 +1106,7 @@ function rowContacto(c){
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
     <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
     <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
-    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${etiquetasNoticia(c)}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${etiquetasNoticia(c)}${(u=>u?`<span class="pill acc" role="link" tabindex="0" data-anuncio="${esc(u)}" style="cursor:pointer;text-decoration:underline">Ver anuncio ↗</span>`:"")(urlAnuncio(c))}</span>
   </button>`;
 }
 function rowEncargo(e){
@@ -2848,6 +2848,8 @@ document.addEventListener("click",e=>{if(e.target.id==="c-mapa"){S.cf.mapa=!S.cf
     if(L.length>40&&!e.target.dataset.sure){e.target.dataset.sure=1;e.target.textContent=`Son ${L.length} portales. Pulsa otra vez`;return}
     imprimirTaratura(L);return}});
 $("#btn-new").addEventListener("click",()=>abrir({encargos:"encargos",operaciones:"operaciones",captaciones:"captaciones",compradores:"compradores"}[S.view]||(esCoord()?"compradores":"contactos")));
+/* «Ver anuncio» dentro de una fila: abre idealista sin abrir la ficha */
+document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("[data-anuncio]");if(!a)return;e.preventDefault();e.stopPropagation();window.open(a.dataset.anuncio,"_blank","noopener")},true);
 $("#frm").addEventListener("click",e=>{const r=e.target.closest("[data-open]");if(!r)return;e.preventDefault();e.stopPropagation();const c=r.dataset.open,i=r.dataset.id;$("#dlg").close();setTimeout(()=>abrir(c,i),150)},true);
 $("#view").addEventListener("click",e=>{const n=e.target.closest("[data-nuevo]");if(n){if(n.dataset.tipo)abrirNuevo(n.dataset.nuevo,avisoPre(n.dataset.tipo));else abrir(n.dataset.nuevo);return}const be=e.target.closest("[data-best]");if(be){S.bf.estado=be.dataset.best;render()}});
 const URL_FORM_COMP="https://stiwhar3.github.io/crm-hogares/alta.html";
