@@ -1549,6 +1549,9 @@ const avisoPre=tipo=>tipo==="Crear ficha de comprador"?{tipo,para:"Daniel y Stiw
 const misAvisos=()=>{const yo=S.yo&&S.yo.nombre;if(!yo)return[];return S.avisos.filter(a=>!a.hecho&&a.tipo!=="Compradores para llamar"&&a.tipo!=="Recordatorio"&&(a.para===yo||(a.cc||[]).includes(yo))).sort((a,b)=>String(b.creado||"").localeCompare(String(a.creado||"")))};
 async function enviarAviso(a){const yo=S.yo?S.yo.nombre:"";if(!a.para||a.para===yo)return null;
   return guardar("avisos",null,{...a,de:yo,hecho:""},"Aviso de "+(yo||"la oficina")+" para "+a.para+".")}
+/* Enlace al anuncio de idealista: del campo idealistaUrl o, si falta, el primero que aparezca en las notas */
+function urlAnuncio(d){const u=String(d&&d.idealistaUrl||"").trim();if(/^https:\/\/www\.idealista\.com\/inmueble\/\d+\/?$/.test(u))return u;const m=String(d&&d.notas||"").match(/https:\/\/www\.idealista\.com\/inmueble\/\d+\//);return m?m[0]:""}
+function btnAnuncio(d){const u=urlAnuncio(d);return u?`<a class="btn small" style="text-decoration:none" href="${esc(u)}" target="_blank" rel="noopener">Ver anuncio en idealista ↗</a>`:""}
 function rowAviso(a){const c=a.compradorId&&S.compradores.find(x=>x.id===a.compradorId),tel=a.telefono||(c&&c.telefono)||"";
   const cuando=a.creado?new Date(a.creado).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
   const abrirB=a.col==="contactos"&&a.refId&&S.contactos.find(x=>x.id===a.refId)?`<button class="btn small" type="button" data-open="contactos" data-id="${esc(a.refId)}">Abrir la noticia</button>`
@@ -2357,7 +2360,7 @@ function organizarFicha(col,id,d){const P=PEST[col],db=$("#frm .db");if(!P||!id|
     /* La nota, lo primero de la ficha */
     const nt=panes[0].querySelector("#fld-nuevaNota")?.closest("label");if(nt)panes[0].prepend(nt)}
   const [tit,sub]=resumenFicha(col,d),dh=$("#frm .dh");
-  dh.classList.add("fres");dh.innerHTML=`<span class="ft">${esc(tit||"Sin nombre")}</span><span class="fs">${sub.filter(Boolean).join(" · ").replace(/<\/span> · /,"</span> ")}${wa?wa.innerHTML:""}</span>`;
+  dh.classList.add("fres");dh.innerHTML=`<span class="ft">${esc(tit||"Sin nombre")}</span><span class="fs">${sub.filter(Boolean).join(" · ").replace(/<\/span> · /,"</span> ")}${wa?wa.innerHTML:""}${col==="contactos"?btnAnuncio(d):""}</span>`;
   const cuenta=p=>{const n=p.querySelectorAll(".list>.row").length;return p.querySelector("#fusbox")?'<span class="n av">!</span>':n?`<span class="n">${n}</span>`:""};
   const bar=document.createElement("div");bar.className="ftabs";bar.setAttribute("role","tablist");
   bar.innerHTML=T.map(([k,t],i)=>`<button type="button" role="tab" data-ftab="${k}">${t}${cuenta(panes[i])}</button>`).join("");
