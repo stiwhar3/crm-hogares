@@ -1588,8 +1588,8 @@ function fvObligatorias(e){const viv=claseEnc(e)==="Vivienda",n=Math.min(4,Math.
   L.push("fvConstruidos","fvValoracion","fvExpectativa");return L}
 function fvFaltan(e,cidForm){const A=fvAuto(e,cidForm);return fvObligatorias(e).filter(k=>!fvVal(e,A,k).trim())}
 const FV_DESDE="2026-11-07",FV_COLS=["encargos","contactos"];
-/* Se pide en los encargos activos o reservados (los nuevos y los que ya había) */
-const fvPedir=e=>fvEsNot(e)?e.etapa==="Valorada"&&(e.fechaValoracion||"")>=FV_DESDE&&fvFaltan(e).length>0:(e.estado==="Activo"||e.estado==="Reservado")&&fvFaltan(e).length>0;
+/* Se pide en los encargos activos o reservados y en las noticias valoradas desde hoy o ya rellenadas con su informe (fvPedida) */
+const fvPedir=e=>fvEsNot(e)?e.etapa==="Valorada"&&((e.fechaValoracion||"")>=FV_DESDE||!!e.fvPedida)&&fvFaltan(e).length>0:(e.estado==="Activo"||e.estado==="Reservado")&&fvFaltan(e).length>0;
 const fvLabel=k=>{const f=FV_CAMPOS.find(x=>x[0]===k);return f?f[1]:k};
 function fichaValHTML(){const e=TIT_D||{},A=fvAuto(e),{cid,r}=fvViv(e),noti=fvEsNot(e);
   const inp=([k,l,t,o])=>{const v=fvVal(e,A,k),au=!(e[k]!=null&&String(e[k]).trim()!=="")&&!!A[k];o=o||{};
