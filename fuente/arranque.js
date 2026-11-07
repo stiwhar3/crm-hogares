@@ -55,6 +55,7 @@ const dbSupabase={collection:coleccion,doc:documento};
 /* ---------- quién soy ---------- */
 window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=await sb.functions.invoke("leer-buzon",{body:{imagen}});if(r.error){let m=r.error.message;try{const j=await r.error.context.json();m=j.error||m}catch(_){}return {error:m}}return r};
 window.asesorNoticia=async id=>{const {data,error}=await sb.rpc("asesor_de_noticia",{p_id:id});if(error)throw fallo(error);return data||""};
+window.agendaEquipo=async(d,h)=>{const {data,error}=await sb.rpc("agenda_equipo",{p_desde:d,p_hasta:h});if(error)throw fallo(error);return data||[]};
 window.compradoresCruce=async()=>{const {data,error}=await sb.rpc("cruce_compradores");if(error)throw fallo(error);return data||[]};
 window.apuntarLlamadaComp=async(id,piso,dir,res)=>{const {error}=await sb.rpc("apuntar_llamada_comprador",{p_id:id,p_piso:piso,p_dir:dir,p_res:res});if(error)throw fallo(error)};
 window.buscarVivienda=async(calle,num)=>{const {data,error}=await sb.rpc("buscar_vivienda",{p_calle:calle,p_num:num||""});if(error)throw fallo(error);return data||[]};

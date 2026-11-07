@@ -793,8 +793,17 @@ const visitasEntre=(desde,hasta,asesor)=>S.visitas.filter(v=>v.fecha&&v.fecha>=d
 const colorAsesor=n=>{const a=(S.ajustes.asesores||[]).find(x=>x.nombre===n);return (a&&ZONAS[a.zona])||(n==="Stiwhar"?ZONAS.ROJA:"var(--muted)")};
 const DIAS_AG=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 function agLunes(off){const d=new Date(hoyISO()+"T12:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7)+7*(off||0));return iso(d)}
+/* «Que todos puedan verse entre ellos» (Stiwhar, 07/11/2026): los asesores piden al servidor las visitas y valoraciones del resto del equipo
+   (sin teléfonos ni notas). Se guarda por semana y se refresca cada 2 minutos mientras se mira la agenda. */
+function agEquipo(desde,hasta){if(veTodo()||!window.agendaEquipo)return[];const k=desde+"|"+hasta,E=S.agEq||(S.agEq={});
+  if(E.k!==k||Date.now()-(E.t||0)>120000){if(E.k!==k)E.rows=[];E.k=k;E.t=Date.now();
+    window.agendaEquipo(desde,hasta).then(r=>{if(E.k!==k)return;E.rows=r;if(S.view==="hoy"&&!$("#dlg").open)render()}).catch(()=>{E.t=0})}
+  return E.rows||[]}
 function agCitas(desde,hasta,quien){
   const out=[],yo=S.yo&&S.yo.nombre;
+  for(const x of agEquipo(desde,hasta))if(x.asesor!==yo&&(!quien||x.asesor===quien)&&x.fecha>=desde&&x.fecha<=hasta)
+    out.push(x.tipo==="visita"?{f:x.fecha,h:x.hora||"",tipo:"Visita",t:x.direccion||"",s:x.nombre||"",as:x.asesor||"",canc:!!x.cancelada}
+      :{f:x.fecha,h:"",tipo:x.etapa==="Valoración agendada"?"Valoración":"Valorada",t:x.direccion||"",s:x.nombre||"",as:x.asesor||""});
   for(const v of visitasEntre(desde,hasta,quien)){const n=v.compradorNombre||(S.compradores.find(c=>c.id===v.compradorId)||{}).nombre||"";
     out.push({f:v.fecha,h:v.hora||"",tipo:"Visita",t:v.direccion||"",s:[n,v.telComprador].filter(Boolean).join(" · "),as:v.asesor||"",col:"visitas",id:v.id,canc:!!v.cancelada})}
   for(const c of S.contactos)if(c.fechaValoracion&&c.fechaValoracion>=desde&&c.fechaValoracion<=hasta&&c.etapa!=="KO"&&(!quien||c.asesor===quien))
@@ -804,13 +813,13 @@ function agCitas(desde,hasta,quien){
   return out.sort((a,b)=>(a.f+(a.h||"99")).localeCompare(b.f+(b.h||"99")))}
 function vAgenda(){
   const yo=S.yo&&S.yo.nombre,todo=veTodo(),hoy=hoyISO(),off=S.agSem||0;
-  const quien=todo?(S.agAs||""):yo,l=agLunes(off),dom=dias2(l,6);
+  const quien=S.agAs!==undefined?S.agAs:(todo?"":yo),l=agLunes(off),dom=dias2(l,6);
   const C=agCitas(l,dom,quien);
   /* Próximos pasos de noticias: solo de una persona (con «Todos» serían demasiados), de hoy en adelante */
   const P=quien?S.contactos.filter(c=>c.asesor===quien&&c.proxFecha&&c.proxFecha>=hoy&&c.proxFecha>=l&&c.proxFecha<=dom&&c.etapa!=="KO"&&c.etapa!=="Encargo"):[];
-  const ases=[...new Set([...(S.ajustes.asesores||[]).map(a=>a.nombre),...S.visitas.filter(v=>v.fecha>=l&&v.fecha<=dom).map(v=>v.asesor)].filter(Boolean))];
+  const ases=[...new Set([...(S.ajustes.asesores||[]).map(a=>a.nombre),...S.visitas.filter(v=>v.fecha>=l&&v.fecha<=dom).map(v=>v.asesor),...agEquipo(l,dom).map(x=>x.asesor)].filter(Boolean))];
   const fd=f=>new Date(f+"T12:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"});
-  const cita=x=>`<button type="button" class="ag-c${x.canc?" canc":""}${x.rec?" rec":""}" style="--c:${x.canc?"#9a9a9a":colorAsesor(x.as)}" ${x.col&&x.id?`data-open="${esc(x.col)}" data-id="${esc(x.id)}"`:""}><span class="ag-h">${x.h?esc(x.h):"Día"}</span><span class="ag-b"><b>${esc(x.canc?"Visita cancelada":x.tipo)}</b> · ${esc(x.t)}${x.s?`<small>${esc(x.s)}</small>`:""}${todo&&!quien&&x.as?`<small class="ag-as">${esc(x.as)}</small>`:""}</span></button>`;
+  const cita=x=>`<button type="button" class="ag-c${x.canc?" canc":""}${x.rec?" rec":""}" style="--c:${x.canc?"#9a9a9a":colorAsesor(x.as)}" ${x.col&&x.id?`data-open="${esc(x.col)}" data-id="${esc(x.id)}"`:""}><span class="ag-h">${x.h?esc(x.h):"Día"}</span><span class="ag-b"><b>${esc(x.canc?"Visita cancelada":x.tipo)}</b> · ${esc(x.t)}${x.s?`<small>${esc(x.s)}</small>`:""}${!quien&&x.as?`<small class="ag-as">${esc(x.as)}</small>`:""}</span></button>`;
   const dias=[0,1,2,3,4,5,6].map(i=>{const f=dias2(l,i),L=C.filter(x=>x.f===f),PP=P.filter(c=>c.proxFecha===f);
     return `<div class="ag-d${f===hoy?" hoy":""}${f<hoy?" pas":""}"><div class="ag-dh"><span>${DIAS_AG[i]}</span> <span class="ag-n">${fd(f)}</span>${f===hoy?` <span class="pill acc">Hoy</span>`:""}</div>
       ${L.map(cita).join("")||(PP.length?"":`<div class="ag-v">Sin citas</div>`)}
@@ -820,7 +829,7 @@ function vAgenda(){
   const id=S.ajustes.calendarioId;
   return `<section class="agenda">
     <div class="ag-top"><button class="btn small" type="button" data-agsem="-1" aria-label="Semana anterior">‹</button><div class="ag-t"><b>${tit}</b><span>${fd(l)} – ${fd(dom)} · ${nV} visita${nV===1?"":"s"}${nVal?` · ${nVal} valoraci${nVal===1?"ón":"ones"}`:""}</span></div><button class="btn small" type="button" data-agsem="1" aria-label="Semana siguiente">›</button>${off?`<button class="btn small" type="button" data-agsem="0">Hoy</button>`:""}</div>
-    ${todo?`<div class="chips ag-as">${[["","Todos"],...ases.map(a=>[a,a])].map(([v,t])=>`<button class="chip" type="button" data-agas="${esc(v)}" aria-pressed="${quien===v}">${v?`<i style="background:${colorAsesor(v)}"></i>`:""}${esc(t)}</button>`).join("")}</div>`:""}
+    ${ases.length>1||todo?`<div class="chips ag-as">${[["","Todos"],...ases.map(a=>[a,a])].map(([v,t])=>`<button class="chip" type="button" data-agas="${esc(v)}" aria-pressed="${quien===v}">${v?`<i style="background:${colorAsesor(v)}"></i>`:""}${esc(t)}</button>`).join("")}</div>`:""}
     <div class="ag-sem">${dias}</div>
     <div class="tools" style="margin-top:8px"><span style="color:var(--muted);font-size:12px">Las visitas con hora del CRM pasan solas al Google Calendar de la oficina, con el color de cada asesor.</span>${id?`<a class="btn small" href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(id)}" target="_blank" rel="noopener">Abrir Google Calendar</a>`:""}</div></section>`;
 }
