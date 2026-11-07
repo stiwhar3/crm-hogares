@@ -577,7 +577,7 @@ function datosCamino(){const A=S.ajustes,hoy=hoyISO(),d180=dias2(hoy,-180),d365=
   return {objA,anio,hMed,h,T,N,U,nAs,llevamos,need:{op,enc,val,not},fact12}}
 function prevision(){const opsV=S.operaciones.filter(o=>o.estado!=="Caída"&&!facturada(o)),k=t=>claveDir(t).slice(0,14),usadas=new Set(),L=[],hm=datosCamino().h;
   for(const o of opsV){usadas.add(o.id);const p=o.estado==="Arras"?PROB_PREV.arras:o.estado==="Reserva"?PROB_PREV.reserva:PROB_PREV.opOtra;L.push({t:o.estado==="Arras"?"Arras sin aceptar":o.estado==="Reserva"?"Reservas":"Otras operaciones abiertas",h:+o.honorarios||hm,p,enc:opEncargo(o)})}
-  const conOp=new Set(L.map(x=>x.enc&&x.enc.id).filter(Boolean));
+  const conOp=new Set([...L.map(x=>x.enc&&x.enc.id),...S.operaciones.filter(o=>facturada(o)).map(o=>o.encargoId||o.encId)].filter(Boolean)); /* también las ya facturadas con su encargo enlazado: no vuelve a contar */
   for(const e of S.encargos){if(conOp.has(e.id))continue;const h=+e.honorarioPrevisto||hm;
     if(e.estado==="Reservado")L.push({t:"Encargos reservados",h,p:PROB_PREV.reservado});
     else if(e.estado==="Activo")L.push(e.exclusiva==="Sí"?{t:"Encargos activos en exclusiva",h,p:PROB_PREV.activoExcl}:{t:"Encargos activos sin exclusiva",h,p:PROB_PREV.activo})}
@@ -591,7 +591,7 @@ const PREV_DIAS={arras:15,reserva:30,reservado:30,activoMin:30,activoFin:180};
 const ymAdd=(ym,i)=>{const d=new Date(ym+"-01T12:00:00");d.setMonth(d.getMonth()+i);return iso(d).slice(0,7)};
 function previsionMeses(){const hoy=hoyISO(),hm=datosCamino().h,L=[],conOp=new Set(),ym=f=>String(f).slice(0,7);
   const uno=(f)=>({[ym(f)]:1}),tramo=(a,b)=>{const m={},M=[];for(let x=ym(a);x<=ym(b);x=ymAdd(x,1))M.push(x);M.forEach(x=>m[x]=1/M.length);return m};
-  for(const o of S.operaciones){if(o.estado==="Caída"||facturada(o))continue;const e=opEncargo(o);if(e)conOp.add(e.id);
+  for(const o of S.operaciones){if(o.estado==="Caída")continue;if(facturada(o)){if(o.encargoId||o.encId)conOp.add(o.encargoId||o.encId);continue}const e=opEncargo(o);if(e)conOp.add(e.id);
     const ar=o.estado==="Arras",re=o.estado==="Reserva";
     L.push({as:o.asesor||(e&&e.asesor)||"Sin asesor",h:+o.honorarios||hm,p:ar?PROB_PREV.arras:re?PROB_PREV.reserva:PROB_PREV.opOtra,seg:1,m:uno(dias2(hoy,ar?PREV_DIAS.arras:PREV_DIAS.reserva))})}
   for(const e of S.encargos){if(conOp.has(e.id))continue;const h=+e.honorarioPrevisto||hm,as=e.asesor||"Sin asesor";
