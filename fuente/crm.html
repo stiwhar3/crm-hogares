@@ -1528,6 +1528,36 @@ function rowComp(c){const p=pasoComp(c),n=compActivo(c)?S.encargos.filter(e=>enc
     <span class="t">${esc(c.nombre||"")}${c.telefono?` · <span style="font-weight:500">${esc(c.telefono)}</span>`:""}</span><span class="r">${c.precioMax?"hasta "+eur(c.precioMax):""}</span>
     <span class="m">${prioComp(c)?`<span class="pill ok">Finanhogar · prioridad 1</span>`:""}<span class="pill ${estCls(c.estado)}">${esc(c.estado||"")}</span>${buscaEn(c).slice(0,3).map(b=>`<span>${esc(b)}</span>`).join("")}${buscaEn(c).length>3?`<span>+${buscaEn(c).length-3}</span>`:""}${c.habMin?`<span>${esc(c.habMin)}+ hab.</span>`:""}${c.financiacion?`<span>${esc(c.financiacion)}</span>`:""}${n?`<span class="pill ok">${n} encaja${n>1?"n":""}</span>`:""}${p&&p.txt?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:""}</span>
   </button>`}
+/* Ventana con tus visitas al entrar (Stiwhar, 07/11/2026: «que a Mery le salte cuando entre al CRM una ventana con sus visitas»).
+   Sale una vez al abrir el CRM, cuando ya han llegado visitas y encargos. Solo si tiene visitas de hoy o de los próximos días.
+   Para quién: Ajustes › general.ventanaVisitas (lista de nombres); si no está, solo Mery. */
+const VISENT_DIAS=7;
+function visitasEntrada(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const hoy=hoyISO(),fin=masDias(VISENT_DIAS);
+  const encYo=new Set(S.encargos.filter(e=>e.asesor===yo).map(e=>e.id));
+  return S.visitas.filter(v=>!v.cancelada&&v.fecha&&v.fecha>=hoy&&v.fecha<=fin&&(v.asesor===yo||(!v.asesor&&encYo.has(v.encargoId))))
+    .sort((a,b)=>(a.fecha+(a.hora||"99")).localeCompare(b.fecha+(b.hora||"99")))}
+function pintarVisitasEntrada(L){let w=$("#dlgVisEnt");
+  if(!w){w=document.createElement("div");w.id="dlgVisEnt";w.className="modal vpop";w.setAttribute("role","dialog");w.setAttribute("aria-modal","true");w.hidden=true;
+    w.innerHTML='<style>.modal.vpop{padding:16px!important;align-items:center!important}.modal.vpop form{width:min(520px,100%)!important;height:auto!important;max-height:86dvh!important;border-radius:20px!important}.modal.vpop .db{display:block;padding:6px 18px 10px}.modal.vpop .dh{position:relative;padding-right:56px;border-bottom:0}.vpop .vd{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}.vpop .vd:first-child{margin-top:4px}.vpop .row{margin-bottom:6px}.vpop .vs{font-size:14px;color:var(--muted);font-family:var(--body,inherit);font-weight:400;margin-top:2px}</style><form id="frmVisEnt" novalidate></form>';
+    document.body.appendChild(w);
+    w.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;const x=e.target.closest("[data-ve]");if(x){e.preventDefault();w.hidden=true;return}
+      const r=e.target.closest("[data-open]");if(r){e.preventDefault();w.hidden=true;abrir(r.dataset.open,r.dataset.id)}});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!w.hidden){e.stopPropagation();w.hidden=true}},true)}
+  const hoy=hoyISO(),man=masDias(1),nom=v=>{const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);return (c&&c.nombre)||v.compradorNombre||"Comprador"},
+    tel=v=>{const c=v.compradorId&&S.compradores.find(x=>x.id===v.compradorId);return (c&&c.telefono)||v.telComprador||""},
+    dia=f=>f===hoy?"Hoy":f===man?"Mañana":new Date(f+"T12:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"}),
+    nHoy=L.filter(v=>v.fecha===hoy).length,G=[];
+  for(const v of L){const g=G[G.length-1];if(g&&g.f===v.fecha)g.L.push(v);else G.push({f:v.fecha,L:[v]})}
+  const row=v=>{const t=tel(v),tl=String(t).replace(/[^\d+]/g,"");return `<div class="row" data-open="visitas" data-id="${esc(v.id)}" style="cursor:pointer">
+    <span class="t">${v.hora?`<b>${esc(v.hora)}</b> · `:""}${esc(v.direccion||"")}</span><span class="r"></span>
+    <span class="m"><span style="font-weight:600;color:var(--fg)">${esc(nom(v))}</span>${t?`<a class="pill acc" href="tel:${esc(tl)}">📞 ${esc(t)}</a><a class="pill ok" href="https://wa.me/${esc(waNum(t))}" target="_blank" rel="noopener">WhatsApp</a>`:""}</span></div>`};
+  $("#frmVisEnt").innerHTML=`<div class="dh">Tus visitas, ${esc(S.yo.nombre)}<div class="vs">${nHoy?`Hoy tienes ${nHoy} visita${nHoy>1?"s":""}`:"Hoy no tienes visitas"}${L.length>nHoy?` · ${L.length-nHoy} en los próximos días`:""}</div><button type="button" class="dx" data-ve="x" aria-label="Cerrar" title="Cerrar">×</button></div>
+    <div class="db">${G.map(g=>`<div class="vd">${esc(dia(g.f))}</div>${g.L.map(row).join("")}`).join("")}</div>
+    <div class="df"><span class="pg-m" style="align-self:center">Toca una visita para ver la ficha.</span><button class="btn primary" type="button" data-ve="ok">Entendido</button></div>`;
+  w.hidden=false}
+window.avisoVisitasEntrada=function(){if(!S.visEntPend||!S.yo||!S.cargado||!S.cargado.visitas||!S.cargado.encargos||$("#dlg").open)return;
+  const para=Array.isArray(S.ajustes.ventanaVisitas)?S.ajustes.ventanaVisitas:["Mery"];S.visEntPend=false;
+  if(!para.includes(S.yo.nombre))return;const L=visitasEntrada();if(L.length)pintarVisitasEntrada(L)};
 function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnviado&&!v.cancelada;
   if(v.cancelada)return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}" style="opacity:.5;filter:grayscale(1)"><span class="t" style="text-decoration:line-through">${esc(v.direccion||"")}${v.compradorNombre?` · ${esc(v.compradorNombre)}`:""}</span><span class="r">${fmtF(v.fecha)}${v.hora?" "+esc(v.hora):""}</span><span class="m"><span>${esc(v.asesor||"")}</span><span class="pill">Cancelada</span></span></button>`;
   return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}">
