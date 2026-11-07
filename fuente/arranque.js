@@ -57,6 +57,8 @@ window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=a
 window.asesorNoticia=async id=>{const {data,error}=await sb.rpc("asesor_de_noticia",{p_id:id});if(error)throw fallo(error);return data||""};
 window.agendaEquipo=async(d,h)=>{const {data,error}=await sb.rpc("agenda_equipo",{p_desde:d,p_hasta:h});if(error)throw fallo(error);return data||[]};
 window.compradoresCruce=async()=>{const {data,error}=await sb.rpc("cruce_compradores");if(error)throw fallo(error);return data||[]};
+window.inversoresAlq=async()=>{const {data,error}=await sb.rpc("inversores_alquiler");if(error)throw fallo(error);return data||[]};
+window.apuntarAlq=async(id,resp,vence,nota)=>{const {error}=await sb.rpc("apuntar_alquiler",{p_id:id,p_resp:resp||"",p_vence:vence||"",p_nota:nota||""});if(error)throw fallo(error)};
 window.apuntarLlamadaComp=async(id,piso,dir,res)=>{const {error}=await sb.rpc("apuntar_llamada_comprador",{p_id:id,p_piso:piso,p_dir:dir,p_res:res});if(error)throw fallo(error)};
 window.buscarVivienda=async(calle,num)=>{const {data,error}=await sb.rpc("buscar_vivienda",{p_calle:calle,p_num:num||""});if(error)throw fallo(error);return data||[]};
 window.importarCaptaciones=async filas=>{const t={nuevas:0,sumadas:0,repetidas:0,sinDireccion:0};for(let i=0;i<filas.length;i+=200){const {data,error}=await sb.rpc("importar_captaciones",{filas:filas.slice(i,i+200)});if(error)throw fallo(error);for(const k in t)t[k]+=data[k]||0}return t};

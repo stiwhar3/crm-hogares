@@ -639,8 +639,10 @@ function alqCalc(c,hoy=hoyISO()){if(!c||!c.alquilada)return null;const ini=c.alq
   return {ini,fin,aviso,meses:m,tipo,renov,dFin:dias(hoy,fin),dAviso:dias(hoy,aviso)}}
 const alqClave=a=>a?(a.agot?"agotado":a.fin||""):"";
 const alqRespondida=(c,a)=>ALQ_CIERRA.includes(c.alqRespuesta)&&c.alqRespVence===alqClave(a);
+/* Stiwhar (07/11): el aviso le sale solo a Daniel. Él no lee las noticias: las alquiladas le llegan por la función inversores_alquiler(). */
+function alqFuente(){if(!esCoord())return S.contactos;if(S.alqCoord===undefined&&window.inversoresAlq&&!alqFuente.pide){alqFuente.pide=1;window.inversoresAlq().then(L=>{S.alqCoord=L||[];alqFuente.pide=0;render()}).catch(e=>{console.error("inversores",e);S.alqCoord=[];alqFuente.pide=0})}return S.alqCoord||[]}
 function alqPendientes(){const hoy=hoyISO(),lim=masMeses(hoy,alqMeses()),L=[];
-  for(const c of S.contactos){if(!c.alquilada||c.etapa==="KO"||c.etapa==="Encargo"||c.vendida)continue;const a=alqCalc(c,hoy);if(!a||a.sinDatos||alqRespondida(c,a))continue;
+  for(const c of alqFuente()){if(!c.alquilada||c.etapa==="KO"||c.etapa==="Encargo"||c.vendida)continue;const a=alqCalc(c,hoy);if(!a||a.sinDatos||alqRespondida(c,a))continue;
     if(a.agot||a.fin<=lim)L.push({c,a,k:a.agot?masDias(45):a.aviso<hoy?a.fin:a.aviso})}
   return L.sort((x,y)=>x.k.localeCompare(y.k))}
 function alqPill(a){if(a.sinDatos)return ["warn","Faltan las fechas del contrato"];if(a.agot)return ["warn","Contrato antiguo agotado"];
@@ -648,22 +650,37 @@ function alqPill(a){if(a.sinDatos)return ["warn","Faltan las fechas del contrato
   return [a.dAviso<=120?"warn":"",`Vence el ${fmtFA(a.fin)}`]}
 function rowAlq(o){const c=o.c,a=o.a,[cls,txt]=alqPill(a);
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}" data-pest="alq"><span class="t">${esc(c.direccion||"")}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span><span class="r"><span class="pill ${cls}">${esc(txt)}</span></span><span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span>${c.alqRenta?`<span>${eur0(c.alqRenta)}/mes</span>`:""}${a.agot?"":`<span>aviso límite ${fmtFA(a.aviso)}</span>`}${c.alqRespuesta?`<span class="pill acc">${esc(c.alqRespuesta)}</span>`:""}${c.telefono?"":`<span class="pill warn">Sin teléfono</span>`}</span></button>`}
+const ALQ_AB=new Set();
+function rowAlqCoord(o){const c=o.c,a=o.a,[cls,txt]=alqPill(a),g=alqGuion(c,a),T=[{nombre:c.nombre,telefono:c.telefono},...(c.titulares||[])].filter(t=>t.telefono),LL=(c.alqLlamadas||[]).slice(-3).reverse();
+  return `<details class="ped" data-alqd="${esc(c.id)}"${ALQ_AB.has(c.id)?" open":""} style="border:1px solid var(--line);border-radius:12px;margin:0 0 8px;background:var(--surface)">
+  <summary style="cursor:pointer;padding:10px 12px;display:flex;gap:6px 8px;align-items:center;flex-wrap:wrap;list-style:none"><b style="flex:1 1 170px">${esc(c.direccion||"")}${c.nombre?` <span style="font-weight:500">· ${esc(c.nombre)}</span>`:""}</b><span class="pill ${cls}">${esc(txt)}</span>${c.alqRespuesta?`<span class="pill acc">${esc(c.alqRespuesta)}</span>`:""}<span style="font-size:12px;color:var(--muted)">${zona(c.zona)} ${esc(c.asesor||"Sin asesor")}${c.alqRenta?" · "+eur0(c.alqRenta)+"/mes":""} ▾</span></summary>
+  <div style="padding:0 12px 12px"><div class="vb-s">${esc(g.det)}</div>${g.guion?`<div class="vb-s" style="margin-top:6px"><b>Qué decirle:</b> ${esc(g.guion)}</div>`:""}${c.alqInquilino?`<div class="vb-s">Inquilino: ${esc(c.alqInquilino)}</div>`:""}
+  <div class="tools" style="margin-top:8px">${T.length?T.map(t=>`<a class="btn small primary" href="tel:${esc(String(t.telefono).replace(/\s/g,""))}">📞 ${esc(t.nombre||"")} ${esc(t.telefono)}</a>${waURL(t.telefono,"")?`<a class="btn small" target="_blank" rel="noopener" href="${esc(waURL(t.telefono,""))}">WhatsApp</a>`:""}`).join(""):`<span class="pill warn">Sin teléfono: búscalo en Tecnofind o Inglobaly, o pídeselo a ${esc(c.asesor||"Stiwhar")}</span>`}</div>
+  ${LL.length?`<div class="vb-s" style="margin-top:6px">${LL.map(l=>`${fmtFH(l.f)} · ${esc(l.quien||"")}: ${esc(l.res||"sin respuesta")}${l.nota?" · "+esc(l.nota):""}`).join("<br>")}</div>`:""}
+  <div class="rec-f" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><select data-alqres style="flex:0 0 200px;font:inherit;padding:6px 8px">${ALQ_RESP.map(x=>`<option value="${esc(x)}"${x===(c.alqRespuesta||"")?" selected":""}>${esc(x||"¿Qué ha dicho?")}</option>`).join("")}</select><input data-alqnota type="text" placeholder="Nota de la llamada (opcional)" style="flex:1 1 200px;font:inherit;padding:6px 8px"><button class="btn small primary" type="button" data-alqsave="${esc(c.id)}">Apuntar</button></div>
+  <div class="vb-s" style="margin-top:4px">Se apunta en el historial de la noticia: ${esc(c.asesor||"el asesor")} lo verá. Si quiere vender, avisa a ${esc(c.asesor||"Stiwhar")} para la valoración.</div></div></details>`}
+document.addEventListener("toggle",e=>{const d=e.target;if(!d.dataset||!d.dataset.alqd)return;if(d.open)ALQ_AB.add(d.dataset.alqd);else ALQ_AB.delete(d.dataset.alqd)},true);
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-alqsave]");if(!b)return;e.preventDefault();const id=b.dataset.alqsave,box=b.closest("details"),res=box.querySelector("[data-alqres]").value,nota=box.querySelector("[data-alqnota]").value.trim();
+  if(!res&&!nota)return toast("Elige qué ha dicho o escribe una nota");const c=(S.alqCoord||[]).find(x=>x.id===id);if(!c||!window.apuntarAlq)return;
+  b.disabled=true;try{await window.apuntarAlq(id,res,res?alqClave(alqCalc(c)):"",nota);c.alqRespuesta=res;c.alqRespVence=res?alqClave(alqCalc(c)):"";(c.alqLlamadas=c.alqLlamadas||[]).push({f:new Date().toISOString(),quien:S.yo.nombre,res,nota});toast(ALQ_CIERRA.includes(res)?"Apuntado: sale de la lista hasta el próximo vencimiento":"Apuntado");render()}catch(err){b.disabled=false;toast("No se ha guardado: "+(err.message||err))}});
 function bloqueAlq(){const L=alqPendientes();
   return {k:"alq",t:"Inversores: se acaba su alquiler",n:L.length,tono:L.some(o=>alqPill(o.a)[0]==="bad")?"bad":"warn",
-    nota:`Pisos que alquilamos y cuyo contrato vence en menos de ${alqMeses()} meses, o contratos antiguos ya agotados. Llama al propietario antes del aviso límite y ofrécele vender: con la nueva ley, si no avisa por burofax el contrato se renueva solo 5 años y recuperar el piso le costará una indemnización. Apunta lo que te diga en la pestaña «Alquiler» de la ficha.`,
-    html:hoyLista("alq",L,rowAlq,"")}}
+    nota:`Pisos que alquilamos y cuyo contrato vence en menos de ${alqMeses()} meses, o contratos antiguos ya agotados. Llama al propietario antes del aviso límite y ofrécele vender: con la nueva ley, si no avisa por burofax el contrato se renueva solo 5 años y recuperar el piso le costará una indemnización. Apunta lo que te diga: queda en la noticia del asesor.`,
+    html:(S.hoyMas.alq?L:L.slice(0,5)).map(rowAlqCoord).join("")+(L.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="alq">${S.hoyMas.alq?"Ver menos":`Ver ${L.length-5} más`}</button></div>`:"")}}
 function alqAntesGuardar(data){if(data.alqRespuesta===undefined)return;const old=(cur&&cur.id&&anterior("contactos",cur.id))||{};
   if((data.alqRespuesta||"")!==(old.alqRespuesta||"")||(data.alqRespuesta&&!old.alqRespVence))data.alqRespVence=data.alqRespuesta?alqClave(alqCalc({...old,...data})):""}
 function pintarAlq(col,id,d){$("#alqbox")?.remove();if(col!=="contactos"||!id||!d||!d.alquilada)return;const p=$('#frm .fpane[data-pane="alq"]');if(!p)return;
   const a=alqCalc(d)||{sinDatos:true},[cls,txt]=alqPill(a),box=document.createElement("div");box.id="alqbox";box.className="vivbox full";box.style.gridColumn="1/-1";
-  const anio=a.ini?a.ini.slice(0,4):"";let det="",guion="";
+  const {det,guion}=alqGuion(d,a);
+  box.innerHTML=`<div class="vb-h">Fin del alquiler <span class="pill ${cls}">${esc(txt)}</span></div><div class="vb-s">${esc(det)}</div>${guion?`<div class="vb-s" style="margin-top:6px"><b>Qué decirle:</b> ${esc(guion)}</div><div class="vb-s" style="margin-top:6px">Si vende con el inquilino dentro, el comprador hereda el contrato y el inquilino tiene derecho de tanteo y retracto. Dudas legales: jurídico, 914 356 809.</div>`:""}${(d.alqLlamadas||[]).length?`<div class="vb-s" style="margin-top:6px">${d.alqLlamadas.slice(-3).reverse().map(l=>`Llamada de ${esc(l.quien||"")} el ${fmtFH(l.f)}: ${esc(l.res||"sin respuesta")}${l.nota?" · "+esc(l.nota):""}`).join("<br>")}</div>`:""}${alqRespondida(d,a)?`<div class="vb-s" style="margin-top:6px"><span class="pill ok">Respondido: ${esc(d.alqRespuesta)}</span> Ya no sale en Hoy hasta el próximo vencimiento.</div>`:""}`;
+  p.prepend(box)}
+function alqGuion(d,a){const anio=a.ini?a.ini.slice(0,4):"";let det="",guion="";
   if(a.sinDatos)det="Pon al menos la fecha de inicio del contrato y el CRM calcula el vencimiento y el aviso límite con la ley nueva.";
   else if(a.agot){det=`Inicio ${fmtFA(a.ini)}. ${a.tipo}.`;guion=`Le alquilamos el piso${anio?" en "+anio:""}. Pregúntale si sigue el mismo inquilino y con qué contrato. Si se plantea recuperarlo o venderlo, ofrécele una valoración sin compromiso y consulta antes al despacho jurídico.`}
   else{det=`${a.ini?"Inicio "+fmtFA(a.ini)+" · ":""}vence el ${fmtFA(a.fin)} (${a.tipo}) · aviso límite del propietario: ${fmtFA(a.aviso)}, ${a.meses} meses antes y por burofax.`;
     guion=a.dAviso>=0?`Le alquilamos el piso${anio?" en "+anio:""}. Con la ley nueva, el ${fmtFA(a.fin)} el contrato se renueva solo 5 años más si no avisa por burofax antes del ${fmtFA(a.aviso)}, y recuperarlo después le costará una indemnización. Si está pensando en vender, ahora es el momento: le hacemos una valoración sin compromiso, con el piso libre o con el inquilino dentro.`
       :`El aviso límite ya ha pasado: el ${fmtFA(a.fin)} el contrato se renovará solo 5 años. Aun así puede vender con el inquilino dentro: ofrécele una valoración sin compromiso.`}
-  box.innerHTML=`<div class="vb-h">Fin del alquiler <span class="pill ${cls}">${esc(txt)}</span></div><div class="vb-s">${esc(det)}</div>${guion?`<div class="vb-s" style="margin-top:6px"><b>Qué decirle:</b> ${esc(guion)}</div><div class="vb-s" style="margin-top:6px">Si vende con el inquilino dentro, el comprador hereda el contrato y el inquilino tiene derecho de tanteo y retracto. Dudas legales: jurídico, 914 356 809.</div>`:""}${alqRespondida(d,a)?`<div class="vb-s" style="margin-top:6px"><span class="pill ok">Respondido: ${esc(d.alqRespuesta)}</span> Ya no sale en Hoy hasta el próximo vencimiento.</div>`:""}`;
-  p.prepend(box)}
+  return {det,guion}}
 
 /* ---------- Informe semanal al propietario (PDF para imprimir o guardar) ---------- */
 async function informePropietario(e){if(!e)return;await cargarMercado();const hoy=hoyISO(),d7=dias2(hoy,-7);
@@ -1287,7 +1304,7 @@ function vHoy(){
     ...(cn=>[{k:"compn",t:"Compradores nuevos para tus pisos",n:cn.length,tono:"warn",nota:"Se han dado de alta esta semana y encajan con tus encargos o tus noticias con precio. Llámales y apunta la llamada en el «Cruce de compradores» del piso.",html:hoyLista("compn",cn,rowCompNuevo,"")}])(compNuevosParaMi()),
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
-    bloqueNs(),bloqueAlq(),
+    bloqueNs(),
     {k:"vend",t:"Se han vendido",n:vend.length,tono:"warn",html:hoyLista("vend",vend,rowContacto,"")},
     {k:"borr",t:"Solicitudes de borrado",n:solBorr.length+nsQ.length,tono:"warn",html:`<div class="list">${nsQ.map(rowNsQ).join("")}${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||x.nombre||"")}${col==="visitas"&&x.fecha?" · "+fmtF(x.fecha)+(x.hora?" "+esc(x.hora):""):""}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
     {k:"sti",t:S.yo&&S.yo.rol==="responsable"?"Te esperan a ti":"Esperan a Stiwhar",n:sti.length,tono:"warn",html:hoyLista("sti",sti,rowContacto,"")},
@@ -1807,10 +1824,15 @@ function alertasAuto(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const rol=S.yo
     // Encargo activo con la ficha de valoración a medias
     for(const e of encMio)if(fvPedir(e)){const n=fvFaltan(e).length;add("fval:"+e.id,"Completa la ficha de valoración",(e.direccion||"")+" · faltan "+n+" dato"+(n>1?"s":""),["encargos",e.id])}
     for(const c of cMios)if(fvPedir(c)){const n=fvFaltan(c).length;add("fvaln:"+c.id,"Completa la ficha de la valoración",(c.direccion||"")+" · faltan "+n+" dato"+(n>1?"s":""),["contactos",c.id])}
-    // Propietario inversor: entra en el plazo de aviso (los últimos 7 días) o el aviso límite está a 45 días o menos sin respuesta
-    {const lim=masMeses(hoy,alqMeses());for(const c of cMios){if(!c.alquilada||c.etapa==="KO"||c.etapa==="Encargo"||c.vendida)continue;const a=alqCalc(c,hoy);if(!a||a.sinDatos||a.agot||alqRespondida(c,a))continue;
-      if(a.dAviso>=0&&a.dAviso<=45)add("alq:"+c.id+":"+a.fin,"Se acaba un alquiler: llama al propietario",`${c.direccion||""} · aviso límite ${fmtFA(a.aviso)}`,["contactos",c.id],"bad");
-      else if(a.fin<=lim&&masMeses(a.fin,-alqMeses())>=masDias(-7))add("alqv:"+c.id+":"+a.fin,"Propietario inversor: su alquiler vence pronto",`${c.direccion||""} · vence el ${fmtFA(a.fin)}`,["contactos",c.id])}}
+  }
+  if(coord){
+    // Propietario inversor (solo Daniel): entra en el plazo de aviso (los últimos 7 días) o el aviso límite está a 45 días o menos sin respuesta
+    {const lim=masMeses(hoy,alqMeses());for(const c of alqFuente()){if(!c.alquilada||c.etapa==="KO"||c.etapa==="Encargo"||c.vendida)continue;const a=alqCalc(c,hoy);if(!a||a.sinDatos||a.agot||alqRespondida(c,a))continue;
+      if(a.dAviso>=0&&a.dAviso<=45)add("alq:"+c.id+":"+a.fin,"Se acaba un alquiler: llama al propietario",`${c.direccion||""} · aviso límite ${fmtFA(a.aviso)}`,["hoy","alq"],"bad");
+      else if(a.fin<=lim&&masMeses(a.fin,-alqMeses())>=masDias(-7))add("alqv:"+c.id+":"+a.fin,"Propietario inversor: su alquiler vence pronto",`${c.direccion||""} · vence el ${fmtFA(a.fin)}`,["hoy","alq"])}}
+  }
+  if(!coord){
+    const cMios=S.contactos.filter(mio);
     // Se ha vendido
     for(const c of cMios)if(c.vendida&&!c.vendidaVista)add("vend:"+c.id,"Se ha vendido con otra agencia",c.direccion||"",["contactos",c.id]);
   }
@@ -2355,6 +2377,7 @@ function vHoyCoord(){
     {k:"bsinf",t:"Visitas sin ficha de comprador",n:sinF.length,nota:"Abre la visita y pulsa «Dar de alta como comprador».",html:hoyLista("bsinf",sinF,rowVisita,"")},
     {k:"bofi",t:"Noticias para pasar a otra oficina",n:ofi.length,tono:"warn",nota:"Compradores que tienen que vender o alquilar su casa (o viven de alquiler) fuera de nuestras zonas. Pásala a la oficina que corresponda y márcalo en su ficha.",html:hoyLista("bofi",ofi,rowOfi,"")},
     {k:"bcap",t:"Captaciones pendientes de encontrar",n:capP.length,html:hoyLista("bcap",capP,rowCap,"")},
+    bloqueAlq(),
     {k:"res",t:"Reservas en negociación",n:reservas.length,html:hoyLista("res",reservas,rowOp,"")}];
   B.push({k:"agenda",t:"Agenda de la semana",n:(n=>n||"Ver")(visitasEntre(agLunes(0),dias2(agLunes(0),6),veTodo()?"":S.yo&&S.yo.nombre).filter(v=>!v.cancelada).length),info:1,html:vAgenda()});
   return hoyBloques(B,B.filter(b=>!b.n).map(b=>b.t),tools)}
@@ -3273,6 +3296,8 @@ window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=a
 window.asesorNoticia=async id=>{const {data,error}=await sb.rpc("asesor_de_noticia",{p_id:id});if(error)throw fallo(error);return data||""};
 window.agendaEquipo=async(d,h)=>{const {data,error}=await sb.rpc("agenda_equipo",{p_desde:d,p_hasta:h});if(error)throw fallo(error);return data||[]};
 window.compradoresCruce=async()=>{const {data,error}=await sb.rpc("cruce_compradores");if(error)throw fallo(error);return data||[]};
+window.inversoresAlq=async()=>{const {data,error}=await sb.rpc("inversores_alquiler");if(error)throw fallo(error);return data||[]};
+window.apuntarAlq=async(id,resp,vence,nota)=>{const {error}=await sb.rpc("apuntar_alquiler",{p_id:id,p_resp:resp||"",p_vence:vence||"",p_nota:nota||""});if(error)throw fallo(error)};
 window.apuntarLlamadaComp=async(id,piso,dir,res)=>{const {error}=await sb.rpc("apuntar_llamada_comprador",{p_id:id,p_piso:piso,p_dir:dir,p_res:res});if(error)throw fallo(error)};
 window.buscarVivienda=async(calle,num)=>{const {data,error}=await sb.rpc("buscar_vivienda",{p_calle:calle,p_num:num||""});if(error)throw fallo(error);return data||[]};
 window.importarCaptaciones=async filas=>{const t={nuevas:0,sumadas:0,repetidas:0,sinDireccion:0};for(let i=0;i<filas.length;i+=200){const {data,error}=await sb.rpc("importar_captaciones",{filas:filas.slice(i,i+200)});if(error)throw fallo(error);for(const k in t)t[k]+=data[k]||0}return t};
