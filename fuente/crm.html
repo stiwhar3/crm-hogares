@@ -127,6 +127,7 @@ details.bld .tbl-wrap{border:0;border-radius:0;border-top:1px solid var(--line)}
 .pager{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}.pager label{display:flex;gap:6px;align-items:center}.pager select{width:auto;padding:4px 8px}
 .nsbox .ns-seg{display:flex;gap:6px;flex-wrap:wrap}.nsbox .ns-seg .btn{flex:1 1 0;min-width:90px;justify-content:center}.nsbox .ns-seg .btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.nsbox .vb-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .recbox .rec-f{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center}.recbox .rec-f>*{width:100%;min-width:0;box-sizing:border-box;margin:0}.recbox .rec-f #rec-fecha,.recbox .rec-f input[type=text],.recbox .rec-f [data-recadd]{grid-column:1/-1}.recbox [hidden]{display:none!important}@media (min-width:700px){.recbox .rec-f{display:flex}.recbox .rec-f>*{width:auto}.recbox .rec-f select{flex:0 0 120px}.recbox .rec-f input[type=date]{flex:0 0 150px}.recbox .rec-f input[type=time]{flex:0 0 120px}.recbox .rec-f input[type=text]{flex:1}.recbox .rec-f [data-recadd]{flex:0 0 auto}}.recbox .rec-f select,.recbox .rec-f input{font:inherit;padding:6px 8px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}.recbox .rec-q{display:flex;gap:6px;flex-wrap:wrap}.recbox .list{margin:2px 0}.row.rec .rec-h{font-size:17px;margin-right:6px;font-variant-numeric:tabular-nums}.row.rec .rec-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.fmbox .fm-bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}.fmbox .fm-bar i{display:block;height:100%;background:var(--ok,#2e7d32)}.fmbox .vb-h{flex-wrap:wrap}.fm-fechas{display:grid;grid-template-columns:1fr 110px;gap:8px}.fm-fechas .fm-c:nth-child(3){grid-column:1/-1}.fm-hechos summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);padding:4px 0}.fm-hechos .fm-l{margin-top:6px}.fm-fechas .fm-c{display:grid;gap:3px;font-size:13px;color:var(--muted)}.fm-fechas .fm-n{grid-column:1/-1}.fm-fechas input{min-width:0}.fm-l{display:grid;gap:6px}.fm-i{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface,transparent)}.fm-i.ok{opacity:.72}.fm-i.ok b{text-decoration:line-through;text-decoration-color:var(--muted)}.fm-i.warn{border-color:#e5b94a}.fm-i.bad{border-color:var(--bad,#c62828)}.fm-t{display:grid;gap:2px;min-width:0}.fm-t small{font-size:12px;color:var(--muted)}.fm-t .pill{justify-self:start}.fm-b{display:flex;gap:4px;flex:none}.fm-b .btn[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}.fm-av{font-size:13px;padding:6px 10px;border-radius:8px;background:#f6e2b3;color:#6b4b00}.fm-av.bad{background:#f8d7d7;color:#8a1c1c}@media (max-width:640px){.fm-fechas{grid-template-columns:1fr 104px}.fm-i{flex-direction:column;align-items:stretch}.fm-b .btn{flex:1;padding:6px 4px!important;min-height:0!important;font-size:13px!important;line-height:1.2}}
 .vivbox{border:1px solid var(--line);padding:10px 12px;display:grid;gap:6px;background:var(--card,transparent)}.titbox .tit-l{display:grid;gap:6px}.titbox .tit-l[hidden]{display:none}.titbox .tit-rows{display:grid;gap:6px}.tit-f{display:grid;grid-template-columns:1.4fr 1fr 1.2fr auto auto;gap:6px;align-items:center}.tit-f input{min-width:0}.tit-f .tit-tel{text-decoration:none}@media (max-width:640px){.tit-f{grid-template-columns:1fr auto auto;padding-bottom:6px;border-bottom:1px dashed var(--line)}.tit-f [data-tf=nombre]{grid-column:1/-1}.tit-f [data-tf=nota]{grid-column:1/-1;order:5}}.vivbox .vb-h{font-weight:600;display:flex;gap:8px;align-items:center}.vivbox .vb-t{font-weight:600}.vivbox .vb-s{font-size:13px;color:var(--muted)}.vivbox .vb-c{font-size:13px;white-space:pre-wrap;max-height:90px;overflow:auto;color:var(--muted)}.vivbox .vb-b{display:flex;gap:8px;flex-wrap:wrap}.vb-res{display:grid;gap:4px;max-height:240px;overflow:auto}.vb-o{all:unset;cursor:pointer;padding:7px 9px;border:1px solid var(--line);font-size:14px}.vb-o:hover,.vb-o:focus{border-color:var(--accent)}.vb-o span{color:var(--muted);font-size:12px}
 .portal{display:grid;gap:6px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px}.portal .pi{display:flex;flex-wrap:wrap;gap:4px}.portal .po{color:var(--muted)}.portal .btn{justify-self:start}
 .pbar{display:flex;height:6px;background:var(--line);overflow:hidden;max-width:320px}.pbar i{display:block;height:100%}
@@ -871,6 +872,8 @@ function agCitas(desde,hasta,quien){
     out.push({f:v.fecha,h:v.hora||"",tipo:"Visita",t:v.direccion||"",s:[n,v.telComprador].filter(Boolean).join(" · "),as:v.asesor||"",col:"visitas",id:v.id,canc:!!v.cancelada})}
   for(const c of S.contactos)if(c.fechaValoracion&&c.fechaValoracion>=desde&&c.fechaValoracion<=hasta&&c.etapa!=="KO"&&(!quien||c.asesor===quien))
     out.push({f:c.fechaValoracion,h:"",tipo:c.etapa==="Valoración agendada"?"Valoración":"Valorada",t:c.direccion||"",s:c.nombre||"",as:c.asesor||"",col:"contactos",id:c.id});
+  for(const o of S.operaciones)if(opAbierta(o)&&(!quien||o.asesor===quien))for(const [tp,f,h] of [["Arras",o.fechaArras,o.horaArras],["Notaría",o.fechaEscritura,o.horaNotaria]])
+    if(f&&f>=desde&&f<=hasta)out.push({f,h:h||"",tipo:tp,t:o.inmueble||"",s:tp==="Notaría"?(o.notaria||""):"",as:o.asesor||"",col:"operaciones",id:o.id});
   if(!quien||quien===yo)for(const a of misRecs())if(a.fecha&&a.fecha>=desde&&a.fecha<=hasta)
     out.push({f:a.fecha,h:a.hora||"",tipo:"Llamar",t:a.direccion||a.nombre||"",s:a.texto||"",as:yo,col:a.col,id:a.refId,rec:1});
   return out.sort((a,b)=>(a.f+(a.h||"99")).localeCompare(b.f+(b.h||"99")))}
@@ -979,7 +982,7 @@ function rowOp(o){
   const est=o.fechaCobro?"Cobrada":o.estado;
   return `<button class="row" type="button" data-open="operaciones" data-id="${esc(o.id)}">
     <span class="t">${esc(o.inmueble)}</span><span class="r">${eur(o.honorarios)}</span>
-    <span class="m"><span>${esc(o.asesor||"")}</span><span class="pill ${est==="Cobrada"?"ok":est==="Caída"?"bad":est==="Reserva"?"warn":"acc"}">${esc(est)}</span>${o.fechaAceptacion?`<span>Facturado ${fmtF(o.fechaAceptacion)}</span>`:"<span>Sin aceptar</span>"}${o.fechaCobro?`<span>Cobrado ${fmtF(o.fechaCobro)}</span>`:""}<span>${esc(o.ladoCobrado||"")}</span></span>
+    <span class="m"><span>${esc(o.asesor||"")}</span><span class="pill ${est==="Cobrada"?"ok":est==="Caída"?"bad":est==="Reserva"?"warn":"acc"}">${esc(est)}</span>${o.fechaAceptacion?`<span>Facturado ${fmtF(o.fechaAceptacion)}</span>`:"<span>Sin aceptar</span>"}${o.fechaCobro?`<span>Cobrado ${fmtF(o.fechaCobro)}</span>`:""}<span>${esc(o.ladoCobrado||"")}</span>${opAbierta(o)?(s=>`<span class="pill ${s.av.some(a=>a.cls==="bad")?"bad":s.av.length?"warn":""}">Papeles ${s.ok}/${s.tot}</span>`)(firmaEstado(o)):""}</span>
   </button>`;
 }
 const TAMS=[30,50,100,200];
@@ -1004,7 +1007,7 @@ function hoyBloques(B,vacios,tras){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const AY=lsGet("crm-ayuda"),ayuda=b=>!b.nota?"":((AY[b.k]||[0])[0]<3)?`<p class="nota">${b.nota}</p>`:`<details class="ayuda"><summary title="Qué es esto" aria-label="Qué es esto">?</summary><p class="nota">${b.nota}</p></details>`;
   const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${ayuda(b)}${b.html}</div></details>`;
   /* Tres grupos fijos (la agenda, al final) */
-  const G=[["Para hacer hoy",["avisos","rec","pend","bvis","ped","bpend","sti","res"]],["Para revisar",["borr","ns","capn","encAl","binf","bsinf","bofi","bcap","urg","vend","pedEnv"]],["Oportunidades",["alq","llamar","cruces","compn","cli"]]];
+  const G=[["Para hacer hoy",["avisos","rec","pend","bvis","ped","bpend","sti","firma"]],["Para revisar",["borr","ns","capn","encAl","binf","bsinf","bofi","bcap","urg","vend","pedEnv"]],["Oportunidades",["alq","llamar","cruces","compn","cli"]]];
   const grupoDe=k=>{if(k==="agenda")return 3;const i=G.findIndex(g=>g[1].includes(k));return i<0?1:i};
   const grupos=G.map((g,i)=>[g[0],vis.filter(b=>grupoDe(b.k)===i)]).filter(g=>g[1].length),resto=vis.filter(b=>grupoDe(b.k)===3);
   return `<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Mensaje" style="float:right">Enviar mensaje</button><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
@@ -1044,7 +1047,7 @@ function vHoy(){
     {k:"sti",t:S.yo&&S.yo.rol==="responsable"?"Te esperan a ti":"Esperan a Stiwhar",n:sti.length,tono:"warn",html:hoyLista("sti",sti,rowContacto,"")},
     {k:"encAl",t:"Encargos que piden atención",n:encAl.length,tono:"warn",html:hoyLista("encAl",encAl,rowEncargo,"")},
     {k:"cli",t:"Clientes antiguos",n:cli.length,nota:"Reseña a los 15 días de la venta y felicitación en cada aniversario.",html:hoyLista("clientes",cli,rowCliente,"")},
-    {k:"res",t:"Reservas en negociación",n:reservas.length,html:hoyLista("res",reservas,rowOp,"")}];
+    bloqueFirma()];
   B.push({k:"agenda",t:"Agenda de la semana",n:(n=>n||"Ver")(visitasEntre(agLunes(0),dias2(agLunes(0),6),veTodo()?"":S.yo&&S.yo.nombre).filter(v=>!v.cancelada).length),info:1,html:vAgenda()});
   const vacios=B.filter(b=>!b.n).map(b=>b.t);
   return hoyBloques(B,vacios);
@@ -1326,7 +1329,7 @@ const FORMS={
   operaciones:{titulo:"operación",fields:[
     ["inmueble","Inmueble *","text",{full:1,req:1}],["asesor","Asesor","sel",()=>personas()],["tipo","Tipo","sel",()=>["Venta","Alquiler"]],
     ["ladoCobrado","Lado cobrado","sel",()=>["Ambos","Vendedor","Comprador"]],["precio","Precio (€)","number"],["honorarios","Honorarios sin IVA (€)","number"],
-    ["estado","Estado","sel",()=>EST_OP],["fechaAceptacion","Fecha de aceptación (facturado)","date"],["fechaCobro","Fecha de cobro","date"],["fechaEscritura","Fecha de escritura","date"],
+    ["estado","Estado","sel",()=>EST_OP],["fechaAceptacion","Fecha de aceptación (facturado)","date"],["fechaCobro","Fecha de cobro","date"],["fechaArras","Fecha de arras","fmx"],["horaArras","Hora de arras","fmx"],["fechaLimiteArras","Fin del plazo de arras","fmx"],["fechaEscritura","Fecha de notaría (escritura)","fmx"],["horaNotaria","Hora de notaría","fmx"],["notaria","Notaría","fmx"],["_firma","Hasta la firma","firma"],
     ["vendedor","Vendedor (nombre)","text"],["telVendedor","Teléfono del vendedor","tel"],["otrosVendedores","Hay más de un vendedor","tit",{chk:"variosVendedores",nk:"vendedor",tk:"telVendedor",que:"vendedor",prim:"Vendedor"}],["comprador","Comprador (nombre)","text"],["telComprador","Teléfono del comprador","tel"],["otrosCompradores","Hay más de un comprador","tit",{chk:"variosCompradores",nk:"comprador",tk:"telComprador",que:"comprador",prim:"Comprador"}],
     ["resenaPedida","Reseña de Google pedida el","date"],["ultimaFelicitacion","Último aniversario felicitado","date"],["notas","Notas","textarea",{full:1}]]}
 };
@@ -1713,6 +1716,93 @@ function fvAntesGuardar(d,nuevo){
 /* Noticia: lo que se escribe en la ficha completa la noticia si allí estaba vacío */
 function fvNoticiaAntes(d){if(!d.precioValorado&&fvNum(d.fvValoracion))d.precioValorado=fvNum(d.fvValoracion);if(!d.precioPropietario&&fvNum(d.fvExpectativa))d.precioPropietario=fvNum(d.fvExpectativa);
   if(!d.fechaValoracion&&/^\d{4}-\d\d-\d\d$/.test(d.fvFecha||""))d.fechaValoracion=d.fvFecha;if(!d.motivo&&MOTIVOS.includes(d.fvMotivacion))d.motivo=d.fvMotivacion}
+/* ---------- Hasta la firma (Stiwhar, 07/11/2026) ----------
+   Cada operación abierta (reserva, arras, aceptada) lleva su checklist de papeles hasta la notaría y las fechas de arras y notaría.
+   Cada papel tiene un plazo contado hacia atrás desde las arras o desde la notaría: si se acerca o se pasa, sale en Hoy › «Hasta la firma».
+   El asesor de la operación también lo marca (función marcar_firma de Supabase: solo toca la checklist y las fechas). */
+const FIRMA_EST=["Pedido","Hecho","No hace falta"];
+/* [clave, papel, ayuda, cuenta desde (arras | notaria), días antes] */
+const FIRMA=[
+  ["notaSimple","Nota simple actualizada","Para ver titulares y cargas antes de firmar las arras.","arras",3],
+  ["cee","Certificado energético (CEE)","Obligatorio para vender. Si no lo tiene, pedirlo ya: tarda 1 o 2 semanas.","arras",3],
+  ["arras","Contrato de arras firmado","Con el plazo máximo para escriturar puesto en «Fin del plazo».","arras",0],
+  ["tasacion","Tasación del banco del comprador","Si paga al contado: «No hace falta».","notaria",25],
+  ["hipComp","Hipoteca del comprador aprobada (FEIN)","El banco tiene que darle la FEIN al menos 10 días antes de firmar.","notaria",14],
+  ["hipVend","Cancelación de la hipoteca del vendedor","Certificado de deuda del banco y cita para cancelarla en la firma. Si no tiene hipoteca: «No hace falta».","notaria",15],
+  ["ite","ITE / IEE del edificio","Pedirla al administrador de la comunidad.","notaria",15],
+  ["comunidad","Certificado de deuda de la comunidad","Lo firma el administrador: sin él no se escritura.","notaria",7],
+  ["ibi","Último recibo del IBI","","notaria",7],
+  ["citaNot","Cita en notaría confirmada","Con la notaría, el día y la hora puestos arriba.","notaria",10],
+  ["factura","Factura de honorarios preparada","Para cobrarla el mismo día de la firma.","notaria",3]];
+const FIRMA_FECHAS=["fechaArras","horaArras","fechaLimiteArras","fechaEscritura","horaNotaria","notaria"];
+const opAbierta=o=>!!o&&o.estado!=="Caída"&&o.estado!=="Escriturada"&&o.tipo!=="Alquiler";
+const firmaHecho=e=>e==="Hecho"||e==="No hace falta";
+/* Cómo va la firma de una operación: cada papel con su plazo y los avisos, el más urgente primero */
+function firmaEstado(o,F){F=F||o.firma||{};const hoy=hoyISO(),it=[],av=[],add=(cls,txt,item)=>av.push({cls,txt,item:!!item});
+  for(const [k,t,ay,ref,dd] of FIRMA){const x=F[k]||{},e=x.e||"",base=ref==="arras"?o.fechaArras:o.fechaEscritura,lim=base?dias2(base,-dd):"";
+    const i={k,t,ay,ref,dd,e,f:x.f||"",por:x.por||"",lim,cls:"",txt:""};
+    if(!firmaHecho(e)){
+      if(lim&&hoy>lim){i.cls="bad";i.txt=`Retrasado: tenía que estar el ${fmtF(lim)}`}
+      else if(lim&&dias(hoy,lim)<=7){i.cls="warn";i.txt=lim===hoy?"Tiene que estar hoy":`Para el ${fmtF(lim)}`}
+      else if(lim)i.txt=`Para el ${fmtF(lim)}`;
+      if(e==="Pedido"&&i.f&&dias(i.f,hoy)>=10&&i.cls!=="bad"){i.cls="warn";i.txt=`Pedido hace ${dias(i.f,hoy)} días`+(lim?` · para el ${fmtF(lim)}`:"")}
+      if(i.cls)add(i.cls,`${t}: ${i.txt.charAt(0).toLowerCase()+i.txt.slice(1)}`,1)}
+    it.push(i)}
+  const arrasHecha=firmaHecho((F.arras||{}).e)||o.estado==="Arras"||o.estado==="Aceptada";
+  if(o.fechaEscritura&&o.fechaEscritura<hoy)add("bad",`La notaría era el ${fmtF(o.fechaEscritura)}: si se firmó, pásala a Escriturada y factura`);
+  if(!arrasHecha&&!o.fechaArras)add("warn","Pon la fecha de las arras");
+  if(!arrasHecha&&o.fechaArras&&o.fechaArras<hoy)add("bad",`¿Se firmaron las arras? Eran el ${fmtF(o.fechaArras)}`);
+  if(arrasHecha&&!o.fechaEscritura)add(o.fechaLimiteArras&&dias(hoy,o.fechaLimiteArras)<=30?"bad":"warn","Pon la fecha de notaría"+(o.fechaLimiteArras?` (el plazo de las arras acaba el ${fmtF(o.fechaLimiteArras)})`:""));
+  const ok=it.filter(i=>firmaHecho(i.e)).length;av.sort((a,b)=>(b.cls==="bad")-(a.cls==="bad"));
+  const prox=o.fechaEscritura&&o.fechaEscritura>=hoy?["Notaría",o.fechaEscritura,o.horaNotaria]:o.fechaArras&&o.fechaArras>=hoy&&!firmaHecho((F.arras||{}).e)?["Arras",o.fechaArras,o.horaArras]:null;
+  return {it,av,ok,tot:it.length,prox}}
+/* Encargos reservados que aún no tienen operación abierta: sin operación no hay checklist */
+function reservadosSinOp(){const k=t=>claveDir(t).slice(0,14),ops=S.operaciones.filter(o=>o.estado!=="Caída");
+  return S.encargos.filter(e=>e.estado==="Reservado"&&!ops.some(o=>o.encargoId===e.id||(k(o.inmueble)&&k(o.inmueble)===k(e.direccion))))}
+function firmaPend(){return S.operaciones.filter(opAbierta).map(o=>({o,s:firmaEstado(o)}))
+  .sort((a,b)=>(b.s.av.some(x=>x.cls==="bad")-a.s.av.some(x=>x.cls==="bad"))||(b.s.av.length-a.s.av.length)||String((a.s.prox||[])[1]||"9").localeCompare(String((b.s.prox||[])[1]||"9")))}
+function rowFirma({o,s}){const a=s.av[0],dd=s.prox?`${s.prox[0]} ${fmtF(s.prox[1])}${s.prox[2]?" "+esc(s.prox[2]):""}`:"";
+  return `<button class="row" type="button" data-open="operaciones" data-id="${esc(o.id)}"><span class="t">${esc(o.inmueble||"")}</span><span class="r">${a?`<span class="pill ${a.cls}">${esc(a.cls==="bad"?"Urgente":"Ojo")}</span>`:'<span class="pill ok">Al día</span>'}</span>
+    <span class="m"><span>${esc(o.asesor||"")}</span><span class="pill acc">${esc(o.estado||"")}</span><span class="pill">Papeles ${s.ok}/${s.tot}</span>${dd?`<span>${dd}</span>`:""}${a?`<span>${esc(a.txt)}</span>`:""}${s.av.length>1?`<span class="pill" title="${esc(s.av.slice(1).map(x=>x.txt).join(" · "))}">+${s.av.length-1}</span>`:""}</span></button>`}
+const rowResSinOp=e=>`<button class="row" type="button" data-open="encargos" data-id="${esc(e.id)}"><span class="t">${esc(e.direccion||"")}</span><span class="r"><span class="pill warn">Sin operación</span></span><span class="m"><span>${esc(e.asesor||"")}</span><span>${veTodo()?"Reservado: pulsa «Crear operación» para seguir los papeles hasta la firma":"Reservado: pide a Stiwhar que cree la operación para seguir los papeles"}</span></span></button>`;
+function bloqueFirma(){const L=firmaPend(),R=reservadosSinOp(),n=L.filter(x=>x.s.av.length).length+R.length;
+  return {k:"firma",t:"Hasta la firma",n,tono:L.some(x=>x.s.av.some(a=>a.cls==="bad"))?"bad":"warn",
+    nota:"Cada operación en reserva o arras con sus papeles hasta la notaría (nota simple, CEE, ITE, hipotecas, tasación…). Cada papel tiene un plazo antes de las arras o de la notaría: aquí sale lo que se retrasa. Ábrela y márcalo.",
+    html:listOr([...L.map(rowFirma),...R.map(rowResSinOp)],"No hay operaciones abiertas.")}}
+/* La caja de la ficha de la operación */
+function firmaHTML(d){const o={...(d||{})},nueva=!(cur&&cur.id),F=(cur&&cur.firma)||o.firma||{};
+  const inp=(k,l,t,ex)=>`<label class="fm-c${ex||""}">${l}<input id="fld-${k}" type="${t}" value="${esc(o[k]||"")}"${t==="time"?' step="300"':""} data-fmf autocomplete="off"></label>`;
+  const fechas=`<div class="fm-fechas">${inp("fechaArras","Arras","date")}${inp("horaArras","Hora","time"," fm-h")}${inp("fechaLimiteArras","Fin del plazo de arras","date")}${inp("fechaEscritura","Notaría (escritura)","date")}${inp("horaNotaria","Hora","time"," fm-h")}${inp("notaria","Notaría","text"," fm-n")}</div>`;
+  if(nueva)return `<div class="full vivbox fmbox" id="fld-_firma" style="grid-column:1/-1"><div class="vb-h">Hasta la firma</div>${fechas}<div class="vb-s">Guarda la operación para empezar la lista de papeles.</div></div>`;
+  const s=firmaEstado(o,F);
+  const fila=i=>`<div class="fm-i${i.cls?" "+i.cls:""}${firmaHecho(i.e)?" ok":""}" data-fmi="${i.k}"><div class="fm-t"><b>${esc(i.t)}</b>${i.txt?` <span class="pill ${i.cls}">${esc(i.txt)}</span>`:""}${i.e?`<small>${esc(i.e)}${i.f?" el "+fmtF(i.f):""}${i.por?" · "+esc(i.por):""}</small>`:""}${i.ay?`<small class="fm-ay">${esc(i.ay)}</small>`:""}</div>
+    <div class="fm-b" role="group" aria-label="${esc(i.t)}">${FIRMA_EST.map(x=>`<button type="button" class="btn small" data-fmk="${i.k}" data-fme="${x}" aria-pressed="${i.e===x}">${x}</button>`).join("")}</div></div>`;
+  return `<div class="full vivbox fmbox" id="fld-_firma" style="grid-column:1/-1"><div class="vb-h">Hasta la firma <span class="pill ${s.ok===s.tot?"ok":"acc"}">${s.ok} de ${s.tot} papeles</span>${s.prox?`<span class="pill">${s.prox[0]} ${fmtF(s.prox[1])}${s.prox[2]?" "+esc(s.prox[2]):""}</span>`:""}</div>
+    <div class="fm-bar"><i style="width:${Math.round(s.ok/s.tot*100)}%"></i></div>${fechas}
+    ${s.av.filter(a=>!a.item).map(a=>`<div class="fm-av ${a.cls}">${esc(a.txt)}</div>`).join("")}
+    <div class="vb-s">Los plazos se cuentan hacia atrás desde las arras o desde la notaría. Cada cambio se guarda solo.</div>
+    <div class="fm-l">${s.it.filter(i=>!firmaHecho(i.e)).map(fila).join("")||'<div class="vb-s">Todos los papeles están listos.</div>'}</div>${(H=>H.length?`<details class="fm-hechos"${cur.fmAb?" open":""}><summary>Listos: ${H.length} (hechos o no hacen falta)</summary><div class="fm-l">${H.map(fila).join("")}</div></details>`:"")(s.it.filter(i=>firmaHecho(i.e)))}</div>`}
+function firmaRepintar(){const b=$("#fld-_firma");if(!b||!cur||cur.col!=="operaciones")return;const d=S.operaciones.find(x=>x.id===cur.id)||TIT_D||{};
+  const v={};b.querySelectorAll("[data-fmf]").forEach(i=>v[i.id.slice(4)]=i.value);b.outerHTML=firmaHTML({...d,...v});
+  const tb=document.querySelector('[data-ftab="firma"]');if(tb&&cur.id){const s=firmaEstado({...d,...v},cur.firma||d.firma);let n=tb.querySelector(".n");if(!n){n=document.createElement("span");tb.appendChild(n)}n.className=s.av.length?"n av":"n";n.textContent=s.av.length?String(s.av.length):s.ok+"/"+s.tot}}
+/* Guarda la checklist y las fechas sin pulsar Guardar (también el asesor, que no edita la operación) */
+async function firmaGuardar(nota){if(!cur||cur.col!=="operaciones"||!cur.id)return;const id=cur.id,firma=cur.firma||{},fechas={};
+  document.querySelectorAll("#fld-_firma [data-fmf]").forEach(i=>fechas[i.id.slice(4)]=i.value.trim());
+  try{let act=null;
+    let rpc=!!window.marcarFirma;
+    if(rpc)try{act=await window.marcarFirma(id,firma,fechas,nota)}catch(e){if(!(veTodo()&&/marcar_firma|function|schema cache/i.test(e.message||"")))throw e;rpc=false}
+    if(!rpc&&!(await guardar("operaciones",id,{firma,...fechas},nota)))return;
+    const o=S.operaciones.find(x=>x.id===id);if(o){o.firma=firma;Object.assign(o,fechas);if(act)o.actualizado=act}
+    if(TIT_D&&TIT_D.id===id){TIT_D.firma=firma;Object.assign(TIT_D,fechas)}
+    toast("Guardado")}
+  catch(e){toast("No se ha guardado: "+(e.message||e)+(/function|marcar_firma/i.test(e.message||"")?" (falta pegar el SQL de «Hasta la firma» en Supabase)":""))}}
+$("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-fmk]");if(!b||!cur||cur.col!=="operaciones")return;e.preventDefault();
+  const k=b.dataset.fmk,v=b.dataset.fme,F={...(cur.firma||{})},prev=(F[k]||{}).e||"",t=(FIRMA.find(f=>f[0]===k)||[])[1]||k;
+  if(prev===v)delete F[k];else F[k]={e:v,f:hoyISO(),por:S.yo?S.yo.nombre:""};cur.firma=F;firmaRepintar();
+  firmaGuardar(`Hasta la firma · ${t}: ${prev===v?"sin marcar":v}.`)});
+$("#frm").addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("fm-hechos")&&cur)cur.fmAb=e.target.open},true);
+$("#frm").addEventListener("change",e=>{if(!e.target.matches||!e.target.matches("#fld-_firma [data-fmf]")||!cur||cur.col!=="operaciones")return;
+  firmaRepintar();if(cur.id){const l=e.target.closest("label"),t=l?l.childNodes[0].textContent.trim():"";firmaGuardar(`Hasta la firma · ${t}: ${e.target.value?(e.target.type==="date"?fmtF(e.target.value):e.target.value):"vacío"}.`)}});
 const fvCopia=c=>{const o={};for(const [k] of FV_CAMPOS)if(c[k]!=null&&String(c[k]).trim()!=="")o[k]=c[k];return o};
 /* Datos del catastro que se guardan en el encargo al crearlo desde la noticia */
 function fvDeCenso(cid){if(!cid||!S.censo)return cid?{censoId:cid}:{};const r=buscarViv(cid);if(!r)return {censoId:cid};const u={...r.u,...(S.censoEd[cid]||{})},o={censoId:cid,fvPedida:hoyISO()};
@@ -2112,7 +2202,7 @@ function vHoyCoord(){
     {k:"bofi",t:"Noticias para pasar a otra oficina",n:ofi.length,tono:"warn",nota:"Compradores que tienen que vender o alquilar su casa (o viven de alquiler) fuera de nuestras zonas. Pásala a la oficina que corresponda y márcalo en su ficha.",html:hoyLista("bofi",ofi,rowOfi,"")},
     {k:"bcap",t:"Captaciones pendientes de encontrar",n:capP.length,html:hoyLista("bcap",capP,rowCap,"")},
     bloqueAlq(),
-    {k:"res",t:"Reservas en negociación",n:reservas.length,html:hoyLista("res",reservas,rowOp,"")}];
+    bloqueFirma()];
   B.push({k:"agenda",t:"Agenda de la semana",n:(n=>n||"Ver")(visitasEntre(agLunes(0),dias2(agLunes(0),6),veTodo()?"":S.yo&&S.yo.nombre).filter(v=>!v.cancelada).length),info:1,html:vAgenda()});
   return hoyBloques(B,B.filter(b=>!b.n).map(b=>b.t),tools)}
 function metasCoordPer(per){const M={...DEF_METAS_COORD,...(S.ajustes.metasCoord||{})},f=rangoPer(per)[2]/7,o={};for(const k in M)o[k]=M[k]?Math.max(1,Math.round(M[k]*f)):0;return o}
@@ -2271,7 +2361,7 @@ async function accionFicha(a,b){
 let cur=null;
 function field([k,l,t,opt],v){
   const o=typeof opt==="object"?opt:{}; const cls=o.full?"full":t==="check"?"check":"";
-  if(t==="fvx")return "";if(t==="fval")return TIT_D&&TIT_D.id!==undefined||cur&&cur.id?fichaValHTML():"";
+  if(t==="fvx"||t==="fmx")return "";if(t==="firma")return firmaHTML(TIT_D||{});if(t==="fval")return TIT_D&&TIT_D.id!==undefined||cur&&cur.id?fichaValHTML():"";
   if(t==="check") return `<label class="check"><input type="checkbox" id="fld-${k}" name="${k}"${v?" checked":""}> ${l}</label>`;
   if(t==="h") return `<div class="full" style="grid-column:1/-1;font-weight:600;border-top:1px solid var(--line);padding-top:8px;margin-top:4px">${l}</div>`;
   if(t==="tit"){const A=Array.isArray(v)?v:[],on=!!((TIT_D&&TIT_D[o.chk])||A.length);
@@ -2428,7 +2518,9 @@ const PEST={
     ["enc","Le encajan",["_lenc"]],["vis","Visitas",["_lvis"]],
     ["vive","Contacto",["nombre","telefono","variosTitulares","email","dni","origen","viveEn","necesitaVender","dirNuestra","direccionActual","censoIdActual","zonaActual","oficinaDestino"]],
     ["fin","Financiación",["financiacion","entrada","urgencia","fechaReserva"]],["notas","Notas",["notas","_hist"]]]}};
-const ACC_SEC=["informe","informeProp","calProx","calVal","descartesFuera"],pestUlt={},MITAD={contactos:["etapa","proxFecha"],encargos:["precio","estado"],compradores:["estado","finanhogar"]};
+/* Operaciones (07/11/2026): pestaña «Hasta la firma» */
+PEST.operaciones={top:["estado","honorarios","_acc","_nota"],tabs:[["datos","Datos",["inmueble","asesor","tipo","ladoCobrado","precio","fechaAceptacion","fechaCobro","vendedor","telVendedor","variosVendedores","comprador","telComprador","variosCompradores","resenaPedida","ultimaFelicitacion"]],["firma","Hasta la firma",["_firma"]],["notas","Notas",["notas","_hist"]]]};
+const ACC_SEC=["informe","informeProp","calProx","calVal","descartesFuera"],pestUlt={},MITAD={operaciones:["estado","honorarios"],contactos:["etapa","proxFecha"],encargos:["precio","estado"],compradores:["estado","finanhogar"]};
 function claveHijo(c){
   if(c.id==="vivbox")return "_viv";if(c.id==="fusbox"||(c.classList.contains("vivbox")&&c.querySelector("[data-act=fusComp]")))return "_fus";
   if(c.classList.contains("hist"))return "_hist";if(c.querySelector("#fld-nuevaNota"))return "_nota";
@@ -2442,6 +2534,7 @@ function claveHijo(c){
 function resumenFicha(col,d){const tel=d.telefono?`<a class="tel" href="tel:${esc(String(d.telefono).replace(/\s/g,""))}">${esc(d.telefono)}</a>`:"",pill=t=>t?`<span class="pill">${esc(t)}</span>`:"";
   if(col==="contactos")return [d.direccion,[pill(d.etapa),esc(d.nombre||"")+((d.titulares||[]).length?` <span class="pill">+${d.titulares.length}</span>`:""),tel,d.asesor&&esc(d.asesor)]];
   if(col==="encargos")return [d.direccion,[pill(d.estado),d.precio&&eur(d.precio),d.asesor&&esc(d.asesor)]];
+  if(col==="operaciones")return [d.inmueble,[pill(d.estado),d.honorarios&&eur(d.honorarios),d.asesor&&esc(d.asesor)]];
   return [(d.nombre||"")+((d.titulares||[]).length?" y "+d.titulares.map(t=>t.nombre||"").join(", "):""),[pill(d.estado),tel,d.precioMax&&("hasta "+eur(d.precioMax)),prioComp(d)&&"★ Finanhogar"]]}
 function organizarFicha(col,id,d){const P=PEST[col],db=$("#frm .db");if(!P||!id||!db)return;
   /* La pestaña «Alquiler» solo en las fichas marcadas como alquiladas; en las demás, la casilla queda en Datos */
@@ -2482,7 +2575,7 @@ function enfocar(sel){const el=$(sel);if(!el)return;const p=el.closest(".fpane")
 $("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-ftab]");if(!b)return;e.preventDefault();verPestana(b.dataset.ftab);$("#frm .db").scrollTop=0});
 function abrir(col,id){
   const F=FORMS[col]; const d=id?S[col].find(x=>x.id===id):DEFAULTS[col]();
-  if(!d) return; cur={col,id};TIT_D=d;if(FV_COLS.includes(col)&&id&&pestUlt[col+id]==null&&fvPedir(d))pestUlt[col+id]="fval";
+  if(!d) return; cur={col,id};TIT_D=d;if(col==="operaciones"){cur.firma={...(d.firma||{})};if(id&&pestUlt[col+id]==null&&opAbierta(d))pestUlt[col+id]="firma"}if(FV_COLS.includes(col)&&id&&pestUlt[col+id]==null&&fvPedir(d))pestUlt[col+id]="fval";
   const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="informe">Informe de mercado</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
   const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
   const extraEnc=col==="encargos"&&id?`<button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button><button class="btn small" type="button" data-act="informeProp">Informe al propietario</button>`:"";
