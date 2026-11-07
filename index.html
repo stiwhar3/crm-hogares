@@ -619,6 +619,52 @@ function pintarSemaforo(col,id,d){if(col!=="encargos"||!id)return;$("#semabox")?
   const ref=p.querySelector("#recbox")||p.querySelector("details.fmas")||p.querySelector("#fld-nuevaNota")?.closest("label");ref?ref.before(box):p.appendChild(box);
   if(!S.mercado&&!pintarSemaforo.pide){pintarSemaforo.pide=1;cargarMercado().then(()=>{pintarSemaforo.pide=0;if(cur&&cur.col==="encargos"&&cur.id===id)pintarSemaforo(col,id,anterior("encargos",id))})}}
 
+/* ---------- Propietarios inversores: fin del alquiler (Stiwhar 07/11/2026). Reglas del RDL 28/2026 (en vigor el 15/11/2026):
+   contratos desde el 06/03/2019 → 5 años obligatorios; si ya los pasaron antes de la ley, siguen en la prórroga antigua hasta los 8 años;
+   al vencer se renueva solo de 5 en 5 años salvo burofax del propietario 6 meses antes (4 si el 15/11/2026 quedaban menos de 6).
+   Contratos anteriores (LAU 2013) ya están agotados: hay que ver la situación con el propietario. ---------- */
+const ALQ_RESP=["","Quiere vender","Se lo pensará","No contesta","Sigue alquilando","Quiere recuperarla"],ALQ_CIERRA=["Quiere vender","Sigue alquilando","Quiere recuperarla"];
+const ALQ_CAMPOS=["alquilada","alqInicio","alqRenta","alqInquilino","alqFin","alqAviso","alqRespuesta"],RDL28="2026-11-15",LAU2019="2019-03-06";
+const fmtFA=s=>s?new Date(s+"T12:00").toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"}):"";
+const masMeses=(f,m)=>{const d=new Date(f+"T12:00"),dd=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+m);d.setDate(Math.min(dd,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));return iso(d)};
+const alqMeses=()=>+((S.ajustes||{}).mesesAvisoAlquiler)||9;
+function alqCalc(c,hoy=hoyISO()){if(!c||!c.alquilada)return null;const ini=c.alqInicio||"";let fin=c.alqFin||"",tipo="",renov=0;
+  if(!fin&&!ini)return {sinDatos:true};
+  if(!fin){if(ini<LAU2019)return {agot:true,ini,tipo:"Contrato anterior al 06/03/2019 (3 años + 1 de prórroga), ya agotado"};
+    const f5=masMeses(ini,60);if(f5>=RDL28){fin=f5;tipo="fin de los 5 años obligatorios"}else{fin=masMeses(ini,96);tipo="fin de la prórroga anual antigua, a los 8 años"}}
+  else tipo="vencimiento apuntado en la ficha";
+  while(fin<hoy){fin=masMeses(fin,60);renov++}
+  if(renov)tipo=`se ha renovado sola ${renov>1?renov+" veces":""} 5 años`.replace("  "," ");
+  const m=fin>=RDL28&&fin<masMeses(RDL28,6)?4:6,aviso=c.alqAviso&&c.alqFin&&!renov?c.alqAviso:masMeses(fin,-m);
+  return {ini,fin,aviso,meses:m,tipo,renov,dFin:dias(hoy,fin),dAviso:dias(hoy,aviso)}}
+const alqClave=a=>a?(a.agot?"agotado":a.fin||""):"";
+const alqRespondida=(c,a)=>ALQ_CIERRA.includes(c.alqRespuesta)&&c.alqRespVence===alqClave(a);
+function alqPendientes(){const hoy=hoyISO(),lim=masMeses(hoy,alqMeses()),L=[];
+  for(const c of S.contactos){if(!c.alquilada||c.etapa==="KO"||c.etapa==="Encargo"||c.vendida)continue;const a=alqCalc(c,hoy);if(!a||a.sinDatos||alqRespondida(c,a))continue;
+    if(a.agot||a.fin<=lim)L.push({c,a,k:a.agot?masDias(45):a.aviso<hoy?a.fin:a.aviso})}
+  return L.sort((x,y)=>x.k.localeCompare(y.k))}
+function alqPill(a){if(a.sinDatos)return ["warn","Faltan las fechas del contrato"];if(a.agot)return ["warn","Contrato antiguo agotado"];
+  if(a.dAviso<0)return [a.dFin<=60?"bad":"warn",`Se renueva sola el ${fmtFA(a.fin)}`];if(a.dAviso<=60)return ["bad",`Aviso límite en ${a.dAviso} día${a.dAviso!==1?"s":""}`];
+  return [a.dAviso<=120?"warn":"",`Vence el ${fmtFA(a.fin)}`]}
+function rowAlq(o){const c=o.c,a=o.a,[cls,txt]=alqPill(a);
+  return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}" data-pest="alq"><span class="t">${esc(c.direccion||"")}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span><span class="r"><span class="pill ${cls}">${esc(txt)}</span></span><span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span>${c.alqRenta?`<span>${eur0(c.alqRenta)}/mes</span>`:""}${a.agot?"":`<span>aviso límite ${fmtFA(a.aviso)}</span>`}${c.alqRespuesta?`<span class="pill acc">${esc(c.alqRespuesta)}</span>`:""}${c.telefono?"":`<span class="pill warn">Sin teléfono</span>`}</span></button>`}
+function bloqueAlq(){const L=alqPendientes();
+  return {k:"alq",t:"Inversores: se acaba su alquiler",n:L.length,tono:L.some(o=>alqPill(o.a)[0]==="bad")?"bad":"warn",
+    nota:`Pisos que alquilamos y cuyo contrato vence en menos de ${alqMeses()} meses, o contratos antiguos ya agotados. Llama al propietario antes del aviso límite y ofrécele vender: con la nueva ley, si no avisa por burofax el contrato se renueva solo 5 años y recuperar el piso le costará una indemnización. Apunta lo que te diga en la pestaña «Alquiler» de la ficha.`,
+    html:hoyLista("alq",L,rowAlq,"")}}
+function alqAntesGuardar(data){if(data.alqRespuesta===undefined)return;const old=(cur&&cur.id&&anterior("contactos",cur.id))||{};
+  if((data.alqRespuesta||"")!==(old.alqRespuesta||"")||(data.alqRespuesta&&!old.alqRespVence))data.alqRespVence=data.alqRespuesta?alqClave(alqCalc({...old,...data})):""}
+function pintarAlq(col,id,d){$("#alqbox")?.remove();if(col!=="contactos"||!id||!d||!d.alquilada)return;const p=$('#frm .fpane[data-pane="alq"]');if(!p)return;
+  const a=alqCalc(d)||{sinDatos:true},[cls,txt]=alqPill(a),box=document.createElement("div");box.id="alqbox";box.className="vivbox full";box.style.gridColumn="1/-1";
+  const anio=a.ini?a.ini.slice(0,4):"";let det="",guion="";
+  if(a.sinDatos)det="Pon al menos la fecha de inicio del contrato y el CRM calcula el vencimiento y el aviso límite con la ley nueva.";
+  else if(a.agot){det=`Inicio ${fmtFA(a.ini)}. ${a.tipo}.`;guion=`Le alquilamos el piso${anio?" en "+anio:""}. Pregúntale si sigue el mismo inquilino y con qué contrato. Si se plantea recuperarlo o venderlo, ofrécele una valoración sin compromiso y consulta antes al despacho jurídico.`}
+  else{det=`${a.ini?"Inicio "+fmtFA(a.ini)+" · ":""}vence el ${fmtFA(a.fin)} (${a.tipo}) · aviso límite del propietario: ${fmtFA(a.aviso)}, ${a.meses} meses antes y por burofax.`;
+    guion=a.dAviso>=0?`Le alquilamos el piso${anio?" en "+anio:""}. Con la ley nueva, el ${fmtFA(a.fin)} el contrato se renueva solo 5 años más si no avisa por burofax antes del ${fmtFA(a.aviso)}, y recuperarlo después le costará una indemnización. Si está pensando en vender, ahora es el momento: le hacemos una valoración sin compromiso, con el piso libre o con el inquilino dentro.`
+      :`El aviso límite ya ha pasado: el ${fmtFA(a.fin)} el contrato se renovará solo 5 años. Aun así puede vender con el inquilino dentro: ofrécele una valoración sin compromiso.`}
+  box.innerHTML=`<div class="vb-h">Fin del alquiler <span class="pill ${cls}">${esc(txt)}</span></div><div class="vb-s">${esc(det)}</div>${guion?`<div class="vb-s" style="margin-top:6px"><b>Qué decirle:</b> ${esc(guion)}</div><div class="vb-s" style="margin-top:6px">Si vende con el inquilino dentro, el comprador hereda el contrato y el inquilino tiene derecho de tanteo y retracto. Dudas legales: jurídico, 914 356 809.</div>`:""}${alqRespondida(d,a)?`<div class="vb-s" style="margin-top:6px"><span class="pill ok">Respondido: ${esc(d.alqRespuesta)}</span> Ya no sale en Hoy hasta el próximo vencimiento.</div>`:""}`;
+  p.prepend(box)}
+
 /* ---------- Informe semanal al propietario (PDF para imprimir o guardar) ---------- */
 async function informePropietario(e){if(!e)return;await cargarMercado();const hoy=hoyISO(),d7=dias2(hoy,-7);
   const V=S.visitas.filter(v=>v.encargoId===e.id&&((v.fecha||"")<hoy||(v.fecha===hoy&&v.interes))).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")),V7=V.filter(v=>(v.fecha||"")>=d7);
@@ -1168,7 +1214,7 @@ function rowContacto(c){
   return `<button class="row" type="button" data-open="contactos" data-id="${esc(c.id)}">
     <span class="t">${esc(c.direccion)}${c.nombre?` · <span style="font-weight:500">${esc(c.nombre)}</span>`:""}</span>
     <span class="r">${p?`<span class="pill ${p.cls}">${esc(p.txt)}</span>`:`<span class="pill">${esc(c.etapa)}</span>`}</span>
-    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${etiquetasNoticia(c)}${(u=>u?`<span class="pill acc" role="link" tabindex="0" data-anuncio="${esc(u)}" style="cursor:pointer;text-decoration:underline">Ver anuncio ↗</span>`:"")(urlAnuncio(c))}</span>
+    <span class="m">${zona(c.zona)}<span>${esc(c.asesor||"Sin asesor")}</span><span class="pill acc">${esc(c.etapa||"")}</span>${c.motivo?`<span>${esc(c.motivo)}</span>`:""}${S.f&&S.f.etapa==="__alq"&&c.alquilada?(a=>a&&!a.sinDatos?`<span class="pill ${alqPill(a)[0]}">${esc(alqPill(a)[1])}</span>`:"")(alqCalc(c)):""}${c.proxAccion?`<span>→ ${esc(c.proxAccion)}</span>`:""}${etiquetasNoticia(c)}${(u=>u?`<span class="pill acc" role="link" tabindex="0" data-anuncio="${esc(u)}" style="cursor:pointer;text-decoration:underline">Ver anuncio ↗</span>`:"")(urlAnuncio(c))}</span>
   </button>`;
 }
 function rowEncargo(e){
@@ -1207,7 +1253,7 @@ function hoyBloques(B,vacios,tras){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const AY=lsGet("crm-ayuda"),ayuda=b=>!b.nota?"":((AY[b.k]||[0])[0]<3)?`<p class="nota">${b.nota}</p>`:`<details class="ayuda"><summary title="Qué es esto" aria-label="Qué es esto">?</summary><p class="nota">${b.nota}</p></details>`;
   const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${ayuda(b)}${b.html}</div></details>`;
   /* Tres grupos fijos (la agenda, al final) */
-  const G=[["Para hacer hoy",["avisos","rec","pend","bvis","ped","bpend","sti","res"]],["Para revisar",["borr","ns","capn","encAl","binf","bsinf","bofi","bcap","urg","vend","pedEnv"]],["Oportunidades",["llamar","cruces","compn","cli"]]];
+  const G=[["Para hacer hoy",["avisos","rec","pend","bvis","ped","bpend","sti","res"]],["Para revisar",["borr","ns","capn","encAl","binf","bsinf","bofi","bcap","urg","vend","pedEnv"]],["Oportunidades",["alq","llamar","cruces","compn","cli"]]];
   const grupoDe=k=>{if(k==="agenda")return 3;const i=G.findIndex(g=>g[1].includes(k));return i<0?1:i};
   const grupos=G.map((g,i)=>[g[0],vis.filter(b=>grupoDe(b.k)===i)]).filter(g=>g[1].length),resto=vis.filter(b=>grupoDe(b.k)===3);
   return `<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Mensaje" style="float:right">Enviar mensaje</button><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
@@ -1241,7 +1287,7 @@ function vHoy(){
     ...(cn=>[{k:"compn",t:"Compradores nuevos para tus pisos",n:cn.length,tono:"warn",nota:"Se han dado de alta esta semana y encajan con tus encargos o tus noticias con precio. Llámales y apunta la llamada en el «Cruce de compradores» del piso.",html:hoyLista("compn",cn,rowCompNuevo,"")}])(compNuevosParaMi()),
     {k:"capn",t:"Captaciones nuevas",n:capNuevas().length,tono:"warn",nota:"Valoraciones pedidas en tu zona en los últimos 7 días. Encuentra la vivienda y pásala a noticia.",html:hoyLista("capn",capNuevas(),rowCap,"")},
     {k:"llamar",t:"A quién llamar hoy",n:llamar.length,html:hoyLista("llamar",llamar,rowLlamar,""),nota:"Las viviendas de tu zona con más probabilidad de vender."},
-    bloqueNs(),
+    bloqueNs(),bloqueAlq(),
     {k:"vend",t:"Se han vendido",n:vend.length,tono:"warn",html:hoyLista("vend",vend,rowContacto,"")},
     {k:"borr",t:"Solicitudes de borrado",n:solBorr.length+nsQ.length,tono:"warn",html:`<div class="list">${nsQ.map(rowNsQ).join("")}${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||x.nombre||"")}${col==="visitas"&&x.fecha?" · "+fmtF(x.fecha)+(x.hora?" "+esc(x.hora):""):""}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
     {k:"sti",t:S.yo&&S.yo.rol==="responsable"?"Te esperan a ti":"Esperan a Stiwhar",n:sti.length,tono:"warn",html:hoyLista("sti",sti,rowContacto,"")},
@@ -1287,23 +1333,25 @@ function vResultados(){
   const rk=vRanking(per);
   return fact+(resp?vCamino():"")+sel+(rk||`<section><h2>${resp?"Ranking":"Tus objetivos"} ${PER_ET[per][0]}</h2><div class="empty">${S.db?"Cargando el ranking…":"El ranking se ve al iniciar sesión."}</div></section>`)+(resp?vMetasCoord(per):"")+obj;
 }
-function selOpts(arr,val,todos){return (todos?`<option value="">${todos}</option>`:"")+arr.map(x=>`<option${x===val?" selected":""}>${esc(x)}</option>`).join("")}
+function selOpts(arr,val,todos){if(!todos&&val&&typeof val==="string"&&!arr.includes(val))arr=[...arr,val]; /* un valor guardado que no está en la lista (p. ej. origen «Alquilado por la oficina») no se borra al guardar */
+  return (todos?`<option value="">${todos}</option>`:"")+arr.map(x=>`<option${x===val?" selected":""}>${esc(x)}</option>`).join("")}
 function vContactos(){
   const f=S.f,q=f.q.toLowerCase();
   const pasoOk=c=>{const p=proxEstado(c);return !f.paso||(f.paso==="vencidos"?!!(p&&c.proxFecha&&p.cls):!!(p&&!c.proxFecha))};
   const base=S.contactos.filter(c=>(!f.asesor||(f.asesor==="__none"?!c.asesor:c.asesor===f.asesor))&&pasoOk(c)&&(!q||[c.direccion,c.nombre,c.telefono,c.notas,c.proxAccion,titTxt(c)].join(" ").toLowerCase().includes(q)));
   const enCurso=c=>c.etapa!=="KO"&&c.etapa!=="Encargo";
   const esPub=c=>!!c.publicado&&c.etapa!=="KO";
-  let L=base.filter(c=>f.etapa==="activos"?enCurso(c):f.etapa==="__urg"?!!urgPub(c):f.etapa==="__pub"?esPub(c):c.etapa===f.etapa);
-  L.sort((a,b)=>(a.proxFecha||"0").localeCompare(b.proxFecha||"0"));
+  let L=base.filter(c=>f.etapa==="activos"?enCurso(c):f.etapa==="__urg"?!!urgPub(c):f.etapa==="__pub"?esPub(c):f.etapa==="__alq"?!!c.alquilada:c.etapa===f.etapa);
+  if(f.etapa==="__alq")L=L.map(c=>({c,a:alqCalc(c)})).sort((x,y)=>(x.a.fin||(x.a.agot?"0":"9")).localeCompare(y.a.fin||(y.a.agot?"0":"9"))).map(o=>o.c);
+  if(f.etapa!=="__alq")L.sort((a,b)=>(a.proxFecha||"0").localeCompare(b.proxFecha||"0"));
   const chips=[["activos","Todas en curso",base.filter(enCurso).length],...["Desarrollo","Seguimiento","Paralizado","Valoración agendada","Valorada","Encargo"].map(e=>[e,e==="Valorada"?"Valoradas":e==="Paralizado"?"Paralizados":e,base.filter(c=>c.etapa===e).length])].filter(([v,,n])=>n||v==="activos"||v===f.etapa);
-  const nPub=base.filter(esPub).length,nUrg=base.filter(urgPub).length;
+  const nPub=base.filter(esPub).length,nUrg=base.filter(urgPub).length,nAlq=base.filter(c=>c.alquilada).length;
   return `<section><div class="chips" role="tablist">${chips.map(([v,l,n])=>`<button type="button" class="chip" data-etapa="${esc(v)}" aria-pressed="${f.etapa===v}">${esc(l)} <span>${n}</span></button>`).join("")}</div>
   <div class="tools">
     <input type="search" id="f-q" placeholder="Buscar dirección, nombre, teléfono, nota…" value="${esc(f.q)}">
     <select id="f-asesor">${selOpts(personas(),f.asesor,"Todos los asesores")}<option value="__none"${f.asesor==="__none"?" selected":""}>Sin asesor</option></select>
     <select id="f-paso"><option value="">Cualquier próximo paso</option><option value="vencidos"${f.paso==="vencidos"?" selected":""}>Vencidos u hoy</option><option value="sinpaso"${f.paso==="sinpaso"?" selected":""}>Sin próximo paso</option></select>
-    <select id="f-pub"><option value="activos">Publicadas: sin filtrar</option><option value="__pub"${f.etapa==="__pub"?" selected":""}>Todas las publicadas (${nPub})</option><option value="__urg"${f.etapa==="__urg"?" selected":""}>Publicadas sin localizar (${nUrg})</option></select>
+    <select id="f-pub"><option value="activos">Publicadas: sin filtrar</option><option value="__pub"${f.etapa==="__pub"?" selected":""}>Todas las publicadas (${nPub})</option><option value="__urg"${f.etapa==="__urg"?" selected":""}>Publicadas sin localizar (${nUrg})</option>${nAlq?`<option value="__alq"${f.etapa==="__alq"?" selected":""}>Alquiladas: propietarios inversores (${nAlq})</option>`:""}</select>
   </div>
   <h2>Noticias <span class="n">${L.length}</span></h2>${(pg=>pg.ctrl+listOr(pg.items.map(rowContacto),S.contactos.length?"Ninguna noticia coincide con el filtro.":"Aún no hay noticias. Pulsa «+ Nuevo» para añadir la primera.")+pg.ctrl)(paginar("noticias",L))}</section>`;
 }
@@ -1516,6 +1564,8 @@ const FORMS={
     ["proxAccion","Próxima acción","text",{full:1}],["proxFecha","Fecha próxima acción","date"],["notaSimple","Nota simple","ns"],["buscadoEn","Buscado en","busq"],
     ["fechaValoracion","Fecha de valoración","date"],["precioValorado","Precio valorado (€)","number"],["precioPropietario","Precio que pide el propietario (€)","number"],
     ["necesitaSti","Necesita a Stiwhar","check"],["notaSti","Qué necesita de Stiwhar","text",{full:1}],
+    ["alqRespuesta","¿Qué quiere hacer el propietario?","sel",()=>ALQ_RESP],["alqInicio","Inicio del contrato de alquiler","date"],["alqRenta","Renta (€/mes)","number"],
+    ["alqFin","Vencimiento (vacío: lo calcula el CRM con la ley)","date"],["alqAviso","Aviso límite del propietario (vacío: lo calcula el CRM)","date"],["alqInquilino","Inquilino","text"],["alquilada","Está alquilada (propietario inversor)","check"],
     ["notas","Notas generales","textarea",{full:1}]]},
   encargos:{titulo:"encargo",fields:[
     ["direccion","Dirección *","text",{full:1,req:1}],["asesor","Asesor","sel",()=>personas()],["zona","Zona","sel",()=>["",...Object.keys(ZONAS)]],
@@ -1757,6 +1807,10 @@ function alertasAuto(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const rol=S.yo
     // Encargo activo con la ficha de valoración a medias
     for(const e of encMio)if(fvPedir(e)){const n=fvFaltan(e).length;add("fval:"+e.id,"Completa la ficha de valoración",(e.direccion||"")+" · faltan "+n+" dato"+(n>1?"s":""),["encargos",e.id])}
     for(const c of cMios)if(fvPedir(c)){const n=fvFaltan(c).length;add("fvaln:"+c.id,"Completa la ficha de la valoración",(c.direccion||"")+" · faltan "+n+" dato"+(n>1?"s":""),["contactos",c.id])}
+    // Propietario inversor: entra en el plazo de aviso (los últimos 7 días) o el aviso límite está a 45 días o menos sin respuesta
+    {const lim=masMeses(hoy,alqMeses());for(const c of cMios){if(!c.alquilada||c.etapa==="KO"||c.etapa==="Encargo"||c.vendida)continue;const a=alqCalc(c,hoy);if(!a||a.sinDatos||a.agot||alqRespondida(c,a))continue;
+      if(a.dAviso>=0&&a.dAviso<=45)add("alq:"+c.id+":"+a.fin,"Se acaba un alquiler: llama al propietario",`${c.direccion||""} · aviso límite ${fmtFA(a.aviso)}`,["contactos",c.id],"bad");
+      else if(a.fin<=lim&&masMeses(a.fin,-alqMeses())>=masDias(-7))add("alqv:"+c.id+":"+a.fin,"Propietario inversor: su alquiler vence pronto",`${c.direccion||""} · vence el ${fmtFA(a.fin)}`,["contactos",c.id])}}
     // Se ha vendido
     for(const c of cMios)if(c.vendida&&!c.vendidaVista)add("vend:"+c.id,"Se ha vendido con otra agencia",c.direccion||"",["contactos",c.id]);
   }
@@ -2551,6 +2605,7 @@ const sinBusq=d=>(d.etapa||"Desarrollo")==="Desarrollo"&&!(Array.isArray(d.busca
 function pintarBusq(){const b=$("#busqbox");if(!b)return;const et=($("#fld-etapa")||{}).value||"Desarrollo";b.hidden=et!=="Desarrollo";
   const n=document.querySelectorAll('#frm input[name="buscadoEn"]:checked').length,av=$("#busq-av");if(av)av.innerHTML=n?"":`<span class="pill warn">Pendiente: búscala antes de pasarla a Seguimiento</span>`}
 $("#frm").addEventListener("change",e=>{if(e.target.id==="fld-etapa"||e.target.name==="buscadoEn")pintarBusq()});
+$("#frm").addEventListener("change",e=>{if(e.target.id==="fld-alquilada"&&e.target.checked&&!$("#frm [data-ftab=alq]"))toast("Guarda y vuelve a abrir la ficha: saldrá la pestaña «Alquiler» para poner el contrato")});
 const NS_EST=["Por pedir","Por recoger","La tenemos"]; /* Stiwhar 05/11: «La tenemos» solo con el PDF subido */
 function nsFicha(){if(!cur)return null;let d=null;if(cur.col==="contactos")d=cur.id?S.contactos.find(x=>x.id===cur.id):null;else if(cur.col==="censoEdits")d={...(cur.viv?cur.viv.u:{}),...(S.censoEd[cur.id]||{})};if(!d)return null;
   return {...d,...(cur.nsQ!==undefined?{notaSimpleQuitar:cur.nsQ}:{}),...(cur.nsSinPdf?{notaSimplePdf:null}:{})}}
@@ -2607,7 +2662,7 @@ $("#frm").addEventListener("change",e=>{if(e.target.matches("[data-nsfile]")){co
 const PEST={
   contactos:{top:["etapa","proxAccion","proxFecha","_acc","_nota"],tabs:[
     ["datos","Datos",["direccion","nombre","telefono","variosTitulares","asesor","zona","origen","referidoPor","publicado","fechaPublicado","motivo","fechaValoracion","precioValorado","precioPropietario","necesitaSti","notaSti"]],
-    ["fval","Ficha valoración",["_fval"]],["censo","Censo",["_viv","_fus","viviendaLocalizada"]],["notas","Notas",["notaSimple","buscadoEn","notas","_hist"]]]},
+    ["fval","Ficha valoración",["_fval"]],["alq","Alquiler",["alqRespuesta","alqInicio","alqRenta","alqFin","alqAviso","alqInquilino","alquilada"]],["censo","Censo",["_viv","_fus","viviendaLocalizada"]],["notas","Notas",["notaSimple","buscadoEn","notas","_hist"]]]},
   encargos:{top:["estado","precio","_acc","_nota"],tabs:[
     ["datos","Datos",["direccion","_props","asesor","zona","fechaCaptacion","exclusiva","finExclusiva","honorarioPrevisto","ultimaRevisionPrecio","riesgo"]],
     ["fval","Ficha valoración",["_fval"]],["comp","Compradores",["_lcomp"]],["vis","Visitas",["_lvis","_visacc"]],["notas","Notas",["notas","_hist"]]]},
@@ -2632,7 +2687,9 @@ function resumenFicha(col,d){const tel=d.telefono?`<a class="tel" href="tel:${es
   if(col==="encargos")return [d.direccion,[pill(d.estado),d.precio&&eur(d.precio),d.asesor&&esc(d.asesor)]];
   return [(d.nombre||"")+((d.titulares||[]).length?" y "+d.titulares.map(t=>t.nombre||"").join(", "):""),[pill(d.estado),tel,d.precioMax&&("hasta "+eur(d.precioMax)),prioComp(d)&&"★ Finanhogar"]]}
 function organizarFicha(col,id,d){const P=PEST[col],db=$("#frm .db");if(!P||!id||!db)return;
-  const T=[["prin","Principal",P.top],...P.tabs],donde={};T.forEach(([,,L],i)=>L.forEach(x=>donde[x]=i));
+  /* La pestaña «Alquiler» solo en las fichas marcadas como alquiladas; en las demás, la casilla queda en Datos */
+  let tabs=P.tabs;if(col==="contactos"&&!(d&&d.alquilada)){tabs=tabs.filter(t=>t[0]!=="alq");ALQ_CAMPOS.filter(k=>k!=="alquilada").forEach(k=>$("#fld-"+k)?.closest("label")?.remove())}
+  const T=[["prin","Principal",P.top],...tabs],donde={};T.forEach(([,,L],i)=>L.forEach(x=>donde[x]=i));
   const panes=T.map(([k])=>{const p=document.createElement("div");p.className="fpane";p.dataset.pane=k;return p});let wa=null;
   for(const c of [...db.children]){const k=claveHijo(c);if(k==="_h"){c.remove();continue}if(k==="_wa"){wa=c;c.remove();continue}panes[donde[k]??1].appendChild(c);
     if((MITAD[col]||[]).includes(k)&&!c.classList.contains("full"))c.classList.add("mitad");
@@ -2676,7 +2733,7 @@ function abrir(col,id){
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}${col==="visitas"?`<button class="btn" type="button" data-act="visCancelar">${d.cancelada?"Reactivar la visita":"Visita cancelada"}</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
-  titAuto();organizarFicha(col,id,d);if(FV_COLS.includes(col)&&id){fvRefrescar();if(!S.censo)cargarCenso().then(()=>{if(cur&&cur.col===col&&cur.id===id&&$("#fld-_fval"))fvRepintar(null)})}pintarRec(col,id,d);pintarSemaforo(col,id,d);historialLateral(id);{const pp=$("#fld-_props"),dl=$("#fld-direccion")?.closest("label");if(pp&&dl)dl.after(pp)}pintarNS();pintarBusq();$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
+  titAuto();organizarFicha(col,id,d);if(FV_COLS.includes(col)&&id){fvRefrescar();if(!S.censo)cargarCenso().then(()=>{if(cur&&cur.col===col&&cur.id===id&&$("#fld-_fval"))fvRepintar(null)})}pintarRec(col,id,d);pintarSemaforo(col,id,d);pintarAlq(col,id,d);historialLateral(id);{const pp=$("#fld-_props"),dl=$("#fld-direccion")?.closest("label");if(pp&&dl)dl.after(pp)}pintarNS();pintarBusq();$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
   if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
   if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
@@ -2792,7 +2849,7 @@ async function guardar(col,id,data,nota,extraHist){
   if(old&&id&&VIVAS.includes(col)&&old.actualizado){try{const srv=await S.db.collection(col).doc(id).leer();
     if(srv&&srv.actualizado&&srv.actualizado!==old.actualizado){const nv=v=>v==null||v===""||v===false?"":JSON.stringify(v),mios={};for(const k of Object.keys(data))if(nv(old[k])!==nv(data[k]))mios[k]=data[k];data=mios;base=srv}}catch(_){}}
   const vtxt=v=>Array.isArray(v)?v.map(x=>x&&typeof x==="object"?[x.nombre,x.telefono,x.nota&&"("+x.nota+")"].filter(Boolean).join(" "):x).join(", "):String(v??"");
-  const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","borrarSolicitado","vendidaVista","notaSimplePdf","notaSimpleQuitar"].includes(k)&&vtxt(old[k])!==vtxt(data[k])&&!(old[k]==null&&data[k]===false)&&!(old[k]==null&&Array.isArray(data[k])&&!data[k].length))
+  const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","borrarSolicitado","vendidaVista","notaSimplePdf","notaSimpleQuitar","alqRespVence"].includes(k)&&vtxt(old[k])!==vtxt(data[k])&&!(old[k]==null&&data[k]===false)&&!(old[k]==null&&Array.isArray(data[k])&&!data[k].length))
     .map(k=>({campo:etiqueta(col,k),antes:(titCampo(col,k)&&typeof old[k]==="boolean"?(old[k]?"Sí":"No"):vtxt(old[k])).slice(0,200),despues:(titCampo(col,k)&&typeof data[k]==="boolean"?(data[k]?"Sí":"No"):vtxt(data[k])).slice(0,200)})):[];
   const out={...(base||{}),...data}; delete out.id; delete out._id; out.actualizado=ahora;
   if(col==="contactos"&&out.vendida&&out.etapa!=="KO")out.etapa="KO"; /* Stiwhar (03/11): toda noticia vendida pasa a KO */
@@ -2821,7 +2878,7 @@ $("#frm").addEventListener("submit",async ev=>{
   if(!cur.id&&cur.col==="contactos"&&data.censoId){}else if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
     if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
   const pxh=cur.col==="contactos"?($("#px-hora")?.value||""):"";
-  if(cur.col==="encargos")fvAntesGuardar(data,!cur.id);else if(cur.col==="contactos")fvNoticiaAntes(data);
+  if(cur.col==="encargos")fvAntesGuardar(data,!cur.id);else if(cur.col==="contactos"){fvNoticiaAntes(data);alqAntesGuardar(data)}
   const nid=await guardar(cur.col,cur.id,data,nota);
   if(nid&&cur.col==="encargos"&&!cur.id){pestUlt["encargos"+nid]="fval";setTimeout(()=>{abrir("encargos",nid);toast("Encargo creado: rellena la ficha de valoración")},350)}
   if(nid){$("#dlg").close();toast(cur.col==="contactos"&&sinBusq(data)?"Guardado. Recuerda buscarla en Tecnofind o Inglobaly":"Guardado");if(cur.col==="contactos"){sincronizarCenso(data);if(pxh)recPx(nid,data,pxh)}
@@ -2955,6 +3012,7 @@ function abrirAjustes(){
    <label>Fin del periodo<input id="aj-fin" type="date" value="${A.periodoFin}"></label>
    <label>Gastos fijos al mes (€)<input id="aj-gas" type="number" value="${A.gastosMes}"></label>
    <label>Días hasta revisar precio<input id="aj-rev" type="number" value="${A.diasRevisionPrecio}"></label>
+   <label>Meses antes del fin de un alquiler para avisar al asesor<input id="aj-alq" type="number" min="1" max="24" value="${alqMeses()}"></label>
    <label>Teléfono de la oficina (para cartas)<input id="aj-tel" type="tel" value="${esc(A.telefonoOficina||"")}"></label>
    <label class="full">Metas semanales por asesor (noticias, gestiones, censo, valoraciones, captaciones)<input id="aj-metas" type="text" value="${esc(METAS_ET.map(([k])=>({...DEF_METAS,...(A.metas||{})})[k]).join(", "))}"></label>
    <label class="full">Metas semanales del coordinador (compradores nuevos, visitas, reservas)<input id="aj-metasc" type="text" value="${esc(METAS_COORD_ET.map(([k])=>({...DEF_METAS_COORD,...(A.metasCoord||{})})[k]).join(", "))}"></label>
@@ -2966,7 +3024,7 @@ function abrirAjustes(){
 }
 async function guardarAjustes(){
   const n=id=>Number($(id).value)||0;
-  const A={objetivoMes:n("#aj-mes"),objetivosMes:Object.fromEntries(($("#aj-objmes")?.value||"").split(",").map(t=>t.trim().match(/^(\d{4}-\d{2})\s*[=:]\s*([\d.]+)$/)).filter(Boolean).map(m=>[m[1],Number(m[2].replace(/\./g,""))])),objetivoPeriodo:n("#aj-per"),objetivoAnual:n("#aj-anual")||1000000,anioObjetivo:n("#aj-anio")||2027,periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
+  const A={objetivoMes:n("#aj-mes"),objetivosMes:Object.fromEntries(($("#aj-objmes")?.value||"").split(",").map(t=>t.trim().match(/^(\d{4}-\d{2})\s*[=:]\s*([\d.]+)$/)).filter(Boolean).map(m=>[m[1],Number(m[2].replace(/\./g,""))])),objetivoPeriodo:n("#aj-per"),objetivoAnual:n("#aj-anual")||1000000,anioObjetivo:n("#aj-anio")||2027,periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,mesesAvisoAlquiler:n("#aj-alq")||9,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
     metasCoord:(v=>Object.fromEntries(METAS_COORD_ET.map(([k],i)=>[k,v[i]!==undefined&&v[i].trim()!==""&&Number(v[i])>=0?Number(v[i]):DEF_METAS_COORD[k]])))($("#aj-metasc").value.split(",")),
     asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()})),
     moviles:Object.fromEntries($("#aj-mov").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()&&telOk(p[1])).map(p=>[p[0].trim(),telOk(p[1])]))};
@@ -3124,7 +3182,7 @@ $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-v]
 $("#view").addEventListener("click",e=>{const pp=e.target.closest("[data-pagp]");if(pp){const P=S.pag[pp.dataset.pagp];P.p+=+pp.dataset.d;render();const pg=$(`[data-pager="${pp.dataset.pagp}"]`);if(pg)pg.closest("section")?.scrollIntoView({block:"start"});e.stopImmediatePropagation();return}
   const hm=e.target.closest("[data-hoymas]");if(hm){S.hoyMas[hm.dataset.hoymas]=!S.hoyMas[hm.dataset.hoymas];render();e.stopImmediatePropagation();return}},true);
 $("#view").addEventListener("change",e=>{const pn=e.target.closest("[data-pagn]");if(pn){const P=S.pag[pn.dataset.pagn];P.n=+pn.value;P.p=0;render()}});
-$("#view").addEventListener("click",e=>{const eg=e.target.closest("[data-etapa-go]");if(eg){S.view="contactos";S.f.asesor="";S.f.paso="";S.f.etapa=eg.dataset.etapaGo;render();window.scrollTo(0,0);return}const g=e.target.closest("[data-go]");if(g){S.view="contactos";S.f.asesor="";S.f.etapa="activos";S.f.paso=g.dataset.go;render();window.scrollTo(0,0);return}const ke=e.target.closest("[data-kest]");if(ke){S.kf.estado=ke.dataset.kest;render();return}const ch=e.target.closest("[data-etapa]");if(ch){S.f.etapa=ch.dataset.etapa;render();return}if(e.target.id==="btn-perm"){(async()=>{try{const pm=await window.claude.use("permissions");await pm.manage();S.permDb=await pm.state("db");S.soloLectura=null;render()}catch(_){toast("Abre el menú Permisos de la página (arriba a la derecha)")}})();return}const pt=e.target.closest("[data-portal]");if(pt)return abrirPortal(pt.dataset.portal);const vv=e.target.closest("[data-viv]");if(vv)return abrirViv(vv.dataset.viv);const nv=e.target.closest("[data-nsviv]");if(nv){const i=nv.dataset.nsviv;return (S.censo?Promise.resolve():cargarCenso()).then(()=>abrirViv(i))}const r=e.target.closest("[data-open]");if(r)return abrir(r.dataset.open,r.dataset.id);if(e.target.id==="btn-ajustes")abrirAjustes();if(e.target.id==="l-buscar")leerLoc();if(e.target.id==="l-limpiar"){S.lf={zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""};render()}});
+$("#view").addEventListener("click",e=>{const eg=e.target.closest("[data-etapa-go]");if(eg){S.view="contactos";S.f.asesor="";S.f.paso="";S.f.etapa=eg.dataset.etapaGo;render();window.scrollTo(0,0);return}const g=e.target.closest("[data-go]");if(g){S.view="contactos";S.f.asesor="";S.f.etapa="activos";S.f.paso=g.dataset.go;render();window.scrollTo(0,0);return}const ke=e.target.closest("[data-kest]");if(ke){S.kf.estado=ke.dataset.kest;render();return}const ch=e.target.closest("[data-etapa]");if(ch){S.f.etapa=ch.dataset.etapa;render();return}if(e.target.id==="btn-perm"){(async()=>{try{const pm=await window.claude.use("permissions");await pm.manage();S.permDb=await pm.state("db");S.soloLectura=null;render()}catch(_){toast("Abre el menú Permisos de la página (arriba a la derecha)")}})();return}const pt=e.target.closest("[data-portal]");if(pt)return abrirPortal(pt.dataset.portal);const vv=e.target.closest("[data-viv]");if(vv)return abrirViv(vv.dataset.viv);const nv=e.target.closest("[data-nsviv]");if(nv){const i=nv.dataset.nsviv;return (S.censo?Promise.resolve():cargarCenso()).then(()=>abrirViv(i))}const r=e.target.closest("[data-open]");if(r){if(r.dataset.pest)pestUlt[r.dataset.open+r.dataset.id]=r.dataset.pest;return abrir(r.dataset.open,r.dataset.id)}if(e.target.id==="btn-ajustes")abrirAjustes();if(e.target.id==="l-buscar")leerLoc();if(e.target.id==="l-limpiar"){S.lf={zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""};render()}});
 function leerLoc(){for(const k of ["zona","calle","num","m2","dm2","anio","danio","tipo","planta","rc"]){const el=$("#l-"+k);if(el)S.lf[k]=el.value}render()}
 $("#view").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id&&e.target.id.startsWith("l-")){e.preventDefault();leerLoc()}});
 $("#view").addEventListener("input",e=>{const id=e.target.id;if(id==="f-q"||id==="c-q"||id==="k-q"){if(id==="f-q")S.f.q=e.target.value;else if(id==="k-q")S.kf.q=e.target.value;else S.cf.q=e.target.value;clearTimeout(render.t);render.t=setTimeout(()=>{render();const i=$("#"+id);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},300)}});
