@@ -178,10 +178,10 @@ async function arrancar(sesion){
   const {data:yo,error}=await sb.from("perfiles").select("nombre,rol,zona,activo").eq("id",sesion.user.id).maybeSingle();
   if(error||!yo||yo.activo===false){verLogin("Tu email ("+sesion.user.email+") no está dado de alta en el CRM. Pídele a Stiwhar que te añada.");$("#l-paso1").hidden=true;
     if(!$("#l-otro")){$("#l-msg").insertAdjacentHTML("afterend",'<button class="btn" type="button" id="l-otro">Entrar con otro email</button>');$("#l-otro").onclick=salir}return}
-  arrancado=true;$("#login").hidden=true;S.yo=yo;ajustarPorRol();
+  arrancado=true;$("#login").hidden=true;S.yo=yo;S.visEntPend=true;ajustarPorRol();
   const db=dbSupabase;S.dbIntentado=true;S.db=db;
   for(const col of ["contactos","encargos","operaciones","captaciones","compradores","visitas"]){
-    db.collection(col).limit(1000).onSnapshot(s=>{S[col]=s.docs.map(d=>{const o={id:d.id,...d.data()};if(ETAPA_ANTIGUA[o.etapa])o.etapa=ETAPA_ANTIGUA[o.etapa];return o});if(!$("#dlg").open)render()},()=>{});
+    db.collection(col).limit(1000).onSnapshot(s=>{S[col]=s.docs.map(d=>{const o={id:d.id,...d.data()};if(ETAPA_ANTIGUA[o.etapa])o.etapa=ETAPA_ANTIGUA[o.etapa];return o});if(!$("#dlg").open)render();(S.cargado=S.cargado||{})[col]=1;if(window.avisoVisitasEntrada)window.avisoVisitasEntrada()},()=>{});
   }
   {let prev=null;db.collection("avisos").limit(1000).onSnapshot(sn=>{const L=sn.docs.map(d=>({id:d.id,...d.data()}));avisosNuevos(prev,L);prev=new Set(L.map(x=>x.id));S.avisos=L;if(!$("#dlg").open)render()},()=>{})}
   /* Resumen del día de los asesores (mañana y tarde): solo Stiwhar; se guarda hasta que cambia el mes */
