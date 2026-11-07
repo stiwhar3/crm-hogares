@@ -456,7 +456,7 @@ const MOTIVOS = ["","Herencia","Divorcio","Extinción de condominio","Cambio de 
 const EST_ENC = ["Activo","Reservado","Paralizado","Vendido","Retirado","Devuelto"];
 const EST_OP = ["Reserva","Aceptada","Arras","Escriturada","Caída"];
 const DEF_AJUSTES = {asesores:[{nombre:"Carlos",zona:"ROSA"},{nombre:"Iván",zona:"AZUL"},{nombre:"Sergio",zona:"AMARILLA"},{nombre:"Mery",zona:"VERDE"},{nombre:"Mario",zona:""}],
-  objetivoMes:40000,objetivoPeriodo:200000,periodoInicio:"2026-10-01",periodoFin:"2026-12-31",gastosMes:24000,diasRevisionPrecio:30,objetivoAnual:1000000,anioObjetivo:2027};
+  objetivoMes:40000,objetivoPeriodo:200000,periodoInicio:"2026-10-01",periodoFin:"2026-12-31",gastosMes:24000,diasRevisionPrecio:30,visitasMinMes:4,objetivoAnual:1000000,anioObjetivo:2027};
 
 const S = {view:"hoy",contactos:[],encargos:[],operaciones:[],captaciones:[],compradores:[],visitas:[],avisos:[],ajustes:DEF_AJUSTES,db:null,censo:null,censoEd:{},portales:{},f:{q:"",asesor:"",etapa:"activos",paso:"",estado:"Activo"},cf:{zona:"",q:"",ko:false},kf:{zona:"",asesor:"",estado:"Pendiente",q:""},pag:{},hoyMas:{},lf:{zona:"",calle:"",num:"",m2:"",dm2:"5",anio:"",danio:"3",tipo:"",planta:"",rc:""}};
 const $ = s=>document.querySelector(s);
@@ -616,7 +616,7 @@ function semaforoPrecio(e){if(!e||e.estado!=="Activo"||!(+e.precio>0))return nul
   return {cls:"ok",txt:"Precio bien",corto:"Precio bien",motivo:pr.join(" · ")}}
 function pintarSemaforo(col,id,d){if(col!=="encargos"||!id)return;$("#semabox")?.remove();const p=$('#frm .fpane[data-pane="prin"]');if(!p)return;
   const s=semaforoPrecio(d);if(!s)return;const box=document.createElement("div");box.id="semabox";box.className="vivbox full";box.style.gridColumn="1/-1";
-  box.innerHTML=`<div class="vb-h">Semáforo de precio <span class="pill ${s.cls}">${esc(s.txt)}</span></div><div class="vb-s">${esc(s.motivo)}</div>`;
+  const at=atasco({...d,id});box.innerHTML=`<div class="vb-h">Semáforo de precio <span class="pill ${at?"bad":s.cls}">${esc(at&&s.cls==="ok"?"Atascado: proponer bajada":s.txt)}</span></div><div class="vb-s">${esc(s.motivo)}</div>${at?`<div class="vb-s"><b>${esc(at.diag)}</b></div>`:""}${at||s.cls!=="ok"?`<div class="vb-b"><button class="btn small${at?" primary":""}" type="button" data-baj="${esc(id)}">Propuesta de bajada e informe</button></div>`:""}`;
   const ref=p.querySelector("#recbox")||p.querySelector("details.fmas")||p.querySelector("#fld-nuevaNota")?.closest("label");ref?ref.before(box):p.appendChild(box);
   if(!S.mercado&&!pintarSemaforo.pide){pintarSemaforo.pide=1;cargarMercado().then(()=>{pintarSemaforo.pide=0;if(cur&&cur.col==="encargos"&&cur.id===id)pintarSemaforo(col,id,anterior("encargos",id))})}}
 
@@ -706,6 +706,125 @@ async function informePropietario(e){if(!e)return;await cargarMercado();const ho
   <div class="pie">${esc(e.asesor||"")} · Hogares Fuenlabrada${tel?" · "+esc(tel):""}</div>
   <script>window.onload=()=>setTimeout(()=>print(),400)<\/script></body></html>`;
   const w=window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})),"_blank");if(!w)toast("Permite las ventanas emergentes para ver el informe")}
+
+/* ---------- Encargos atascados: propuesta de bajada de precio (Stiwhar, 07/11/2026) ----------
+   Un encargo está atascado cuando lleva ≥ «Días hasta revisar precio» (30) desde la captación o la última revisión
+   y no tiene ninguna oferta, o tiene menos de «Visitas mínimas al mes» (4) en los últimos 30 días.
+   «No acepta: recordar en 15 días» lo aparca con bajadaPospuesta. Las bajadas aceptadas quedan en e.bajadas. */
+const ofertasEnc=(e,desde)=>S.visitas.filter(v=>v.encargoId===e.id&&+v.oferta>0&&(!desde||(v.fecha||"")>=desde));
+function atasco(e){if(!e||e.estado!=="Activo"||!(+e.precio>0))return null;const hoy=hoyISO();
+  if(e.bajadaPospuesta&&e.bajadaPospuesta>hoy)return null;
+  const base=[e.fechaCaptacion,e.ultimaRevisionPrecio].filter(Boolean).sort().pop();if(!base)return null;
+  const dm=dias(base,hoy),lim=+S.ajustes.diasRevisionPrecio||30,vmin=+S.ajustes.visitasMinMes||4;if(dm<lim)return null;
+  const V=S.visitas.filter(v=>v.encargoId===e.id&&!v.cancelada&&((v.fecha||"")<hoy||(v.fecha===hoy&&v.interes))),V30=V.filter(v=>(v.fecha||"")>=dias2(hoy,-30)).length;
+  const Of=ofertasEnc(e,base),sinOf=!Of.length,pocas=V30<vmin;if(!sinOf&&!pocas)return null;
+  const desde=e.ultimaRevisionPrecio&&e.ultimaRevisionPrecio>=(e.fechaCaptacion||"")?"la última bajada":"la captación";
+  const diag=V30>=vmin?`${V30} visitas en 30 días y ninguna oferta: la casa gusta, pero el precio frena.`:V30?`Solo ${V30} visita${V30>1?"s":""} en 30 días${sinOf?" y ninguna oferta":""}: el precio no atrae visitas.`:`Ninguna visita en 30 días${sinOf?" y ninguna oferta":""}: el precio no atrae visitas.`;
+  return {dm,base,desde,V,V30,Of,sinOf,pocas,diag}}
+const atascados=()=>S.encargos.filter(e=>atasco(e)).sort((a,b)=>atasco(b).dm-atasco(a).dm);
+/* Testigos de mercado: la zona; si hay pocos, el barrio; si no, toda Fuenlabrada. Con m² parecidos si hay bastantes. */
+function testigosEnc(e){const L=(S.mercado?S.mercado.L:[]).filter(m=>+m.precio>=60000),z=e.zona||zonaDe(e.direccion),cp=cpEnc(e),d90=dias2(hoyISO(),-90);
+  const vivo=m=>!m.fechaBaja||m.fechaBaja>=d90,nb=String((BARRIOS_CP.find(b=>b[0]===cp)||[])[1]||"").toLowerCase(),pal=nb.split(/[\s,\/]+/).filter(w=>w.length>3);
+  const enBarrio=m=>pal.length&&pal.some(w=>String(m.barrio||"").toLowerCase().includes(w));
+  let M=L.filter(m=>vivo(m)&&z&&m.zona===z),amb=z?"la zona "+titulo(z):"";
+  if(M.length<5){const B=L.filter(m=>vivo(m)&&(enBarrio(m)||(z&&m.zona===z)));if(B.length>M.length){M=B;amb=nb?"el barrio ("+(BARRIOS_CP.find(b=>b[0]===cp)||[])[1]+")":amb}}
+  if(M.length<5){M=L.filter(vivo);amb="toda Fuenlabrada"}
+  const m2=+e.m2||0;if(m2){const P=M.filter(m=>+m.m2>0&&Math.abs(m.m2/m2-1)<=0.3);if(P.length>=4){M=P;amb+=`, entre ${Math.round(m2*0.7)} y ${Math.round(m2*1.3)} m²`}}
+  const em=m=>+m.m2>0?m.precio/m.m2:null,baja=m=>{const p=(m.precios||[]).map(x=>+x.precio).filter(Boolean);return p.length>1&&p[p.length-1]<p[0]?p[0]-p[p.length-1]:0};
+  M=M.map(m=>({...m,em:em(m),baja:baja(m)})).sort((a,b)=>Math.abs((a.m2||0)-m2)-Math.abs((b.m2||0)-m2));
+  return {L:M,amb,emed:mediana(M.map(m=>m.em)),pmed:mediana(M.map(m=>+m.precio)),nBaj:M.filter(m=>m.baja).length}}
+const redPrecio=n=>n<100000?Math.round(n/500)*500:Math.round(n/1000)*1000;
+function propuestaBajada(e,T){const p=+e.precio,m2=+e.m2||0;let obj=p*0.95,por="una bajada del 5 % para volver a salir en las búsquedas";
+  if(claseEnc(e)==="Vivienda"&&T&&T.emed&&m2&&T.L.length>=3){const t=T.emed*m2*1.03;if(t<p*0.97){obj=Math.max(t,p*0.85);por=`la mediana de ${T.amb} (${eur0(T.emed)}/m²) más un 3 % de margen para negociar`+(t<p*0.85?"; no bajamos más de un 15 % de golpe":"")}
+    else{obj=p*0.97;por="el precio por m² está en línea con el mercado: basta un ajuste del 3 % para reactivar las visitas"}}
+  return {precio:redPrecio(obj),por}}
+/* Solo cuentan los compradores con presupuesto apuntado: son los que filtran por precio */
+const encajanA=(e,precio)=>S.compradores.filter(c=>compActivo(c)&&+c.precioMax>0&&encaja(c,{...e,precio})).length;
+/* Opiniones de las visitas sin las coletillas de la importación («Asignada a X.», «Hecha por X.») */
+const opinionesEnc=(V,n)=>V.map(v=>({...v,opinion:String(v.opinion||"").replace(/(Asignada a|Hecha por|Apuntada al asesor del encargo)[^.]*\.?\s*/gi,"").replace(/\(apuntada al asesor del encargo\)/gi,"").trim()})).filter(v=>v.opinion.length>3&&!/^Hoja:/i.test(v.opinion)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")).slice(0,n);
+let BAJ=null;
+function ventanaBajada(){let w=$("#dlgBaj");if(w)return w;
+  w=document.createElement("div");w.id="dlgBaj";w.className="modal";w.setAttribute("role","dialog");w.setAttribute("aria-modal","true");w.hidden=true;
+  w.innerHTML='<style>#dlgBaj form{width:min(720px,100%)}#dlgBaj .db{display:block}#dlgBaj .dh{position:relative;padding-right:56px}#dlgBaj .bj-k{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}#dlgBaj .bj-k .kpi{padding:10px}#dlgBaj .bj-k .v{font-size:22px}#dlgBaj .bj-diag{background:var(--accent-soft);padding:10px 12px;border-radius:10px;font-weight:600}#dlgBaj .bj-h{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}#dlgBaj .bj-t{overflow-x:auto;margin-top:6px}#dlgBaj table{width:100%;border-collapse:collapse;font-size:13px}#dlgBaj td,#dlgBaj th{text-align:left;padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top}#dlgBaj th{color:var(--muted);font-weight:600}#dlgBaj td:nth-child(n+2),#dlgBaj th:nth-child(n+2){text-align:right;white-space:nowrap}#dlgBaj .bj-prop{border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:8px}#dlgBaj .bj-acc{display:flex;gap:8px;flex-wrap:wrap}#dlgBaj .bj-acc .btn{text-align:center;white-space:nowrap}#dlgBaj .bj-df{display:grid;grid-template-columns:1fr 1fr;gap:8px}#dlgBaj .bj-df .btn{white-space:normal}#dlgBaj .db>.full{grid-template-columns:minmax(0,1fr)}#dlgBaj .db>.full>*{min-width:0}@media (max-width:600px){#dlgBaj .bj-acc{display:grid;grid-template-columns:1fr 1fr}#dlgBaj .bj-acc .btn:first-child{grid-column:1/-1}#dlgBaj .bj-df .btn{padding:10px 12px;font-size:14px}#dlgBaj td:first-child{white-space:normal}#dlgBaj table{font-size:12px}}</style><form id="frmBaj" novalidate></form>';document.body.appendChild(w);
+  w.addEventListener("click",ev=>{const a=ev.target.closest("[data-bj]");if(!a)return;ev.preventDefault();const k=a.dataset.bj;
+    if(k==="cerrar")w.hidden=true;else if(k==="informe")informeBajada();else if(k==="acepta")bajadaAceptada(a);else if(k==="pospone")bajadaPospuesta(a);else if(k==="ficha"){w.hidden=true;abrir("encargos",BAJ.e.id)}});
+  w.addEventListener("input",ev=>{if(ev.target.id==="bj-precio")pintarCifrasBajada()});
+  document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&!w.hidden){ev.stopPropagation();w.hidden=true}},true);
+  return w}
+async function abrirBajada(id){const e=S.encargos.find(x=>x.id===id);if(!e)return;const w=ventanaBajada(),F=$("#frmBaj");w.hidden=false;
+  F.innerHTML=`<div class="dh">Propuesta de bajada</div><div class="db"><div class="vb-s">Buscando testigos de mercado…</div></div>`;
+  await cargarMercado();const T=testigosEnc(e),A=atasco(e)||atasco({...e,bajadaPospuesta:""})||{dm:0,V:[],V30:0,Of:[],diag:"",desde:"la captación"},P=propuestaBajada(e,T);
+  BAJ={e,T,A,P};const p=+e.precio,m2=+e.m2||0,eurm2=m2?p/m2:null,sobre=T.emed&&eurm2?eurm2/T.emed-1:null,mej=A.Of.length?Math.max(...A.Of.map(v=>+v.oferta)):0;
+  const op=opinionesEnc(A.V,3);
+  const c=e.contactoId&&S.contactos.find(x=>x.id===e.contactoId),tel=c&&c.telefono,nom=titulo(pNombre(c&&c.nombre||e.propietario||""));
+  const k=(l,v,s)=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:""}</div>`;
+  const wa=tel?waURL(tel,`Hola ${nom}, ${yoFirma()}. Te escribo por la venta de ${e.direccion}: lleva ${A.dm} días a ${eur0(p)} ${A.sinOf?"sin ninguna oferta":"con pocas visitas"}. He preparado un informe con lo que se está vendiendo en la zona y una propuesta de precio. ¿Te viene bien que lo veamos hoy o mañana?`):"";
+  F.innerHTML=`<div class="dh">Propuesta de bajada <span class="pill bad">${A.dm} días</span><button type="button" class="dx" data-bj="cerrar" aria-label="Cerrar" title="Cerrar">×</button></div>
+  <div class="db"><div class="full" style="grid-column:1/-1;display:grid;gap:12px">
+    <div><div class="vb-t" style="font-weight:600">${esc(e.direccion||"")}</div><div class="vb-s">${esc(e.asesor||"")} · ${eur0(p)}${m2?` · ${m2} m² (${eur0(eurm2)}/m²)`:""} · desde ${A.desde}</div></div>
+    <div class="kpis bj-k">${k("Días sin vender",A.dm,"desde "+A.desde)}${k("Visitas",A.V30,"en 30 días · "+A.V.length+" en total")}${k("Ofertas",A.Of.length,mej?"la mejor, "+eur0(mej):"ninguna apuntada")}${k("Compradores",encajanA(e,p),"con presupuesto que encajan hoy")}</div>
+    ${A.diag?`<div class="bj-diag">${esc(A.diag)}</div>`:""}
+    ${op.length?`<div><div class="bj-h">Lo que dicen las visitas</div>${op.map(v=>`<div class="vb-s">${fmtF(v.fecha)} · ${esc(v.interes||"")}${v.interes?" · ":""}${esc(v.opinion)}</div>`).join("")}</div>`:""}
+    <div><div class="bj-h">El mercado</div>
+      <div class="vb-s">${T.L.length?`${T.L.length} vivienda${T.L.length>1?"s":""} en venta en ${esc(T.amb)}: precio mediano ${eur0(T.pmed)}${T.emed?` (${eur0(T.emed)}/m²)`:""}.${sobre!=null?` La nuestra está un <b>${sobre>=0?"+":""}${Math.round(sobre*100)} %</b> ${sobre>=0?"por encima":"por debajo"}.`:m2?"":" Faltan los m² en la ficha para comparar por m²."}${T.nBaj?` ${T.nBaj} ${T.nBaj>1?"han bajado":"ha bajado"} ya de precio.`:""}`:"Aún no hay testigos de mercado para esta zona: la propuesta es una bajada suave."}</div>
+      ${T.L.length?`<div class="bj-t"><table><thead><tr><th>Testigo</th><th>m²</th><th>Precio</th><th>€/m²</th></tr></thead><tbody>${T.L.slice(0,6).map(m=>`<tr><td>${m.url?`<a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.calle||m.barrio||"Anuncio")}</a>`:esc(m.calle||m.barrio||"")}${m.hab?` · ${esc(m.hab)} hab.`:""}${m.baja?` <span class="pill ok">bajó ${eur0(m.baja)}</span>`:""}${m.fechaBaja?' <span class="pill">ya no se anuncia</span>':""}</td><td>${m.m2||"—"}</td><td>${eur0(+m.precio)}</td><td>${m.em?eur0(m.em):"—"}</td></tr>`).join("")}</tbody></table></div>`:""}
+    </div>
+    <div class="bj-prop"><div class="bj-h" style="margin:0">Precio propuesto</div>
+      <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap"><label style="flex:0 1 180px">Nuevo precio (€)<input id="bj-precio" type="number" inputmode="decimal" value="${P.precio}"></label><div id="bj-cifras" class="vb-s" style="flex:1 1 200px"></div></div>
+      <div class="vb-s">Cómo sale: ${esc(P.por)}.</div>
+      ${e.propuestaBajada?`<div class="vb-s">Propuesta enviada al propietario el ${fmtF(e.propuestaBajada.f)} (${eur0(e.propuestaBajada.precio)}).</div>`:""}
+      ${(e.bajadas||[]).length?`<div class="vb-s">Bajadas anteriores: ${(e.bajadas||[]).map(b=>`${fmtF(b.f)} de ${eur0(b.de)} a ${eur0(b.a)}`).join(" · ")}</div>`:""}
+    </div>
+    <div class="bj-acc"><button class="btn primary" type="button" data-bj="informe">Informe para el propietario</button>${wa?`<a class="btn wa" style="text-decoration:none;border-color:#25d366" target="_blank" rel="noopener" href="${esc(wa)}" data-bjwa>WhatsApp al propietario</a>`:""}${tel?`<a class="btn" style="text-decoration:none" href="tel:${esc(telOk(tel)||tel)}">📞 Llamar</a>`:""}<button class="btn" type="button" data-bj="ficha">Ver ficha</button></div>
+  </div></div>
+  <div class="df bj-df"><button class="btn" type="button" data-bj="acepta">✓ Acepta: cambiar el precio</button><button class="btn" type="button" data-bj="pospone">No acepta: recordar en 15 días</button></div>`;
+  F.querySelector("[data-bjwa]")?.addEventListener("click",()=>marcarPropuesta());
+  pintarCifrasBajada()}
+function precioBaj(){const v=+($("#bj-precio")||{}).value;return v>0?v:0}
+function pintarCifrasBajada(){const x=$("#bj-cifras");if(!x||!BAJ)return;const e=BAJ.e,n=precioBaj(),p=+e.precio,m2=+e.m2||0;if(!n){x.textContent="";return}
+  const a=encajanA(e,p),b=encajanA(e,n);
+  x.innerHTML=`${n<p?"−":"+"}${eur0(Math.abs(p-n))} (${n<p?"−":"+"}${Math.abs(Math.round((1-n/p)*1000)/10)} %)${m2?` · ${eur0(n/m2)}/m²`:""}<br><b>${b} comprador${b!==1?"es":""} nuestro${b!==1?"s":""}</b> encaja${b!==1?"n":""} a este precio${b>a?` (${b-a} más que hoy)`:""}`}
+async function marcarPropuesta(){if(!BAJ)return;const n=precioBaj();if(!n)return;
+  await guardar("encargos",BAJ.e.id,{propuestaBajada:{f:hoyISO(),precio:n,por:S.yo&&S.yo.nombre||""}},`Propuesta de bajada a ${eur0(n)} enviada al propietario`)}
+async function bajadaAceptada(btn){if(!BAJ)return;const e=BAJ.e,n=precioBaj(),p=+e.precio;if(!n||n>=p){toast("Pon un precio más bajo que el actual");return}
+  if(!btn.dataset.sure){btn.dataset.sure=1;btn.textContent=`Pulsa otra vez: ${eur0(p)} → ${eur0(n)}`;return}
+  btn.disabled=true;const hoy=hoyISO(),bj=[...(e.bajadas||[]),{f:hoy,de:p,a:n,por:S.yo&&S.yo.nombre||""}];
+  const ok=await guardar("encargos",e.id,{precio:n,ultimaRevisionPrecio:hoy,bajadas:bj,bajadaPospuesta:"",propuestaBajada:null},`Bajada de precio aceptada: de ${eur0(p)} a ${eur0(n)}`);
+  if(!ok){btn.disabled=false;return}$("#dlgBaj").hidden=true;const b=encajanA({...e,precio:n},n);
+  toast(b?`Precio cambiado. ${b} comprador${b>1?"es":""} encaja${b>1?"n":""}: mándaselo desde «Cruce de compradores»`:"Precio cambiado. Acuérdate de cambiarlo también en los portales");render()}
+async function bajadaPospuesta(btn){if(!BAJ)return;const e=BAJ.e,n=precioBaj(),f=dias2(hoyISO(),15);btn.disabled=true;
+  const ok=await guardar("encargos",e.id,{bajadaPospuesta:f},`Propuesta de bajada${n?" a "+eur0(n):""}: el propietario no acepta de momento. Se vuelve a proponer el ${fmtF(f)}`);
+  if(!ok){btn.disabled=false;return}$("#dlgBaj").hidden=true;toast("Te lo volvemos a recordar el "+fmtF(f));render()}
+/* Informe para el propietario con la propuesta (para imprimir, guardar en PDF o mandar) */
+function informeBajada(){if(!BAJ)return;const {e,T,A}=BAJ,n=precioBaj()||BAJ.P.precio,p=+e.precio,m2=+e.m2||0;marcarPropuesta();
+  const c=e.contactoId&&S.contactos.find(x=>x.id===e.contactoId),nom=titulo(pNombre(c&&c.nombre||e.propietario||"")),tel=S.ajustes.telefonoOficina;
+  const logo=new URL("logo-casa.png",location.href).href,f=new Date().toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"});
+  const a=encajanA(e,p),b=encajanA(e,n),op=opinionesEnc(A.V,5),mej=A.Of.length?Math.max(...A.Of.map(v=>+v.oferta)):0;
+  const k=(l,v,s2)=>`<div class="k"><div class="l">${l}</div><div class="v">${v}</div>${s2?`<div class="s">${s2}</div>`:""}</div>`,sobre=T.emed&&m2?(p/m2)/T.emed-1:null;
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Propuesta de precio · ${esc(e.direccion||"")}</title><${"style"}>
+  body{font:14px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;color:#333130;max-width:760px;margin:24px auto;padding:0 20px}h1{font:600 24px Georgia,serif;margin:8px 0 2px}.s0{color:#706e6a}
+  .ks{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.k{border:1px solid #e4e1dd;border-radius:10px;padding:10px}.l{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#706e6a}.v{font:600 22px Georgia,serif}.s{font-size:12px;color:#706e6a}
+  h2{font:600 17px Georgia,serif;margin:22px 0 6px;border-bottom:2px solid #ac9465;padding-bottom:3px}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:6px 4px;border-bottom:1px solid #eee;vertical-align:top}th{font-size:12px;color:#706e6a}td.n,th.n{text-align:right}
+  .prop{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;background:#f3eee4;border-radius:10px;padding:14px 16px;margin-top:10px;text-align:center}.prop .v{font-size:26px}.prop .old{text-decoration:line-through;color:#706e6a}.pie{margin-top:28px;font-size:12px;color:#706e6a}
+  @media print{body{margin:0}}@media (max-width:560px){.ks{grid-template-columns:1fr 1fr}}</${"style"}></head><body>
+  <img src="${logo}" alt="" style="height:34px"><h1>Propuesta de precio para tu vivienda</h1><div class="s0">${esc(e.direccion||"")} · ${f}</div>
+  <p>${nom?`Hola ${esc(nom)}, `:""}tu vivienda lleva ${A.dm} días a la venta a ${eur0(p)}. Te contamos cómo va, qué está pasando en el mercado de tu zona y qué precio te recomendamos para venderla en las próximas semanas.</p>
+  <div class="ks">${k("Días en venta",A.dm,"desde "+A.desde)}${k("Visitas",A.V30,"últimos 30 días · "+A.V.length+" en total")}${k("Ofertas",A.Of.length,mej?"la mejor, "+eur0(mej):"ninguna hasta hoy")}${k("Compradores",a,"de nuestra cartera que encajan hoy")}</div>
+  <h2>Cómo va la venta</h2><p>${esc(A.diag||"")} Las primeras semanas son las que más compradores atraen: cuanto más tiempo pasa un anuncio sin moverse, más lo ignoran los compradores y más fuerza pierde en la negociación.</p>
+  ${op.length?`<h2>Lo que dicen los que la han visto</h2><table><thead><tr><th>Fecha</th><th>Interés</th><th>Comentario</th></tr></thead><tbody>${op.map(v=>`<tr><td>${fmtF(v.fecha)}</td><td>${esc(v.interes||"—")}</td><td>${esc(v.opinion)}</td></tr>`).join("")}</tbody></table>`:""}
+  <h2>El mercado en tu zona</h2>${T.L.length?`<p>Ahora mismo compiten con tu vivienda ${T.L.length} viviendas en ${esc(T.amb)}, con un precio mediano de ${eur0(T.pmed)}${T.emed?` (${eur0(T.emed)}/m²)`:""}.${sobre!=null?` La tuya está anunciada a ${eur0(p/m2)}/m², un ${Math.abs(Math.round(sobre*100))} % ${sobre>=0?"por encima":"por debajo"} de la zona.`:""}${T.nBaj?` ${T.nBaj>1?T.nBaj+" de ellas ya han":"Una de ellas ya ha"} bajado su precio.`:""}</p>
+  <table><thead><tr><th>Vivienda</th><th class="n">m²</th><th class="n">Precio</th><th class="n">€/m²</th></tr></thead><tbody>${T.L.slice(0,8).map(m=>`<tr><td>${esc(m.calle||m.barrio||"")}${m.hab?` · ${esc(m.hab)} hab.`:""}${m.planta?` · planta ${esc(m.planta)}`:""}${m.baja?` · ha bajado ${eur0(m.baja)}`:""}</td><td class="n">${m.m2||"—"}</td><td class="n">${eur0(+m.precio)}</td><td class="n">${m.em?eur0(m.em):"—"}</td></tr>`).join("")}</tbody></table>`:"<p>Estamos recogiendo los anuncios de tu zona; aún no hay datos suficientes para compararla.</p>"}
+  <h2>Nuestra propuesta</h2>
+  <div class="prop"><div><div class="l">Precio actual</div><div class="v old">${eur0(p)}</div></div><div style="font-size:22px">→</div><div><div class="l">Precio recomendado</div><div class="v">${eur0(n)}</div>${m2?`<div class="s">${eur0(n/m2)}/m²</div>`:""}</div></div>
+  <p>${b>a?`Con este precio, <b>${b} compradores de nuestra cartera</b> buscan una vivienda como la tuya (hoy encajan ${a}), y te avisaremos de cada visita.`:"Con este precio la vivienda vuelve a salir en las búsquedas de los compradores que filtran por precio y destaca frente a las de la zona."} Te mandaremos cada semana el informe de visitas para ver juntos cómo responde el mercado.</p>
+  <div class="pie">${esc(e.asesor||"")} · Hogares Fuenlabrada${tel?" · "+esc(tel):""}</div>
+  <script>window.onload=()=>setTimeout(()=>print(),400)<\/script></body></html>`;
+  const w=window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})),"_blank");if(!w)toast("Permite las ventanas emergentes para ver el informe")}
+function rowAtasco(e){const A=atasco(e),P=S.mercado?propuestaBajada(e,testigosEnc(e)):null;
+  return `<button class="row" type="button" data-baj="${esc(e.id)}"><span class="t">${esc(e.direccion||"")}</span><span class="r">${eur0(+e.precio)}</span>
+  <span class="m"><span>${esc(e.asesor||"")}</span><span class="pill bad">${A.dm} días</span><span class="pill ${A.V30?"warn":"bad"}">${A.V30} visita${A.V30!==1?"s":""} en 30 d</span>${A.sinOf?'<span class="pill bad">Sin ofertas</span>':""}${P?`<span class="pill acc">Propuesta: ${eur0(P.precio)}</span>`:""}${e.propuestaBajada?`<span class="pill ok">Enviada ${fmtF(e.propuestaBajada.f)}</span>`:""}</span></button>`}
+document.addEventListener("click",ev=>{const t=ev.target.closest&&ev.target.closest("[data-baj]");if(!t)return;ev.preventDefault();ev.stopPropagation();
+  if($("#dlg").open){$("#dlg").close();setTimeout(()=>abrirBajada(t.dataset.baj),150)}else abrirBajada(t.dataset.baj)},true);
 
 /* ---------- Sesión de llamadas: una cola, una llamada tras otra ---------- */
 function sesCola(){const yo=S.yo;if(!yo||esCoord())return [];const hoy=hoyISO(),out=[];
@@ -1273,7 +1392,7 @@ function hoyBloques(B,vacios,tras){const vis=B.filter(b=>b.n),ab=S.hoyAbierto;
   const AY=lsGet("crm-ayuda"),ayuda=b=>!b.nota?"":((AY[b.k]||[0])[0]<3)?`<p class="nota">${b.nota}</p>`:`<details class="ayuda"><summary title="Qué es esto" aria-label="Qué es esto">?</summary><p class="nota">${b.nota}</p></details>`;
   const bloque=b=>`<details class="hb" id="hb-${b.k}"${abierto===b.k?" open":""}><summary><h2>${b.t}</h2><span class="cnt ${b.tono||""}">${b.n}</span></summary><div class="hb-in">${ayuda(b)}${b.html}</div></details>`;
   /* Tres grupos fijos (la agenda, al final) */
-  const G=[["Para hacer hoy",["avisos","rec","pend","bvis","ped","bpend","sti","firma"]],["Para revisar",["borr","ns","capn","encAl","binf","bsinf","bofi","bcap","urg","vend","pedEnv"]],["Oportunidades",["alq","llamar","cruces","compn","cli"]]];
+  const G=[["Para hacer hoy",["avisos","rec","pend","bvis","ped","bpend","sti","firma"]],["Para revisar",["borr","ns","capn","encAl","baj","binf","bsinf","bofi","bcap","urg","vend","pedEnv"]],["Oportunidades",["alq","llamar","cruces","compn","cli"]]];
   const grupoDe=k=>{if(k==="agenda")return 3;const i=G.findIndex(g=>g[1].includes(k));return i<0?1:i};
   const grupos=G.map((g,i)=>[g[0],vis.filter(b=>grupoDe(b.k)===i)]).filter(g=>g[1].length),resto=vis.filter(b=>grupoDe(b.k)===3);
   return `<section class="hoy-saludo"><h2>${sal}${nom?", "+esc(nom):""}</h2><button class="btn small primary" type="button" data-nuevo="aviso" data-tipo="Mensaje" style="float:right">Enviar mensaje</button><span>${fecha.charAt(0).toUpperCase()+fecha.slice(1)} · ${tot?`${tot} cosa${tot>1?"s":""} pendiente${tot>1?"s":""}`:"todo al día"}</span></section>
@@ -1312,6 +1431,7 @@ function vHoy(){
     {k:"borr",t:"Solicitudes de borrado",n:solBorr.length+nsQ.length,tono:"warn",html:`<div class="list">${nsQ.map(rowNsQ).join("")}${(S.hoyMas.borr?solBorr:solBorr.slice(0,5)).map(({col,x})=>`<button class="row" type="button" data-open="${col}" data-id="${esc(x.id)}"><span class="t">${esc(x.direccion||x.inmueble||x.nombre||"")}${col==="visitas"&&x.fecha?" · "+fmtF(x.fecha)+(x.hora?" "+esc(x.hora):""):""}</span><span class="r"><span class="pill bad">${x.borrarSolicitado.tipo==="censo"?"Volver al censo":"Borrar"}</span></span><span class="m"><span class="pill">${TIT[col]}</span><span>${esc(x.asesor||"")}</span><span>${esc(x.borrarSolicitado.motivo||"")}</span><span>${fmtF(String(x.borrarSolicitado.f).slice(0,10))}</span></span></button>`).join("")}</div>${solBorr.length>5?`<div class="tools" style="margin-top:8px"><button class="btn small" type="button" data-hoymas="borr">${S.hoyMas.borr?"Ver menos":`Ver ${solBorr.length-5} más`}</button></div>`:""}`},
     {k:"sti",t:S.yo&&S.yo.rol==="responsable"?"Te esperan a ti":"Esperan a Stiwhar",n:sti.length,tono:"warn",html:hoyLista("sti",sti,rowContacto,"")},
     {k:"encAl",t:"Encargos que piden atención",n:encAl.length,tono:"warn",html:hoyLista("encAl",encAl,rowEncargo,"")},
+    ...(L=>[{k:"baj",t:"Encargos atascados: proponer bajada",n:L.length,tono:"bad",nota:`Llevan ${S.ajustes.diasRevisionPrecio||30} días o más sin ofertas, o con menos de ${S.ajustes.visitasMinMes??4} visitas al mes. Ábrelo: verás los testigos de la zona, el precio que proponemos y el informe para el propietario.`,html:hoyLista("baj",L,rowAtasco,"")}])((()=>{const L=atascados();if(L.length&&!S.mercado&&!vHoy.pide){vHoy.pide=1;cargarMercado().then(()=>{vHoy.pide=0;if(S.view==="hoy")render()})}return L})()),
     {k:"cli",t:"Clientes antiguos",n:cli.length,nota:"Reseña a los 15 días de la venta y felicitación en cada aniversario.",html:hoyLista("clientes",cli,rowCliente,"")},
     bloqueFirma()];
   B.push({k:"agenda",t:"Agenda de la semana",n:(n=>n||"Ver")(visitasEntre(agLunes(0),dias2(agLunes(0),6),veTodo()?"":S.yo&&S.yo.nombre).filter(v=>!v.cancelada).length),info:1,html:vAgenda()});
@@ -1662,6 +1782,7 @@ FORMS.visitas={titulo:"visita",fields:[
     ["encargoId","Inmueble (encargo) *","selkv",encOpts],["compradorId","Comprador","selkv",()=>[["",S.compradores.length?"Elige el comprador":"—"],...S.compradores.filter(c=>c.estado!=="Baja").map(c=>[c.id,c.nombre+(c.telefono?" · "+c.telefono:"")])]],
     ["compradorNombre","Nombre (si aún no tiene ficha)","text"],["telComprador","Teléfono (si aún no tiene ficha)","tel"],["fecha","Fecha","date"],["hora","Hora","time"],
     ["interes","Interés","sel",()=>["","Mucho","Algo","Nada"]],["informeEnviado","Informe enviado al vendedor","check"],
+    ["oferta","Oferta del comprador (€, si la ha hecho)","number"],
     ["opinion","Qué le ha parecido (pegas, precio que ofrecería…)","textarea",{full:1}],
     ["seguimiento","Seguimiento de la visita hecho el","date"],["seguimientoNota","Qué ha dicho en el seguimiento","textarea",{full:1}]]};
 FORMS.llamadaVend={titulo:"noticia de un vendedor",fields:[
@@ -2965,7 +3086,7 @@ async function guardar(col,id,data,nota,extraHist){
   if(old&&id&&VIVAS.includes(col)&&old.actualizado){try{const srv=await S.db.collection(col).doc(id).leer();
     if(srv&&srv.actualizado&&srv.actualizado!==old.actualizado){const nv=v=>v==null||v===""||v===false?"":JSON.stringify(v),mios={};for(const k of Object.keys(data))if(nv(old[k])!==nv(data[k]))mios[k]=data[k];data=mios;base=srv}}catch(_){}}
   const vtxt=v=>Array.isArray(v)?v.map(x=>x&&typeof x==="object"?[x.nombre,x.telefono,x.nota&&"("+x.nota+")"].filter(Boolean).join(" "):x).join(", "):String(v??"");
-  const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","borrarSolicitado","vendidaVista","notaSimplePdf","notaSimpleQuitar","alqRespVence"].includes(k)&&vtxt(old[k])!==vtxt(data[k])&&!(old[k]==null&&data[k]===false)&&!(old[k]==null&&Array.isArray(data[k])&&!data[k].length))
+  const cambios=old?Object.keys(data).filter(k=>!["actualizado","historial","creado","noticia","propuestaBajada","bajadas","bajadaPospuesta","borrarSolicitado","vendidaVista","notaSimplePdf","notaSimpleQuitar","alqRespVence"].includes(k)&&vtxt(old[k])!==vtxt(data[k])&&!(old[k]==null&&data[k]===false)&&!(old[k]==null&&Array.isArray(data[k])&&!data[k].length))
     .map(k=>({campo:etiqueta(col,k),antes:(titCampo(col,k)&&typeof old[k]==="boolean"?(old[k]?"Sí":"No"):vtxt(old[k])).slice(0,200),despues:(titCampo(col,k)&&typeof data[k]==="boolean"?(data[k]?"Sí":"No"):vtxt(data[k])).slice(0,200)})):[];
   const out={...(base||{}),...data}; delete out.id; delete out._id; out.actualizado=ahora;
   if(col==="contactos"&&out.vendida&&out.etapa!=="KO")out.etapa="KO"; /* Stiwhar (03/11): toda noticia vendida pasa a KO */
@@ -3128,7 +3249,8 @@ function abrirAjustes(){
    <label>Fin del periodo<input id="aj-fin" type="date" value="${A.periodoFin}"></label>
    <label>Gastos fijos al mes (€)<input id="aj-gas" type="number" value="${A.gastosMes}"></label>
    <label>Días hasta revisar precio<input id="aj-rev" type="number" value="${A.diasRevisionPrecio}"></label>
-   <label>Meses antes del fin de un alquiler para avisar al asesor<input id="aj-alq" type="number" min="1" max="24" value="${alqMeses()}"></label>
+   <label>Visitas mínimas al mes (si hay menos, el encargo está atascado)<input id="aj-vmin" type="number" value="${A.visitasMinMes??4}"></label>
+   <label>Meses antes del fin de un alquiler para avisar a Daniel<input id="aj-alq" type="number" min="1" max="24" value="${alqMeses()}"></label>
    <label>Teléfono de la oficina (para cartas)<input id="aj-tel" type="tel" value="${esc(A.telefonoOficina||"")}"></label>
    <label class="full">Metas semanales por asesor (noticias, gestiones, censo, valoraciones, captaciones)<input id="aj-metas" type="text" value="${esc(METAS_ET.map(([k])=>({...DEF_METAS,...(A.metas||{})})[k]).join(", "))}"></label>
    <label class="full">Metas semanales del coordinador (compradores nuevos, visitas, reservas)<input id="aj-metasc" type="text" value="${esc(METAS_COORD_ET.map(([k])=>({...DEF_METAS_COORD,...(A.metasCoord||{})})[k]).join(", "))}"></label>
@@ -3140,7 +3262,7 @@ function abrirAjustes(){
 }
 async function guardarAjustes(){
   const n=id=>Number($(id).value)||0;
-  const A={objetivoMes:n("#aj-mes"),objetivosMes:Object.fromEntries(($("#aj-objmes")?.value||"").split(",").map(t=>t.trim().match(/^(\d{4}-\d{2})\s*[=:]\s*([\d.]+)$/)).filter(Boolean).map(m=>[m[1],Number(m[2].replace(/\./g,""))])),objetivoPeriodo:n("#aj-per"),objetivoAnual:n("#aj-anual")||1000000,anioObjetivo:n("#aj-anio")||2027,periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,mesesAvisoAlquiler:n("#aj-alq")||9,calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
+  const A={objetivoMes:n("#aj-mes"),objetivosMes:Object.fromEntries(($("#aj-objmes")?.value||"").split(",").map(t=>t.trim().match(/^(\d{4}-\d{2})\s*[=:]\s*([\d.]+)$/)).filter(Boolean).map(m=>[m[1],Number(m[2].replace(/\./g,""))])),objetivoPeriodo:n("#aj-per"),objetivoAnual:n("#aj-anual")||1000000,anioObjetivo:n("#aj-anio")||2027,periodoInicio:$("#aj-ini").value,periodoFin:$("#aj-fin").value,gastosMes:n("#aj-gas"),diasRevisionPrecio:n("#aj-rev")||30,mesesAvisoAlquiler:n("#aj-alq")||9,visitasMinMes:$("#aj-vmin").value===""?4:n("#aj-vmin"),calendarioId:$("#aj-cal").value.trim(),telefonoOficina:$("#aj-tel").value.trim(),metas:(v=>Object.fromEntries(METAS_ET.map(([k],i)=>[k,Number(v[i])>=0&&v[i]!==undefined&&v[i].trim()!==""?Number(v[i]):DEF_METAS[k]])))($("#aj-metas").value.split(",")),
     metasCoord:(v=>Object.fromEntries(METAS_COORD_ET.map(([k],i)=>[k,v[i]!==undefined&&v[i].trim()!==""&&Number(v[i])>=0?Number(v[i]):DEF_METAS_COORD[k]])))($("#aj-metasc").value.split(",")),
     asesores:$("#aj-ase").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()).map(p=>({nombre:p[0].trim(),zona:(p[1]||"").trim().toUpperCase()})),
     moviles:Object.fromEntries($("#aj-mov").value.split("\n").map(l=>l.split(",")).filter(p=>p[0].trim()&&telOk(p[1])).map(p=>[p[0].trim(),telOk(p[1])]))};
