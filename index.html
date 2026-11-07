@@ -98,7 +98,18 @@ details.recbox>summary{cursor:pointer;list-style:none}details.recbox>summary::-w
 .hg{margin:14px 4px 2px;font:600 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}.hoy-bloques .hg:first-child{margin-top:0}
 .aldia2{color:var(--muted);font-size:13px}.aldia2>summary{cursor:pointer;color:var(--ok);font-weight:600;list-style:none}.aldia2>summary::-webkit-details-marker{display:none}.aldia2 p{margin:4px 0 0}
 details.ayuda{float:right;margin:-4px 0 4px 8px}details.ayuda>summary{list-style:none;cursor:pointer;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;color:var(--muted)}details.ayuda>summary::-webkit-details-marker{display:none}details.ayuda[open]{float:none;margin:0 0 6px}details.ayuda[open]>summary{display:none}
-.camino .cm-lead{margin:0 0 10px}.camino .cm-nota{margin:6px 0 0;color:var(--muted);font-size:13px}.camino .cm-h{margin:18px 0 8px;font:600 16px var(--display)}.camino .tbl-wrap{margin:0}
+.camino .cm-lead{margin:0 0 10px}.camino .cm-nota{margin:6px 0 0;color:var(--muted);font-size:13px}.camino .cm-h{margin:18px 0 8px;font:600 16px var(--display)}
+.pm-chart{display:flex;gap:8px;align-items:flex-end;height:190px;padding:22px 10px 0;background:var(--surface);border:1px solid var(--line);border-radius:10px 10px 0 0;border-bottom:0}
+.pm-col{flex:1;min-width:0;height:100%;position:relative;display:flex;flex-direction:column;justify-content:flex-end}
+.pm-col .pm-v{position:absolute;left:0;right:0;text-align:center;font-size:12px;font-weight:600;transform:translateY(-100%);white-space:nowrap}
+.pm-col .pm-st{display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;max-width:56px;width:100%;margin:0 auto}
+.pm-col .pm-st i{display:block}.pm-f{background:var(--accent)}.pm-s{background:color-mix(in srgb,var(--accent) 55%,var(--surface))}.pm-p{background:var(--accent-soft);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent)}
+.pm-col .pm-o{position:absolute;left:4%;right:4%;border-top:2px dashed var(--fg);opacity:.55}
+.pm-lbl{display:flex;gap:8px;padding:6px 10px 8px;background:var(--surface);border:1px solid var(--line);border-top:1px solid var(--line);border-radius:0 0 10px 10px;margin-bottom:8px}
+.pm-lbl span{flex:1;min-width:0;text-align:center;font-size:12px;color:var(--muted);text-transform:capitalize}
+.pm-ley{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin:0 0 10px}.pm-ley b{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.pm-ley .pm-oo{width:16px;height:0;border-top:2px dashed var(--fg);opacity:.55;border-radius:0;vertical-align:3px}
+.pm-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 10px}.pm-kpis div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}.pm-kpis small{display:block;color:var(--muted);font-size:12px}.pm-kpis b{font:700 20px var(--display)}.camino .tbl-wrap{margin:0}
 .av-r{display:flex;align-items:flex-start;gap:8px}
 .ses-go{display:block;width:100%;margin:0 0 12px;padding:12px;font-size:15px}
 .ses-card{display:flex;flex-direction:column;gap:6px;align-items:flex-start}.ses-t{font:600 20px var(--display)}.ses-q{font-size:16px}.ses-tel{font-size:17px;padding:12px 18px;margin:4px 0}
@@ -573,6 +584,55 @@ function prevision(){const opsV=S.operaciones.filter(o=>o.estado!=="Caída"&&!fa
   const G={};for(const x of L){const g=G[x.t]||(G[x.t]={t:x.t,n:0,h:0,p:x.p,esp:0});g.n++;g.h+=x.h;g.esp+=x.h*x.p}
   const orden=["Arras sin aceptar","Reservas","Encargos reservados","Otras operaciones abiertas","Encargos activos en exclusiva","Encargos activos sin exclusiva"];
   return orden.map(t=>G[t]).filter(Boolean)}
+/* Previsión mes a mes y por asesor (Stiwhar, 07/11/2026): cuándo entra lo de la cartera, frente al objetivo de cada mes y al millón.
+   Lo facturado cuenta en la fecha de aceptación. Calendario estimado: arras sin aceptar ~15 días; reservas, encargos reservados y otras
+   operaciones abiertas ~30 días; encargos activos repartidos entre el mes que viene (o 30 días tras la captación) y 6 meses tras la captación. */
+const PREV_DIAS={arras:15,reserva:30,reservado:30,activoMin:30,activoFin:180};
+const ymAdd=(ym,i)=>{const d=new Date(ym+"-01T12:00:00");d.setMonth(d.getMonth()+i);return iso(d).slice(0,7)};
+function previsionMeses(){const hoy=hoyISO(),hm=datosCamino().h,L=[],conOp=new Set(),ym=f=>String(f).slice(0,7);
+  const uno=(f)=>({[ym(f)]:1}),tramo=(a,b)=>{const m={},M=[];for(let x=ym(a);x<=ym(b);x=ymAdd(x,1))M.push(x);M.forEach(x=>m[x]=1/M.length);return m};
+  for(const o of S.operaciones){if(o.estado==="Caída"||facturada(o))continue;const e=opEncargo(o);if(e)conOp.add(e.id);
+    const ar=o.estado==="Arras",re=o.estado==="Reserva";
+    L.push({as:o.asesor||(e&&e.asesor)||"Sin asesor",h:+o.honorarios||hm,p:ar?PROB_PREV.arras:re?PROB_PREV.reserva:PROB_PREV.opOtra,seg:1,m:uno(dias2(hoy,ar?PREV_DIAS.arras:PREV_DIAS.reserva))})}
+  for(const e of S.encargos){if(conOp.has(e.id))continue;const h=+e.honorarioPrevisto||hm,as=e.asesor||"Sin asesor";
+    if(e.estado==="Reservado")L.push({as,h,p:PROB_PREV.reservado,seg:1,m:uno(dias2(hoy,PREV_DIAS.reservado))});
+    else if(e.estado==="Activo"){const c=e.fechaCaptacion||hoy,a=[dias2(hoy,PREV_DIAS.activoMin),dias2(c,PREV_DIAS.activoMin)].sort().pop();let b=dias2(c,PREV_DIAS.activoFin);if(b<dias2(a,60))b=dias2(a,60);
+      L.push({as,h,p:e.exclusiva==="Sí"?PROB_PREV.activoExcl:PROB_PREV.activo,seg:0,m:tramo(a,b),enc:1})}}
+  return L}
+function vPrevMeses(D){const hoy=hoyISO(),m0=hoy.slice(0,7),N=6,MM=[...Array(N)].map((_,i)=>ymAdd(m0,i)),L=previsionMeses(),n1=x=>x<10?(Math.round(x*10)/10).toString().replace(".",","):String(Math.round(x));
+  const mesN=ym=>new Date(ym+"-01T12:00:00").toLocaleDateString("es-ES",{month:"short"}).replace(".",""),mesL=ym=>(t=>t.charAt(0).toUpperCase()+t.slice(1))(new Date(ym+"-01T12:00:00").toLocaleDateString("es-ES",{month:"long",year:"numeric"}));
+  const esp=(x,ym)=>(x.m[ym]||0)*x.h*x.p,fin=ym=>ym+"-31";
+  /* Objetivo de cada mes: el puesto en Ajustes para ese mes; si no hay, en el año del objetivo anual su doceava parte y si no el mensual general */
+  const objPrev=ym=>{const v=(S.ajustes.objetivosMes||{})[ym];return v!=null&&v!==""?+v:ym.slice(0,4)===D.anio?D.objA/12:(+S.ajustes.objetivoMes||0)};
+  const R=MM.map(ym=>{const f=sumFact(ym+"-01",fin(ym)),s=L.filter(x=>x.seg).reduce((t,x)=>t+esp(x,ym),0),p=L.filter(x=>!x.seg).reduce((t,x)=>t+esp(x,ym),0),o=objPrev(ym);return {ym,f,s,p,t:f+s+p,o}});
+  const top=Math.max(1,...R.map(r=>Math.max(r.t,r.o)))*1.12,hp=v=>(v/top*100).toFixed(2)+"%";
+  const chart=`<div class="pm-chart" role="img" aria-label="Previsión de facturación de los próximos ${N} meses frente al objetivo">${R.map(r=>`<div class="pm-col" title="${esc(mesL(r.ym))}: previsto ${eur(r.t)}${r.o?" · objetivo "+eur(r.o):""}">
+    <span class="pm-v" style="bottom:${hp(r.t)}">${r.t>=1000?Math.round(r.t/1000)+" k":eur(r.t)}</span>
+    <div class="pm-st" style="height:${hp(r.t)}">${r.f?`<i class="pm-f" style="flex:${r.f}"></i>`:""}${r.s?`<i class="pm-s" style="flex:${r.s}"></i>`:""}${r.p?`<i class="pm-p" style="flex:${r.p}"></i>`:""}</div>
+    ${r.o?`<span class="pm-o" style="bottom:${hp(r.o)}"></span>`:""}</div>`).join("")}</div>
+    <div class="pm-lbl">${R.map(r=>`<span>${esc(mesN(r.ym))}</span>`).join("")}</div>
+    <div class="pm-ley"><span><b class="pm-f"></b>Ya facturado</span><span><b class="pm-s"></b>Operaciones y reservados (casi seguro)</span><span><b class="pm-p"></b>Encargos activos (probable)</span><span><b class="pm-oo"></b>Objetivo del mes</span></div>`;
+  const tabla=`<div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Mes</th><th>Objetivo</th><th>Ya facturado</th><th>Casi seguro</th><th>Probable</th><th>Previsto</th><th>Diferencia</th></tr></thead><tbody>
+    ${R.map(r=>{const d=r.t-r.o;return `<tr><td style="text-align:left">${esc(mesL(r.ym))}</td><td>${r.o?eur(r.o):"—"}</td><td>${r.f?eur(r.f):"—"}</td><td>${eur(r.s)}</td><td>${eur(r.p)}</td><td><b>${eur(r.t)}</b></td><td style="color:${!r.o?"inherit":d>=0?"var(--ok)":"var(--bad)"};font-weight:600">${r.o?(d>=0?"+":"−")+eur(Math.abs(d)):"—"}</td></tr>`}).join("")}
+    <tr><td style="text-align:left"><b>${N} meses</b></td>${["o","f","s","p","t"].map(k=>`<td><b>${eur(R.reduce((t,r)=>t+r[k],0))}</b></td>`).join("")}<td></td></tr></tbody></table></div>`;
+  /* Año del objetivo: facturado + cartera que cae dentro del año, y lo que falta cubrir con encargos nuevos */
+  const A=D.anio,enA=x=>Object.entries(x.m).filter(([k])=>k.slice(0,4)===A).reduce((t,[,w])=>t+w*x.h*x.p,0);
+  const cartA=L.reduce((t,x)=>t+enA(x),0),faltaA=Math.max(0,D.objA-D.llevamos-cartA),mesesA=Math.max(1,A>hoy.slice(0,4)?12:13-+hoy.slice(5,7));
+  const vEnc=D.h*D.T.encOp.v,encA=faltaA/vEnc,encMes=encA/mesesA;
+  const kpis=`<div class="pm-kpis"><div><small>Objetivo ${esc(A)}</small><b>${eur(D.objA)}</b></div><div><small>Facturado en ${esc(A)}</small><b>${eur(D.llevamos)}</b></div><div><small>Cartera que entraría en ${esc(A)}</small><b>${eur(cartA)}</b></div><div><small>Falta por cubrir con encargos nuevos</small><b style="color:${faltaA?"var(--bad)":"var(--ok)"}">${eur(faltaA)}</b></div></div>
+    <p class="cm-nota" style="margin:0 0 4px">${faltaA?`Para cubrirlo hacen falta unos <b>${n1(encA)} encargos nuevos</b> en ${esc(A)} (${n1(encMes)} al mes, ${n1(encMes/D.nAs)} por asesor): cada encargo deja de media ${eur(vEnc)} (honorario medio ${eur(D.h)} × ${Math.round(D.T.encOp.v*100)} % que acaban en operación${D.T.encOp.real?"":", estimado"}).`:`Con lo facturado y la cartera actual se llega al objetivo de ${esc(A)}.`}</p>`;
+  /* Por asesor */
+  const ases=[...new Set([...(S.ajustes.asesores||[]).map(a=>a.nombre).filter(Boolean),...L.map(x=>x.as)])];
+  const parteMes=D.objA/12/D.nAs;
+  const filas=ases.map(a=>{const X=L.filter(x=>x.as===a),M=MM.map(ym=>X.reduce((t,x)=>t+esp(x,ym),0)+sumFact(ym+"-01",fin(ym),a)),t6=M.reduce((s,v)=>s+v,0),ca=X.filter(x=>x.enc).length,ok=(S.ajustes.asesores||[]).some(z=>z.nombre===a);
+    const falta=ok?Math.max(0,parteMes*N-t6):0;return {a,M,t6,ca,op:X.length-ca,falta,ok}}).filter(r=>r.ok||r.t6);
+  const porAs=`<div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Asesor</th>${MM.map(ym=>`<th style="text-transform:capitalize">${esc(mesN(ym))}</th>`).join("")}<th>${N} meses</th><th>Cartera</th><th>Le falta para su parte</th><th>Encargos que necesita al mes</th></tr></thead><tbody>
+    ${filas.map(r=>`<tr><td style="text-align:left"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colorAsesor(r.a)};margin-right:6px"></span>${esc(r.a)}</td>${r.M.map(v=>`<td>${v?eur(v):"—"}</td>`).join("")}<td><b>${eur(r.t6)}</b></td><td>${r.ca} enc.${r.op?` · ${r.op} op.`:""}</td><td style="color:${!r.ok?"inherit":r.falta?"var(--bad)":"var(--ok)"};font-weight:600">${r.ok?(r.falta?eur(r.falta):"Cubierto"):"—"}</td><td>${r.ok?n1(r.falta/N/vEnc):"—"}</td></tr>`).join("")}</tbody></table></div>
+    <p class="cm-nota">Su parte del millón: ${eur(parteMes)} al mes (${eur(D.objA)} entre ${D.nAs} asesores y 12 meses), ${eur(parteMes*N)} en ${N} meses. Las operaciones a nombre de Stiwhar u OFICINA salen aparte.</p>`;
+  return `<h3 class="cm-h">Previsión mes a mes · próximos ${N} meses</h3>${chart}${tabla}
+  <p class="cm-nota">Cada importe es el honorario por su probabilidad. Fechas estimadas de aceptación: arras sin aceptar en unos 15 días; reservas y encargos reservados en unos 30; los encargos activos se reparten entre el mes que viene y los 6 meses desde su captación.</p>
+  <h3 class="cm-h">Hacia el millón · ${esc(A)}</h3>${kpis}
+  <h3 class="cm-h">Previsión por asesor</h3>${porAs}`}
 function vCamino(){const D=datosCamino(),hoy=hoyISO(),pct=x=>Math.round(x*100)+" %",n1=x=>x<10?(Math.round(x*10)/10).toString().replace(".",","):String(Math.round(x));
   const sem=x=>x*12/52,F=[["Noticias nuevas",D.need.not,D.U.not,"notVal"],["Valoraciones",D.need.val,D.U.val,"valEnc"],["Encargos",D.need.enc,D.U.enc,"encOp"],["Operaciones",D.need.op,D.U.op,""]];
   const conv=[["Noticia → valoración",D.T.notVal],["Valoración → encargo",D.T.valEnc],["Encargo → operación",D.T.encOp]];
@@ -586,7 +646,8 @@ function vCamino(){const D=datosCamino(),hoy=hoyISO(),pct=x=>Math.round(x*100)+"
   <div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Paso</th><th>Hace falta al mes</th><th>Últimos 30 días</th><th>Por asesor y semana</th></tr></thead><tbody>
   ${F.map(([t,need,real])=>`<tr><td style="text-align:left">${t}</td><td><b>${n1(need)}</b></td><td style="color:${real>=need?"var(--ok)":"var(--bad)"};font-weight:600">${real}</td><td>${n1(sem(need)/D.nAs)}</td></tr>`).join("")}</tbody></table></div>
   <p class="cm-nota">Conversiones de los últimos 6 meses: ${conv.map(([t,x])=>`${t} ${pct(x.v)}${x.real?"":" (estimada)"}`).join(" · ")}. Por asesor = entre ${D.nAs} asesores. El objetivo se cambia en Ajustes.</p>
-  <h3 class="cm-h">Previsión de facturación · próximos 90 días</h3>
+  ${vPrevMeses(D)}
+  <h3 class="cm-h">Cartera por etapa · próximos 90 días</h3>
   ${P.length?`<div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Cartera</th><th>Nº</th><th>Honorarios</th><th>Probabilidad</th><th>Esperado</th></tr></thead><tbody>
   ${P.map(g=>`<tr><td style="text-align:left">${g.t}</td><td>${g.n}</td><td>${eur(g.h)}</td><td>${pct(g.p)}</td><td><b>${eur(g.esp)}</b></td></tr>`).join("")}
   <tr><td style="text-align:left"><b>Total esperado</b></td><td></td><td></td><td></td><td><b>${eur(espT)}</b></td></tr></tbody></table></div>
