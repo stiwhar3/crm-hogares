@@ -55,6 +55,7 @@ const dbSupabase={collection:coleccion,doc:documento};
 /* ---------- quién soy ---------- */
 window.leerBuzon=async(imagen)=>{if(!sb)return {error:"sin conexión"};const r=await sb.functions.invoke("leer-buzon",{body:{imagen}});if(r.error){let m=r.error.message;try{const j=await r.error.context.json();m=j.error||m}catch(_){}return {error:m}}return r};
 window.asesorNoticia=async id=>{const {data,error}=await sb.rpc("asesor_de_noticia",{p_id:id});if(error)throw fallo(error);return data||""};
+window.marcarFirma=async(id,firma,fechas,nota)=>{const {data,error}=await sb.rpc("marcar_firma",{p_id:id,p_firma:firma,p_fechas:fechas||{},p_nota:nota||null});if(error)throw fallo(error);return data};
 window.agendaEquipo=async(d,h)=>{const {data,error}=await sb.rpc("agenda_equipo",{p_desde:d,p_hasta:h});if(error)throw fallo(error);return data||[]};
 window.compradoresCruce=async()=>{const {data,error}=await sb.rpc("cruce_compradores");if(error)throw fallo(error);return data||[]};
 window.apuntarLlamadaComp=async(id,piso,dir,res)=>{const {error}=await sb.rpc("apuntar_llamada_comprador",{p_id:id,p_piso:piso,p_dir:dir,p_res:res});if(error)throw fallo(error)};
@@ -92,7 +93,9 @@ abrir=function(col,id){if(!esResp()&&S.yo.rol!=="coordinador"&&col==="operacione
   if(S.yo.rol!=="coordinador")document.querySelectorAll('#frm [data-act="aOp"]').forEach(b=>b.remove());
   if(col==="operaciones"&&S.yo.rol!=="coordinador"){document.querySelectorAll("#frm input,#frm select,#frm textarea").forEach(e=>e.disabled=true);
     const df=document.querySelector("#frm .df");if(df)df.innerHTML=`<span style="color:var(--muted);font-size:13px">Solo lectura: las operaciones las gestiona Stiwhar.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`;
-    const nn=$("#fld-nuevaNota");if(nn)nn.closest("label").remove();return}
+    const nn=$("#fld-nuevaNota");if(nn)nn.closest("label").remove();
+    /* «Hasta la firma»: el asesor de la operación sí marca los papeles y las fechas (función marcar_firma) */
+    const od=id&&S.operaciones.find(x=>x.id===id);if(od&&od.asesor===S.yo.nombre){document.querySelectorAll("#fld-_firma input").forEach(e=>e.disabled=false);const sp=df&&df.querySelector("span");if(sp)sp.textContent="Solo lectura, menos «Hasta la firma»: los papeles y las fechas se guardan solos."}return}
   document.querySelectorAll('#frm [data-act="aprobarBorrar"],#frm [data-act="rechazarBorrar"]').forEach(b=>b.remove());
   if(S.yo.rol==="coordinador"){document.querySelectorAll('#frm [data-act="avisoPortal"],#frm [data-act="capLocalizar"]').forEach(b=>b.remove());
     return}
