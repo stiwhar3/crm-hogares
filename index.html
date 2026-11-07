@@ -369,6 +369,28 @@ main{gap:18px;padding-block:16px 60px}
 .recargar+.lupa{margin-left:8px}
 @media (prefers-reduced-motion:no-preference){.recargar.girando svg{animation:girar .5s linear infinite}@keyframes girar{to{transform:rotate(360deg)}}}
 .resum{border-top:1px solid var(--line);padding:8px 0}.resum:first-child{border-top:0}.resum summary{cursor:pointer;text-transform:none}.resum-t{margin-top:8px;line-height:1.5;font-size:14px}
+/* Agenda propia de la semana (07/11/2026) */
+.agenda .ag-top{display:flex;align-items:center;gap:8px;margin:2px 0 10px}
+.agenda .ag-t{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;line-height:1.25}
+.agenda .ag-t b{font:600 16px var(--display)} .agenda .ag-t span{font-size:12.5px;color:var(--muted)}
+.agenda .ag-as .chip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.agenda .ag-sem{display:grid;grid-template-columns:1fr;gap:8px}
+.agenda .ag-d{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--bg);min-width:0}
+.agenda .ag-d.hoy{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--surface)}
+.agenda .ag-d.pas{opacity:.72}
+.agenda .ag-dh{font-weight:700;font-size:13.5px;margin:0 2px 6px;display:flex;align-items:center;gap:6px}
+.agenda .ag-dh .ag-n{color:var(--muted);font-weight:500}
+.agenda .ag-v{color:var(--muted);font-size:12.5px;padding:2px}
+.agenda .ag-c{display:flex;gap:8px;width:100%;text-align:left;font:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c,var(--accent));border-radius:8px;padding:6px 8px;margin:0 0 5px;cursor:pointer}
+.agenda .ag-c:hover{background:var(--accent-soft)}
+.agenda .ag-c.canc{opacity:.6} .agenda .ag-c.canc .ag-b{text-decoration:line-through}
+.agenda .ag-c.rec{border-left-style:dashed}
+.agenda .ag-c.pp{border-left-color:var(--line)}
+.agenda .ag-h{font-weight:700;font-variant-numeric:tabular-nums;min-width:38px;color:var(--muted)}
+.agenda .ag-b{min-width:0;overflow-wrap:anywhere} .agenda .ag-b small{display:block;color:var(--muted);font-size:12px}
+.agenda .ag-b small.ag-as{color:var(--fg);font-weight:600}
+.agenda .ag-pp summary{cursor:pointer;font-size:12.5px;color:var(--muted);padding:2px}
+@media (min-width:1000px){.agenda .ag-sem{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.agenda .ag-d{min-height:140px;padding:6px}.agenda .ag-c{flex-direction:column;gap:1px;font-size:12.5px;padding:5px 6px}.agenda .ag-h{min-width:0}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
@@ -1031,14 +1053,45 @@ function gcalNuevo(titulo,fecha,detalle,lugar){
   if(S.ajustes.calendarioId)u.set("src",S.ajustes.calendarioId);
   window.open("https://calendar.google.com/calendar/render?"+u.toString(),"_blank","noopener");
 }
+/* Agenda propia (Stiwhar, 07/11/2026): en vez del Google Calendar incrustado, la semana con las visitas y citas que hay en el CRM.
+   La sincronización con Google Calendar sigue igual (función «calendario»): esto solo cambia lo que se ve, para que la info esté en los dos sitios. */
+const visitasEntre=(desde,hasta,asesor)=>S.visitas.filter(v=>v.fecha&&v.fecha>=desde&&v.fecha<=hasta&&(!asesor||v.asesor===asesor)).sort((a,b)=>(a.fecha+(a.hora||"")).localeCompare(b.fecha+(b.hora||"")));
+const colorAsesor=n=>{const a=(S.ajustes.asesores||[]).find(x=>x.nombre===n);return (a&&ZONAS[a.zona])||(n==="Stiwhar"?ZONAS.ROJA:"var(--muted)")};
+const DIAS_AG=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+function agLunes(off){const d=new Date(hoyISO()+"T12:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7)+7*(off||0));return iso(d)}
+function agCitas(desde,hasta,quien){
+  const out=[],yo=S.yo&&S.yo.nombre;
+  for(const v of visitasEntre(desde,hasta,quien)){const n=v.compradorNombre||(S.compradores.find(c=>c.id===v.compradorId)||{}).nombre||"";
+    out.push({f:v.fecha,h:v.hora||"",tipo:"Visita",t:v.direccion||"",s:[n,v.telComprador].filter(Boolean).join(" · "),as:v.asesor||"",col:"visitas",id:v.id,canc:!!v.cancelada})}
+  for(const c of S.contactos)if(c.fechaValoracion&&c.fechaValoracion>=desde&&c.fechaValoracion<=hasta&&c.etapa!=="KO"&&(!quien||c.asesor===quien))
+    out.push({f:c.fechaValoracion,h:"",tipo:c.etapa==="Valoración agendada"?"Valoración":"Valorada",t:c.direccion||"",s:c.nombre||"",as:c.asesor||"",col:"contactos",id:c.id});
+  if(!quien||quien===yo)for(const a of misRecs())if(a.fecha&&a.fecha>=desde&&a.fecha<=hasta)
+    out.push({f:a.fecha,h:a.hora||"",tipo:"Llamar",t:a.direccion||a.nombre||"",s:a.texto||"",as:yo,col:a.col,id:a.refId,rec:1});
+  return out.sort((a,b)=>(a.f+(a.h||"99")).localeCompare(b.f+(b.h||"99")))}
 function vAgenda(){
-  const id=S.ajustes.calendarioId; if(!id) return "";
-  const q=new URLSearchParams({src:id,ctz:"Europe/Madrid",mode:"AGENDA",showTitle:"0",showPrint:"0",showTabs:"1",showCalendars:"0",showTz:"0",hl:"es"});
-  return `<section class="agenda"><h2>Agenda de la oficina</h2>
-    <iframe title="Google Calendar de la oficina" src="https://calendar.google.com/calendar/embed?${q}" loading="lazy" style="width:100%;height:420px;border:1px solid var(--line);background:#fff"></iframe>
-    <div class="tools" style="margin-top:8px"><a class="btn small" href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(id)}" target="_blank" rel="noopener">Abrir en Google Calendar</a>
-    <span style="color:var(--muted);font-size:12px">Si no ves las citas, entra en Google con la cuenta que tiene el calendario compartido.</span></div></section>`;
+  const yo=S.yo&&S.yo.nombre,todo=veTodo(),hoy=hoyISO(),off=S.agSem||0;
+  const quien=todo?(S.agAs||""):yo,l=agLunes(off),dom=dias2(l,6);
+  const C=agCitas(l,dom,quien);
+  /* Próximos pasos de noticias: solo de una persona (con «Todos» serían demasiados), de hoy en adelante */
+  const P=quien?S.contactos.filter(c=>c.asesor===quien&&c.proxFecha&&c.proxFecha>=hoy&&c.proxFecha>=l&&c.proxFecha<=dom&&c.etapa!=="KO"&&c.etapa!=="Encargo"):[];
+  const ases=[...new Set([...(S.ajustes.asesores||[]).map(a=>a.nombre),...S.visitas.filter(v=>v.fecha>=l&&v.fecha<=dom).map(v=>v.asesor)].filter(Boolean))];
+  const fd=f=>new Date(f+"T12:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"});
+  const cita=x=>`<button type="button" class="ag-c${x.canc?" canc":""}${x.rec?" rec":""}" style="--c:${x.canc?"#9a9a9a":colorAsesor(x.as)}" ${x.col&&x.id?`data-open="${esc(x.col)}" data-id="${esc(x.id)}"`:""}><span class="ag-h">${x.h?esc(x.h):"Día"}</span><span class="ag-b"><b>${esc(x.canc?"Visita cancelada":x.tipo)}</b> · ${esc(x.t)}${x.s?`<small>${esc(x.s)}</small>`:""}${todo&&!quien&&x.as?`<small class="ag-as">${esc(x.as)}</small>`:""}</span></button>`;
+  const dias=[0,1,2,3,4,5,6].map(i=>{const f=dias2(l,i),L=C.filter(x=>x.f===f),PP=P.filter(c=>c.proxFecha===f);
+    return `<div class="ag-d${f===hoy?" hoy":""}${f<hoy?" pas":""}"><div class="ag-dh"><span>${DIAS_AG[i]}</span> <span class="ag-n">${fd(f)}</span>${f===hoy?` <span class="pill acc">Hoy</span>`:""}</div>
+      ${L.map(cita).join("")||(PP.length?"":`<div class="ag-v">Sin citas</div>`)}
+      ${PP.length?`<details class="ag-pp"><summary>${PP.length} próximo${PP.length>1?"s":""} paso${PP.length>1?"s":""}</summary>${PP.map(c=>`<button type="button" class="ag-c pp" data-open="contactos" data-id="${esc(c.id)}"><span class="ag-b">${esc(c.direccion||"")}${c.proxAccion?`<small>${esc(c.proxAccion)}</small>`:""}</span></button>`).join("")}</details>`:""}</div>`}).join("");
+  const nV=C.filter(x=>x.tipo==="Visita"&&!x.canc).length,nVal=C.filter(x=>x.tipo==="Valoración").length;
+  const tit=off===0?"Esta semana":off===1?"La semana que viene":off===-1?"La semana pasada":`Semana del ${fd(l)}`;
+  const id=S.ajustes.calendarioId;
+  return `<section class="agenda">
+    <div class="ag-top"><button class="btn small" type="button" data-agsem="-1" aria-label="Semana anterior">‹</button><div class="ag-t"><b>${tit}</b><span>${fd(l)} – ${fd(dom)} · ${nV} visita${nV===1?"":"s"}${nVal?` · ${nVal} valoraci${nVal===1?"ón":"ones"}`:""}</span></div><button class="btn small" type="button" data-agsem="1" aria-label="Semana siguiente">›</button>${off?`<button class="btn small" type="button" data-agsem="0">Hoy</button>`:""}</div>
+    ${todo?`<div class="chips ag-as">${[["","Todos"],...ases.map(a=>[a,a])].map(([v,t])=>`<button class="chip" type="button" data-agas="${esc(v)}" aria-pressed="${quien===v}">${v?`<i style="background:${colorAsesor(v)}"></i>`:""}${esc(t)}</button>`).join("")}</div>`:""}
+    <div class="ag-sem">${dias}</div>
+    <div class="tools" style="margin-top:8px"><span style="color:var(--muted);font-size:12px">Las visitas con hora del CRM pasan solas al Google Calendar de la oficina, con el color de cada asesor.</span>${id?`<a class="btn small" href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(id)}" target="_blank" rel="noopener">Abrir Google Calendar</a>`:""}</div></section>`;
 }
+document.addEventListener("click",e=>{const b=e.target.closest("[data-agsem],[data-agas]");if(!b)return;e.preventDefault();
+  if(b.dataset.agsem!==undefined){const n=Number(b.dataset.agsem);S.agSem=n===0?0:(S.agSem||0)+n}else S.agAs=b.dataset.agas;S.hoyAbierto="agenda";render()});
 function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2200)}
 
 /* ---------- reglas de negocio ---------- */
@@ -1186,7 +1239,7 @@ function vHoy(){
     {k:"encAl",t:"Encargos que piden atención",n:encAl.length,tono:"warn",html:hoyLista("encAl",encAl,rowEncargo,"")},
     {k:"cli",t:"Clientes antiguos",n:cli.length,nota:"Reseña a los 15 días de la venta y felicitación en cada aniversario.",html:hoyLista("clientes",cli,rowCliente,"")},
     {k:"res",t:"Reservas en negociación",n:reservas.length,html:hoyLista("res",reservas,rowOp,"")}];
-  if(S.ajustes.calendarioId)B.push({k:"agenda",t:"Agenda de la oficina",n:"Ver",info:1,html:vAgenda()});
+  B.push({k:"agenda",t:"Agenda de la semana",n:(n=>n||"Ver")(visitasEntre(agLunes(0),dias2(agLunes(0),6),veTodo()?"":S.yo&&S.yo.nombre).filter(v=>!v.cancelada).length),info:1,html:vAgenda()});
   const vacios=B.filter(b=>!b.n).map(b=>b.t);
   return hoyBloques(B,vacios);
 }
@@ -2013,7 +2066,7 @@ function vHoyCoord(){
     {k:"bofi",t:"Noticias para pasar a otra oficina",n:ofi.length,tono:"warn",nota:"Compradores que tienen que vender o alquilar su casa (o viven de alquiler) fuera de nuestras zonas. Pásala a la oficina que corresponda y márcalo en su ficha.",html:hoyLista("bofi",ofi,rowOfi,"")},
     {k:"bcap",t:"Captaciones pendientes de encontrar",n:capP.length,html:hoyLista("bcap",capP,rowCap,"")},
     {k:"res",t:"Reservas en negociación",n:reservas.length,html:hoyLista("res",reservas,rowOp,"")}];
-  if(S.ajustes.calendarioId)B.push({k:"agenda",t:"Agenda de la oficina",n:"Ver",info:1,html:vAgenda()});
+  B.push({k:"agenda",t:"Agenda de la semana",n:(n=>n||"Ver")(visitasEntre(agLunes(0),dias2(agLunes(0),6),veTodo()?"":S.yo&&S.yo.nombre).filter(v=>!v.cancelada).length),info:1,html:vAgenda()});
   return hoyBloques(B,B.filter(b=>!b.n).map(b=>b.t),tools)}
 function metasCoordPer(per){const M={...DEF_METAS_COORD,...(S.ajustes.metasCoord||{})},f=rangoPer(per)[2]/7,o={};for(const k in M)o[k]=M[k]?Math.max(1,Math.round(M[k]*f)):0;return o}
 function vMetasCoord(per){const [a,b]=rangoPer(per),M=metasCoordPer(per),[et,desde]=PER_ET[per],en=f=>f&&f.slice(0,10)>=a&&f.slice(0,10)<=b;
