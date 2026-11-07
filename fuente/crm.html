@@ -1488,6 +1488,9 @@ function alertasAuto(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];const rol=S.yo
     // Encargo paralizado: cada 30 días, que el asesor revise si se reactiva o se retira
     for(const e of encMio)if(e.estado==="Paralizado"){const f=e.fechaParalizado||String(e.actualizado||e.creado||"").slice(0,10),d=f?Math.floor((new Date(hoy)-new Date(f))/864e5):0;
       if(d>=30)add("par:"+e.id+":"+Math.floor(d/30),"Encargo paralizado desde hace "+d+" días",(e.direccion||"")+" · revisa si se reactiva o se retira",["encargos",e.id])}
+    // Encargo activo con la ficha de valoración a medias
+    for(const e of encMio)if(fvPedir(e)){const n=fvFaltan(e).length;add("fval:"+e.id,"Completa la ficha de valoración",(e.direccion||"")+" · faltan "+n+" dato"+(n>1?"s":""),["encargos",e.id])}
+    for(const c of cMios)if(fvPedir(c)){const n=fvFaltan(c).length;add("fvaln:"+c.id,"Completa la ficha de la valoración",(c.direccion||"")+" · faltan "+n+" dato"+(n>1?"s":""),["contactos",c.id])}
     // Se ha vendido
     for(const c of cMios)if(c.vendida&&!c.vendidaVista)add("vend:"+c.id,"Se ha vendido con otra agencia",c.direccion||"",["contactos",c.id]);
   }
@@ -1527,6 +1530,176 @@ FORMS.encargos.fields.splice(FORMS.encargos.fields.findIndex(f=>f[0]==="riesgo")
     ["ibi","IBI al año (€)","number"],["comunidad","Comunidad al mes (€)","number"],["derramas","Derramas (cuáles y cuánto)","text",{full:1}],
     ["horarioVisitas","Cuándo se puede visitar","text",{full:1}],["escritura","Cuándo se puede escriturar","text",{full:1}],
     ["llamada","Lo importante que hay que decir al comprador","textarea",{full:1}]);
+/* ---------- Ficha de valoración del encargo (Stiwhar, 07/11/2026) ----------
+   Al crear un encargo se abre en la pestaña «Ficha valoración»: lo que sale del catastro (censo), de su noticia y del encargo ya viene puesto
+   y el asesor completa el resto. Mientras falten datos, aviso en Hoy. «Descargar ficha» la saca en la plantilla Excel de la oficina. */
+const FV_SI=["Sí","No"],FV_EST=["Bien","Regular","Mal","Reformada","No tiene"];
+const FV_GRUPOS=[
+  ["pers","1. Datos personales",[["fvFecha","Fecha","date"],["fvPropietario","Propietario"],["fvDomicilio","Domicilio del propietario"],["fvTel1","Teléfono 1","tel"],["fvTel2","Teléfono 2 (si hay)","tel",{opc:1}]]],
+  ["inm","2. Datos del inmueble",[["fvDireccion","Dirección"],["fvAnio","Año de construcción"],["fvPlantas","Nº de plantas del edificio"],["fvIbi","IBI (€ al año)"],["fvComunidad","Comunidad (€ al mes)"],["fvRc","Referencia catastral"],["fvPlanta","Planta y puerta"]]],
+  ["finca","Finca",[["fvFachada","Fachada",0,{dl:FV_EST}],["fvEscalera","Escalera",0,{dl:FV_EST}],["fvPoceria","Pocería",0,{dl:FV_EST}],["fvDerramas","Derramas",0,{dl:["No hay","Pendiente de aprobar"]}],["fvFontaneria","Fontanería",0,{dl:FV_EST}],["fvElectricidad","Electricidad",0,{dl:FV_EST}],
+    ["fvAscensor","Ascensor",0,{dl:["Sí","No","Sí, a cota cero","Sí, no a cota cero"]}],["fvGaraje","Garaje",0,{dl:["No","Sí, incluido","Sí, aparte"]}],["fvTrastero","Trastero",0,{dl:["No","Sí"]}],["fvPiscina","Piscina",0,{dl:["No","Sí, comunitaria"]}],["fvZonas","Zonas comunes",0,{dl:["No","Jardín","Patio","Jardín y piscina"]}],
+    ["fvCargas","Cargas de la finca",0,{dl:["Libre de cargas","Hipoteca"]}],["fvMotivacion","Motivación de la venta",0,{dl:MOTIVOS.filter(Boolean)}],["fvOtros","Otros",0,{opc:1}]]],
+  ["vivi","Inmueble",[["fvTipo","Tipo",0,{dl:["Piso","Ático","Bajo","Dúplex","Unifamiliar","Plaza de garaje","Local","Trastero"]}],["fvEstado","Estado",0,{dl:["A estrenar","Reformado","Buen estado","Para actualizar","Para reformar"]}],["fvVentanas","Ventanas",0,{dl:["Aluminio","Aluminio con climalit","PVC","Madera"]}],
+    ["fvSuelos","Suelos",0,{dl:["Tarima","Parqué","Gres","Terrazo","Mármol"]}],["fvPintura","Pintura",0,{dl:["Lisa","Gotelé","Para pintar"]}],["fvAgua","Agua caliente",0,{dl:["Gas natural","Termo eléctrico","Central","Butano"]}],["fvCalefaccion","Calefacción",0,{dl:["Gas natural","Central","Eléctrica","Sin calefacción"]}],
+    ["fvAire","Aire acondicionado",0,{dl:["No","Split","Por conductos","Bomba de calor"]}],["fvTerrazas","Terrazas",0,{dl:["No","Sí","Cerrada","Tendedero"]}],["fvArmarios","Armarios",0,{dl:["Empotrados","No"]}],["fvPuertas","Puertas",0,{dl:["Sapelly","Lacadas blancas","Roble","Pino"]}]]],
+  ["venta","Venta y cómo se ha valorado",[["fvHabitaciones","Habitaciones"],["fvBanos","Baños"],["fvOrientacion","Orientación",0,{dl:["Norte","Sur","Este","Oeste","Sureste","Suroeste","Noreste","Noroeste"]}],["fvExterior","Exterior / interior",0,{dl:["Exterior","Interior","Exterior a calle","Exterior a patio"]}],
+    ["fvOcupacion","Ocupación",0,{dl:["Vive el propietario","Alquilado","Vacío"]}],["fvFinAlquiler","Si está alquilado: fin del contrato",0,{opc:1}],["fvHipoteca","Hipoteca pendiente (aprox.)",0,{dl:["No tiene"]}],
+    ["fvCee","Certificado energético",0,{dl:["Sí","En trámite","No tiene"]}],["fvIte","ITE / IEE del edificio",0,{dl:["Favorable","Desfavorable","No tiene","No lo sabe"]}],
+    ["fvCuando","Cuándo quiere vender",0,{dl:["Ya","En 3 meses","En 6 meses","Sin prisa"]}],["fvCompraOtra","¿Tiene que comprar otra?",0,{dl:["No","Sí, en Fuenlabrada","Sí, fuera"]}],["fvEscritura","Cuándo puede escriturar"],
+    ["fvTestigos","Testigos (comparables) usados"],["fvPrecioSalida","Precio de salida propuesto (€)"],["fvHonorarios","Honorarios propuestos (€)"],["fvExclusiva","Exclusiva",0,{dl:["Sí","No"]}],["fvEmail","Email del propietario","email",{opc:1}]]]];
+const FV_SALAS=[["salon","Salón"],["cocina","Cocina"],["bano","Baño"],["aseo","Aseo"],["dorm1","Dorm. 1"],["dorm2","Dorm. 2"],["dorm3","Dorm. 3"],["dorm4","Dorm. 4"],["hall","Hall"],["pasillo","Pasillo"],["otros","Otros"]];
+const FV_FIN=[["fvConstruidos","Total m² construidos"],["fvValoracion","Valoración de la agencia (€)"],["fvExpectativa","Expectativa del cliente (€)"]];
+const FV_CAMPOS=[...FV_GRUPOS.flatMap(g=>g[2]),...FV_SALAS.flatMap(([k,l])=>[["fvD_"+k,l],["fvM_"+k,l+" m²"]]),...FV_FIN];
+FORMS.encargos.fields.push(["censoId","Vivienda del censo","fvx"],["fvPedida","","fvx"],...FV_CAMPOS.map(([k,l])=>[k,"Ficha: "+l,"fvx"]),["_fval","Ficha de valoración","fval"]);
+/* La valoración se hace en la noticia: la ficha empieza allí y pasa al encargo al convertirla */
+FORMS.contactos.fields.push(...FV_CAMPOS.map(([k,l])=>[k,"Ficha: "+l,"fvx"]),["_fval","Ficha de valoración","fval"]);
+const fvEsNot=e=>!!e&&e.etapa!==undefined;
+const fvNum=v=>{const x=String(v??"").match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);if(x)return Math.round(parseFloat(x[1].replace(",","."))*parseFloat(x[2].replace(",","."))*100)/100;const n=parseFloat(String(v??"").replace(/\./g,"").replace(",",".").replace(/[^\d.]/g,""));return isFinite(n)?n:0};
+const fvEur=v=>v===""||v==null?"":/[a-z€]/i.test(String(v))?String(v):String(Math.round(fvNum(v))).replace(/\B(?=(\d{3})+(?!\d))/g,".")+" €";
+const fvNoticia=e=>fvEsNot(e)?e:e&&e.contactoId&&S.contactos.find(c=>c.id===e.contactoId)||null;
+function fvViv(e,cidForm){const c=fvNoticia(e),cid=cidForm||e.censoId||(c&&c.censoId)||"";const r=cid&&S.censo?buscarViv(cid):null;return {cid,r,u:r?{...r.u,...(S.censoEd[cid]||{})}:null,c}}
+function fvPlantasEdif(b){const P=b.u.map(u=>zPl(u.planta)).filter(p=>/^\d+$/.test(p)).map(Number);if(!P.length)return "";const m=Math.max(...P);return m===0?"Solo bajo":"Bajo + "+m}
+/* Lo que el CRM ya sabe de cada casilla (censo/catastro, noticia, encargo) */
+function fvAuto(e,cidForm){const {r,u,c}=fvViv(e,cidForm),A={},tit=c?[{nombre:c.nombre,telefono:c.telefono},...(c.titulares||[])].filter(t=>t.nombre||t.telefono):[];
+  const dir=r?dirViv(r):(e.direccion||"");
+  A.fvFecha=(c&&c.fechaValoracion)||e.fechaCaptacion||"";
+  A.fvPropietario=tit.map(t=>t.nombre).filter(Boolean).join(" / ")||(u?propTodos(u):"");
+  A.fvTel1=(tit.find(t=>t.telefono)||{}).telefono||(u&&u.tel)||"";
+  A.fvTel2=(tit.filter(t=>t.telefono)[1]||{}).telefono||(u&&u.tel&&tel9(u.tel)!==tel9(A.fvTel1)?u.tel:"");
+  A.fvDomicilio=u&&u.ocu==="PROPIETARIO"?dir+" (vive en la vivienda)":"";
+  A.fvDireccion=dir;A.fvAnio=(u&&u.anio)||"";A.fvPlantas=r?fvPlantasEdif(r.b):"";A.fvRc=(u&&u.rc)||"";
+  A.fvPlanta=u?[u.esc&&!/^T$/.test(u.esc)&&("Esc. "+u.esc),u.planta&&!/^OD$/.test(u.planta)&&(zPl(u.planta)==="0"?"Bajo":zPl(u.planta)+"º"),u.puerta&&!/^OS$/.test(u.puerta)&&zPP(u.puerta)].filter(Boolean).join(" ")||(u.esc==="T"?"Unifamiliar":""):(e.planta||"");
+  A.fvIbi=e.ibi?String(e.ibi):"";A.fvComunidad=e.comunidad?String(e.comunidad):"";A.fvDerramas=e.derramas||"";
+  A.fvAscensor=e.ascensor||"";A.fvGaraje=e.garaje||"";A.fvTerrazas=e.terraza||"";A.fvMotivacion=(c&&c.motivo)||"";
+  A.fvHabitaciones=e.habitaciones?String(e.habitaciones):"";A.fvBanos=e.banos?String(e.banos):"";A.fvEscritura=e.escritura||"";A.fvPrecioSalida=e.precio?String(e.precio):"";A.fvHonorarios=e.honorarioPrevisto?String(e.honorarioPrevisto):"";A.fvExclusiva=e.exclusiva||"";
+  A.fvOcupacion=u?({PROPIETARIO:"Vive el propietario",INQUILINO:"Alquilado",VACIO:"Vacío"}[String(u.ocu||"").toUpperCase()]||""):"";
+  const cl=claseEnc(e);A.fvTipo=cl!=="Vivienda"?cl:u&&u.esc==="T"?"Unifamiliar":u?"Piso":"";
+  A.fvConstruidos=(u&&u.m2)||(e.m2?String(e.m2):"");
+  A.fvValoracion=c&&c.precioValorado?String(c.precioValorado):"";A.fvExpectativa=c&&c.precioPropietario?String(c.precioPropietario):(e.precio?String(e.precio):"");
+  /* Lo que ya se apuntó en la ficha de la noticia pasa al encargo */
+  if(c&&c!==e)for(const [k] of FV_CAMPOS)if(c[k]!=null&&String(c[k]).trim()!=="")A[k]=String(c[k]);
+  return A}
+const fvVal=(e,A,k)=>{const v=e[k];return v!=null&&String(v).trim()!==""?String(v):(A[k]||"")};
+/* Qué casillas son obligatorias: en una plaza, local o trastero no se piden finca/inmueble/estancias */
+function fvObligatorias(e){const viv=claseEnc(e)==="Vivienda",n=Math.min(4,Math.max(1,parseInt(e.habitaciones)||1)),L=[];
+  for(const [g,,C] of FV_GRUPOS)for(const [k,,,o] of C){if(o&&o.opc)continue;if(!viv&&(g==="finca"||g==="vivi"||["fvHabitaciones","fvBanos","fvOrientacion","fvExterior"].includes(k))&&k!=="fvTipo")continue;L.push(k)}
+  if(viv){for(const s of ["salon","cocina","bano",...Array.from({length:n},(_,i)=>"dorm"+(i+1))])L.push("fvM_"+s)}
+  L.push("fvConstruidos","fvValoracion","fvExpectativa");return L}
+function fvFaltan(e,cidForm){const A=fvAuto(e,cidForm);return fvObligatorias(e).filter(k=>!fvVal(e,A,k).trim())}
+const FV_DESDE="2026-11-07",FV_COLS=["encargos","contactos"];
+/* Se pide en los encargos activos o reservados (los nuevos y los que ya había) */
+const fvPedir=e=>fvEsNot(e)?e.etapa==="Valorada"&&(e.fechaValoracion||"")>=FV_DESDE&&fvFaltan(e).length>0:(e.estado==="Activo"||e.estado==="Reservado")&&fvFaltan(e).length>0;
+const fvLabel=k=>{const f=FV_CAMPOS.find(x=>x[0]===k);return f?f[1]:k};
+function fichaValHTML(){const e=TIT_D||{},A=fvAuto(e),{cid,r}=fvViv(e),noti=fvEsNot(e);
+  const inp=([k,l,t,o])=>{const v=fvVal(e,A,k),au=!(e[k]!=null&&String(e[k]).trim()!=="")&&!!A[k];o=o||{};
+    return `<label class="fv-c${o.opc?" fv-opc":""}" data-fvk="${k}"><span class="fv-l">${esc(l)}${au?' <span class="fv-a" title="Lo ha puesto el CRM (catastro, noticia o encargo)">auto</span>':""}</span><input id="fld-${k}" type="${t==="date"?"date":t==="tel"?"tel":t==="email"?"email":"text"}" value="${esc(v)}"${o.dl?` list="dl-${k}"`:""} autocomplete="off">${o.dl?`<datalist id="dl-${k}">${o.dl.map(x=>`<option value="${esc(x)}">`).join("")}</datalist><span class="fv-ch">${o.dl.slice(0,5).map(x=>`<button type="button" data-fvset="${k}" data-v="${esc(x)}">${esc(x)}</button>`).join("")}</span>`:""}</label>`};
+  const sala=([s,l])=>{const kd="fvD_"+s,km="fvM_"+s;return `<div class="fv-sala" data-fvk="${km}"><span>${esc(l)}</span><input id="fld-${kd}" value="${esc(fvVal(e,A,kd))}" placeholder="Descripción" autocomplete="off"><input id="fld-${km}" value="${esc(fvVal(e,A,km))}" inputmode="decimal" placeholder="m²" autocomplete="off"></div>`};
+  const cat=r?`<div class="vb-s">Vivienda del catastro: <b>${esc(dirViv(r))}</b> · ${esc([r.u.m2&&r.u.m2+" m²",r.u.anio&&"año "+r.u.anio,r.u.rc].filter(Boolean).join(" · "))} ${noti?"":'<button class="btn small" type="button" data-act="fvCambiar">Cambiar</button>'}</div>`
+    :noti?'<div class="vb-s">Enlaza la vivienda del censo (pestaña Censo) para traer los datos del catastro.</div>':`<div class="vb-s">${S.censo?(cid?"La vivienda enlazada no está en tu censo.":"Este encargo no está enlazado con su vivienda del censo: búscala para traer los datos del catastro."):"Cargando el censo…"}</div>${S.censo&&!cid?`<label class="full">Busca la vivienda (calle, número, piso)<input id="fv-q" type="search" autocomplete="off" value="${esc(e.direccion||"")}" placeholder="Ej.: Callao 13 2ºA"></label><div id="fv-res" class="vb-res"></div>`:""}`;
+  return `<div class="full vivbox fval" id="fld-_fval" style="grid-column:1/-1">${noti?"":`<input type="hidden" id="fld-censoId" value="${esc(cid)}"><input type="hidden" id="fld-fvPedida" value="${esc(e.fvPedida||"")}">`}
+    <div class="vb-h">Ficha de valoración <span id="fv-est"></span></div>
+    <div class="vb-s">Lo marcado «auto» lo ha puesto el CRM con el catastro, la noticia y el encargo: revísalo. Completa lo que esté en amarillo y pulsa Guardar.</div>${cat}
+    <div class="fv-bt"><button class="btn small primary" type="button" data-act="fvExcel">Descargar ficha (Excel)</button></div>
+    ${FV_GRUPOS.map(([g,t,C])=>`<div class="fv-g" data-fvg="${g}"><div class="fv-t">${esc(t)}</div><div class="fv-grid">${C.map(inp).join("")}</div></div>`).join("")}
+    <div class="fv-g" data-fvg="desc"><div class="fv-t">Descripción y m² útiles</div>${FV_SALAS.map(sala).join("")}<div class="fv-sala fv-tot"><span>Total m² útiles</span><b id="fv-utiles"></b></div></div>
+    <div class="fv-g"><div class="fv-t">Superficie y valoración</div><div class="fv-grid">${FV_FIN.map(([k,l])=>inp([k,l])).join("")}</div></div></div>`}
+/* Pinta lo que falta y el total de m² útiles con lo que hay escrito ahora mismo */
+const fvCid=e=>cur&&cur.col==="contactos"?(cur.censoId||""):(e.censoId||"");
+function fvRefrescar(){const box=$("#fld-_fval");if(!box||!cur||!FV_COLS.includes(cur.col))return;const e={...(TIT_D||{}),...leerForm()};e.censoId=fvCid(e);
+  const F=new Set(fvFaltan(e,e.censoId));box.querySelectorAll("[data-fvk]").forEach(l=>l.classList.toggle("fv-falta",F.has(l.dataset.fvk)));
+  const est=$("#fv-est");if(est)est.innerHTML=F.size?`<span class="pill warn">Faltan ${F.size}</span>`:'<span class="pill ok">Completa</span>';
+  const t=FV_SALAS.reduce((s,[k])=>s+fvNum(e["fvM_"+k]),0),u=$("#fv-utiles");if(u)u.textContent=t?t.toLocaleString("es-ES")+" m²":"—";
+  const tb=document.querySelector('[data-ftab="fval"]');if(tb){let n=tb.querySelector(".n");if(!n){n=document.createElement("span");tb.appendChild(n)}n.className=F.size?"n av":"n";n.textContent=F.size?String(F.size):"✓"}}
+function fvBuscar(){const el=$("#fv-res"),qi=$("#fv-q");if(!el||!qi)return;const q=qi.value.trim();if(q.length<3){el.innerHTML='<div class="vb-s">Escribe la calle y el número.</div>';return}
+  const R=candidatosViv(q,true),U=R.u.slice(0,30);
+  el.innerHTML=U.length?U.map(x=>`<button type="button" class="vb-o" data-fvviv="${esc(x.u._id)}"><b>${esc(dirViv(x))}</b> <span>${esc([x.u.m2&&x.u.m2+" m²",x.u.anio].filter(Boolean).join(" · "))}</span></button>`).join(""):`<div class="vb-s">${R.edificios?"Ese piso no aparece en ese portal del censo.":"No encuentro esa calle en el censo."}</div>`}
+/* Al enlazar otra vivienda se vuelven a poner los datos del catastro (lo escrito a mano se queda) */
+function fvRepintar(cid,sinContacto){const box=$("#fld-_fval");if(!box)return;if(cid==null)cid=fvCid(TIT_D||{});const e={...(TIT_D||{}),censoId:cid};if(sinContacto)e.contactoId="";
+  box.querySelectorAll("input[id^=fld-fv]").forEach(i=>{if(i.value!==i.defaultValue)e[i.id.slice(4)]=i.value});
+  const viejo=TIT_D;TIT_D=e;box.outerHTML=fichaValHTML();TIT_D=viejo;if(viejo&&!sinContacto)viejo.censoId=cid;fvRefrescar()}
+$("#frm").addEventListener("input",e=>{if(e.target.id==="fv-q"){clearTimeout(fvBuscar.t);fvBuscar.t=setTimeout(fvBuscar,250);return}if(e.target.closest&&e.target.closest("#fld-_fval")||cur&&FV_COLS.includes(cur.col)&&/^fld-(habitaciones|clase|estado|etapa|nombre|telefono|precioValorado|precioPropietario|fechaValoracion)$/.test(e.target.id))fvRefrescar()});
+$("#frm").addEventListener("change",e=>{if(cur&&FV_COLS.includes(cur.col)&&/^fld-(habitaciones|clase|estado|etapa|motivo)$/.test(e.target.id))fvRefrescar()});
+/* Si en la noticia se enlaza otra vivienda del censo, la ficha trae sus datos del catastro */
+$("#frm").addEventListener("click",e=>{if(cur&&cur.col==="contactos"&&e.target.closest("[data-vivsel]"))setTimeout(()=>fvRepintar(cur.censoId||""),80)});
+$("#frm").addEventListener("click",e=>{const ch=e.target.closest("[data-fvset]");if(ch){e.preventDefault();const i=$("#fld-"+ch.dataset.fvset);if(i){i.value=ch.dataset.v;i.dispatchEvent(new Event("input",{bubbles:true}))}return}
+  const b=e.target.closest("[data-fvviv]");if(b){e.preventDefault();fvRepintar(b.dataset.fvviv);toast("Vivienda enlazada: datos del catastro puestos");return}
+  const a=e.target.closest("[data-act]");if(!a)return;
+  if(a.dataset.act==="fvCambiar"){e.preventDefault();fvRepintar("",true);fvBuscar();return}
+  if(a.dataset.act==="fvExcel"){e.preventDefault();const x={...(TIT_D||{}),...leerForm()};x.censoId=fvCid(x);fvExcel(x)}});
+/* Antes de guardar: enlaza sola la vivienda si la dirección encaja con una sola del censo, y pasa al encargo lo que falte (IBI, comunidad, m²…) */
+function fvAntesGuardar(d,nuevo){
+  if(!d.censoId&&S.censo&&d.direccion){const R=candidatosViv(d.direccion,false);if(R.u.length===1)d.censoId=R.u[0].u._id}
+  if(nuevo){d.fvPedida=hoyISO();const A=fvAuto(d,d.censoId);for(const k of Object.keys(A))if(A[k]&&!(d[k]&&String(d[k]).trim()))d[k]=A[k]}
+  if(d.ibi==null&&fvNum(d.fvIbi))d.ibi=fvNum(d.fvIbi);if(d.comunidad==null&&fvNum(d.fvComunidad))d.comunidad=fvNum(d.fvComunidad);
+  if(!d.derramas&&d.fvDerramas)d.derramas=d.fvDerramas;if(d.m2==null&&fvNum(d.fvConstruidos))d.m2=fvNum(d.fvConstruidos);if(!d.planta&&d.fvPlanta)d.planta=d.fvPlanta;if(d.habitaciones==null&&fvNum(d.fvHabitaciones))d.habitaciones=fvNum(d.fvHabitaciones);if(d.banos==null&&fvNum(d.fvBanos))d.banos=fvNum(d.fvBanos);
+  for(const [a,b] of [["ascensor","fvAscensor"],["garaje","fvGaraje"],["terraza","fvTerrazas"]])if(!d[a]&&d[b])d[a]=/^s[ií]/i.test(d[b])?"Sí":/^no\b/i.test(d[b])?"No":d[a]}
+/* Noticia: lo que se escribe en la ficha completa la noticia si allí estaba vacío */
+function fvNoticiaAntes(d){if(!d.precioValorado&&fvNum(d.fvValoracion))d.precioValorado=fvNum(d.fvValoracion);if(!d.precioPropietario&&fvNum(d.fvExpectativa))d.precioPropietario=fvNum(d.fvExpectativa);
+  if(!d.fechaValoracion&&/^\d{4}-\d\d-\d\d$/.test(d.fvFecha||""))d.fechaValoracion=d.fvFecha;if(!d.motivo&&MOTIVOS.includes(d.fvMotivacion))d.motivo=d.fvMotivacion}
+const fvCopia=c=>{const o={};for(const [k] of FV_CAMPOS)if(c[k]!=null&&String(c[k]).trim()!=="")o[k]=c[k];return o};
+/* Datos del catastro que se guardan en el encargo al crearlo desde la noticia */
+function fvDeCenso(cid){if(!cid||!S.censo)return cid?{censoId:cid}:{};const r=buscarViv(cid);if(!r)return {censoId:cid};const u={...r.u,...(S.censoEd[cid]||{})},o={censoId:cid,fvPedida:hoyISO()};
+  if(fvNum(u.m2))o.m2=fvNum(u.m2);const pl=zPl(u.planta);if(u.planta&&!/^OD$/.test(u.planta))o.planta=(pl==="0"?"Bajo":pl+"º")+(u.puerta&&!/^OS$/.test(u.puerta)?" "+zPP(u.puerta):"");return o}
+/* ---- Descargar la ficha en la plantilla Excel de la oficina (mismo formato y logo) ---- */
+function cargarZip(){return window.JSZip?Promise.resolve(window.JSZip):new Promise((ok,ko)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";s.onload=()=>ok(window.JSZip);s.onerror=()=>ko(new Error("No se ha podido cargar el compresor"));document.head.appendChild(s)})}
+function fvCeldas(e){const A=fvAuto(e,e.censoId),v=k=>fvVal(e,A,k),H={},fecha=v("fvFecha");
+  H.O2=/^\d{4}-\d\d-\d\d$/.test(fecha)?fecha.split("-").reverse().join("/"):fecha;H.J5=e.asesor||"";H.D10=v("fvPropietario");H.D12=v("fvDomicilio");H.D14=v("fvTel1");H.H14=v("fvTel2");
+  H.M10=v("fvDireccion");H.M12=v("fvAnio");H.Q12=v("fvPlantas");H.M14=v("fvIbi")?fvEur(v("fvIbi"))+(/[a-z]/i.test(v("fvIbi"))?"":"/año"):"";H.Q14=v("fvComunidad")?fvEur(v("fvComunidad"))+(/[a-z]/i.test(v("fvComunidad"))?"":"/mes"):"";
+  ["fvFachada","fvEscalera","fvPoceria","fvDerramas","fvFontaneria","fvElectricidad","fvAscensor","fvGaraje","fvTrastero","fvPiscina","fvZonas","fvCargas","fvMotivacion","fvOtros"].forEach((k,i)=>H["D"+(18+i)]=v(k));
+  ["fvTipo","fvEstado","fvVentanas","fvSuelos","fvPintura","fvAgua","fvCalefaccion","fvAire","fvTerrazas","fvArmarios","fvPuertas"].forEach((k,i)=>H["I"+(18+i)]=v(k));
+  H.G29="REF. CATASTRAL";H.I29=v("fvRc");H.G30="PLANTA";H.I30=v("fvPlanta");H.G31="HAB. / BAÑOS";H.I31=[v("fvHabitaciones"),v("fvBanos")].filter(Boolean).join(" / ");
+  H.G32="ORIENTACIÓN";H.I32=[v("fvOrientacion"),v("fvExterior")].filter(Boolean).join(", ");H.G33="OCUPACIÓN";H.I33=v("fvOcupacion")+(v("fvFinAlquiler")?" (fin "+v("fvFinAlquiler")+")":"");H.G34="CEE / ITE";H.I34=[v("fvCee"),v("fvIte")].filter(Boolean).join(" / ");
+  if(v("fvHipoteca"))H.D29=[v("fvCargas"),"Hipoteca: "+v("fvHipoteca")].filter(Boolean).join(" · ");
+  let tot=0;FV_SALAS.forEach(([s],i)=>{H["M"+(18+i)]=v("fvD_"+s);const m=fvNum(v("fvM_"+s));tot+=m;H["R"+(18+i)]=m||(v("fvM_"+s)||"")});
+  H.R29=tot||"";H.R30=fvNum(v("fvConstruidos"))||v("fvConstruidos");H.L33=fvEur(v("fvValoracion"));H.P33=fvEur(v("fvExpectativa"));
+  H._venta=[["DATOS DE LA VENTA",""],["Email del propietario",v("fvEmail")],["Hipoteca pendiente",v("fvHipoteca")],["Ocupación",H.I33],["Certificado energético",v("fvCee")],["ITE / IEE",v("fvIte")],["Cuándo quiere vender",v("fvCuando")],["Tiene que comprar otra",v("fvCompraOtra")],["Cuándo puede escriturar",v("fvEscritura")],
+    ["Testigos usados",v("fvTestigos")],["Precio de salida propuesto",fvEur(v("fvPrecioSalida"))],["Honorarios propuestos",fvEur(v("fvHonorarios"))],["Exclusiva",v("fvExclusiva")],["Ref. catastral",v("fvRc")]];return H}
+const fvBloque=(L,col,fila0)=>{const M={};L.forEach(([a,b],i)=>{M[col+(fila0+i)]=b?a+": "+b:a});return M};
+/* La hoja «Vertical» es la misma ficha una columna a la izquierda (m² en P; sin fila de puertas) */
+function fvAVertical(H){const V={};for(const [ref,val] of Object.entries(H)){if(ref[0]==="_")continue;const m=ref.match(/^([A-Z])(\d+)$/),c=m[1],f=+m[2];let nc;
+    if(c==="R")nc="P";else if(ref==="P33")nc="N";else nc=String.fromCharCode(c.charCodeAt(0)-1);V[nc+f]=val}
+  V.F28="PUERTAS";Object.assign(V,fvBloque(H._venta,"B",38));return V}
+function fvPonCeldas(xml,M){const doc=new DOMParser().parseFromString(xml,"application/xml"),NS=doc.documentElement.namespaceURI,sd=doc.getElementsByTagNameNS(NS,"sheetData")[0];
+  const colN=r=>r.match(/^[A-Z]+/)[0].split("").reduce((s,ch)=>s*26+ch.charCodeAt(0)-64,0);
+  for(const [ref,val] of Object.entries(M)){if(val===""||val==null)continue;const fila=+ref.match(/\d+$/)[0];
+    let row=[...sd.getElementsByTagNameNS(NS,"row")].find(r=>+r.getAttribute("r")===fila);
+    if(!row){row=doc.createElementNS(NS,"row");row.setAttribute("r",fila);const sig=[...sd.getElementsByTagNameNS(NS,"row")].find(r=>+r.getAttribute("r")>fila);sd.insertBefore(row,sig||null)}
+    let c=[...row.getElementsByTagNameNS(NS,"c")].find(x=>x.getAttribute("r")===ref);
+    if(!c){c=doc.createElementNS(NS,"c");c.setAttribute("r",ref);const sig=[...row.getElementsByTagNameNS(NS,"c")].find(x=>colN(x.getAttribute("r"))>colN(ref));row.insertBefore(c,sig||null)}
+    while(c.firstChild)c.removeChild(c.firstChild);c.removeAttribute("t");
+    if(typeof val==="number"){const vv=doc.createElementNS(NS,"v");vv.textContent=String(val);c.appendChild(vv)}
+    else{c.setAttribute("t","inlineStr");const is=doc.createElementNS(NS,"is"),t=doc.createElementNS(NS,"t");t.setAttribute("xml:space","preserve");t.textContent=String(val);is.appendChild(t);c.appendChild(is)}}
+  return new XMLSerializer().serializeToString(doc)}
+async function fvExcel(e){const fl=fvFaltan(e,e.censoId);
+  try{toast("Preparando la ficha…");const [Z,res]=await Promise.all([cargarZip(),fetch("plantilla-valoracion.xlsx")]);if(!res.ok)throw new Error("no encuentro la plantilla");
+    const zip=await Z.loadAsync(await res.arrayBuffer()),H=fvCeldas(e),H1={...H,...fvBloque(H._venta,"B",36)};delete H1._venta;
+    zip.file("xl/worksheets/sheet1.xml",fvPonCeldas(await zip.file("xl/worksheets/sheet1.xml").async("string"),H1));
+    zip.file("xl/workbook.xml",(await zip.file("xl/workbook.xml").async("string")).replace("Horizontal!$A$1:$T$34","Horizontal!$A$1:$T$50"));
+    zip.file("xl/worksheets/sheet2.xml",fvPonCeldas(await zip.file("xl/worksheets/sheet2.xml").async("string"),fvAVertical(H)));
+    const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download=("Ficha valoración "+(fvVal(e,fvAuto(e,e.censoId),"fvDireccion")||e.direccion||"")).replace(/[\\/:*?"<>|º]+/g," ").replace(/\s+/g," ").trim()+".xlsx";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
+    toast(fl.length?`Ficha descargada. Aún faltan ${fl.length} datos: ${fl.slice(0,3).map(fvLabel).join(", ")}${fl.length>3?"…":""}`:"Ficha descargada")}
+  catch(err){toast("No se ha podido descargar la ficha: "+(err.message||err))}}
+document.head.insertAdjacentHTML("beforeend",`<style>
+.fval .fv-bt{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.fval .fv-g{border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.fval .fv-t{font-weight:600;margin-bottom:6px}
+.fval .fv-grid{align-items:end;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px 12px}
+.fval .fv-c{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.fval .fv-c input,.fval .fv-sala input{font:inherit;font-size:15px;color:var(--fg);padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+.fval .fv-l{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fval .fv-a{display:inline-block;line-height:1.5;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:0 4px}
+.fval .fv-falta input{border-color:#d9a400;background:#fff8e1}
+.fval .fv-falta>span:first-child,.fval .fv-c.fv-falta{color:#8a6a00}
+.fval .fv-ch{display:flex;gap:4px;flex-wrap:wrap}
+.fval .fv-ch button{font:inherit;font-size:12px;padding:3px 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--fg);cursor:pointer}
+.fval .fv-ch button:hover{border-color:var(--accent)}
+.fval .fv-sala{display:grid;grid-template-columns:76px 1fr 76px;gap:8px;align-items:center;margin-bottom:6px;font-size:13px}
+.fval .fv-tot{grid-template-columns:1fr auto;font-size:14px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fval .fv-falta input{background:#3a3214;border-color:#a67f00}}
+:root[data-theme="dark"] .fval .fv-falta input{background:#3a3214;border-color:#a67f00}
+</style>`);
 const compActivo=c=>c.estado==="Activo"||c.estado==="Visitando";
 /* Su casa es noticia si tiene que venderla o alquilarla, o si vive de alquiler (casa familiar: no). Nuestra zona: noticia automática; fuera: pasarla a la oficina que corresponda. */
 const compNoticia=c=>c.viveEn!=="Casa familiar"&&(c.necesitaVender==="Vender"||c.necesitaVender==="Alquilar"||c.viveEn==="De alquiler");
@@ -1997,6 +2170,7 @@ async function accionFicha(a,b){
 let cur=null;
 function field([k,l,t,opt],v){
   const o=typeof opt==="object"?opt:{}; const cls=o.full?"full":t==="check"?"check":"";
+  if(t==="fvx")return "";if(t==="fval")return TIT_D&&TIT_D.id!==undefined||cur&&cur.id?fichaValHTML():"";
   if(t==="check") return `<label class="check"><input type="checkbox" id="fld-${k}" name="${k}"${v?" checked":""}> ${l}</label>`;
   if(t==="h") return `<div class="full" style="grid-column:1/-1;font-weight:600;border-top:1px solid var(--line);padding-top:8px;margin-top:4px">${l}</div>`;
   if(t==="tit"){const A=Array.isArray(v)?v:[],on=!!((TIT_D&&TIT_D[o.chk])||A.length);
@@ -2143,10 +2317,10 @@ $("#frm").addEventListener("change",e=>{if(e.target.matches("[data-nsfile]")){co
 const PEST={
   contactos:{top:["etapa","proxAccion","proxFecha","_acc","_nota"],tabs:[
     ["datos","Datos",["direccion","nombre","telefono","variosTitulares","asesor","zona","origen","referidoPor","publicado","fechaPublicado","motivo","fechaValoracion","precioValorado","precioPropietario","necesitaSti","notaSti"]],
-    ["censo","Censo",["_viv","_fus","viviendaLocalizada"]],["notas","Notas",["notaSimple","buscadoEn","notas","_hist"]]]},
+    ["fval","Ficha valoración",["_fval"]],["censo","Censo",["_viv","_fus","viviendaLocalizada"]],["notas","Notas",["notaSimple","buscadoEn","notas","_hist"]]]},
   encargos:{top:["estado","precio","_acc","_nota"],tabs:[
     ["datos","Datos",["direccion","_props","asesor","zona","fechaCaptacion","exclusiva","finExclusiva","honorarioPrevisto","ultimaRevisionPrecio","riesgo"]],
-    ["comp","Compradores",["_lcomp"]],["vis","Visitas",["_lvis","_visacc"]],["notas","Notas",["notas","_hist"]]]},
+    ["fval","Ficha valoración",["_fval"]],["comp","Compradores",["_lcomp"]],["vis","Visitas",["_lvis","_visacc"]],["notas","Notas",["notas","_hist"]]]},
   compradores:{top:["_fus","estado","finanhogar","_acc","_nota"],tabs:[
     ["busca","Qué busca",["tipoInm","zonasBusca","precioMax","tipoVivienda","habMin","banosMin","ascensor","terraza","garaje","busca"]],
     ["enc","Le encajan",["_lenc"]],["vis","Visitas",["_lvis"]],
@@ -2204,7 +2378,7 @@ function enfocar(sel){const el=$(sel);if(!el)return;const p=el.closest(".fpane")
 $("#frm").addEventListener("click",e=>{const b=e.target.closest("[data-ftab]");if(!b)return;e.preventDefault();verPestana(b.dataset.ftab);$("#frm .db").scrollTop=0});
 function abrir(col,id){
   const F=FORMS[col]; const d=id?S[col].find(x=>x.id===id):DEFAULTS[col]();
-  if(!d) return; cur={col,id};TIT_D=d;
+  if(!d) return; cur={col,id};TIT_D=d;if(FV_COLS.includes(col)&&id&&pestUlt[col+id]==null&&fvPedir(d))pestUlt[col+id]="fval";
   const extra=col==="contactos"&&id?`${d.etapa==="Desarrollo"?`<button class="btn small" type="button" data-act="aSeg">Localizado: pasar a Seguimiento</button>`:""}${d.vendida?(d.vendidaVista?"":`<button class="btn small" type="button" data-act="vistoVend">Enterado de la venta</button>`):`<button class="btn small" type="button" data-act="vendida">Se ha vendido</button>`}<button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="informe">Informe de mercado</button><button class="btn small" type="button" data-act="calProx">Próximo paso a Google Calendar</button><button class="btn small" type="button" data-act="calVal">Valoración a Google Calendar</button>${d.etapa!=="Encargo"?`<button class="btn small" type="button" data-act="aEncargo">Convertir en encargo</button>`:""}`:"";
   const extraCap=col==="captaciones"&&id?`<button class="btn small" type="button" data-act="capLocalizar">Buscar en el censo</button><button class="btn small" type="button" data-act="capNoticia">${S.contactos.find(c=>c.capId===id)?"Abrir su noticia":"Pasar a noticia"}</button>`:"";
   const extraEnc=col==="encargos"&&id?`<button class="btn small primary" type="button" data-act="cruceComp">Cruce de compradores</button><button class="btn small" type="button" data-act="avisoPortal">Avisar al portal: en venta</button><button class="btn small" type="button" data-act="aOp">Crear operación</button><button class="btn small" type="button" data-act="revisado">Precio revisado hoy</button><button class="btn small" type="button" data-act="informeProp">Informe al propietario</button>`:"";
@@ -2212,7 +2386,7 @@ function abrir(col,id){
   $("#frm").innerHTML=`<div class="dh">${id?"Editar":"Nuevo"} ${F.titulo}</div>
     <div class="db">${bloqueWA(col,d,id)}${col==="contactos"?'<div class="full vivbox" id="vivbox" style="grid-column:1/-1"></div>'+(id?cajaFusion(d):""):""}${F.fields.map(f=>field(f,d[f[0]])).join("")}${extra||extraEnc||extraCap||extraOp?`<div class="full" style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">${extra}${extraEnc}${extraCap}${extraOp}</div>`:""}${extraFicha(col,d,id)}${bloqueHist(d,!!id)}</div>
     <div class="df">${!id?"":d.borrarSolicitado?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill bad">${d.borrarSolicitado.tipo==="censo"?"Pide volver al censo":"Borrado solicitado"}${d.borrarSolicitado.motivo?": "+esc(d.borrarSolicitado.motivo):""}</span><button class="btn danger small" type="button" data-act="aprobarBorrar">${d.borrarSolicitado.tipo==="censo"?"Aprobar: vuelve al censo":"Aprobar borrado"}</button><button class="btn small" type="button" data-act="rechazarBorrar">Rechazar</button></div>`:`<div style="display:flex;gap:6px;flex-wrap:wrap">${col==="contactos"?`<button class="btn small" type="button" data-act="aCenso">No era noticia</button>`:""}${col==="visitas"?`<button class="btn" type="button" data-act="visCancelar">${d.cancelada?"Reactivar la visita":"Visita cancelada"}</button>`:""}<button class="btn danger" type="button" data-act="borrar">${borraYa(col)?"Borrar":"Solicitar borrado"}</button></div>`}<div class="right"><button class="btn" type="button" data-act="cerrar">Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></div>`;
-  titAuto();organizarFicha(col,id,d);pintarRec(col,id,d);pintarSemaforo(col,id,d);historialLateral(id);{const pp=$("#fld-_props"),dl=$("#fld-direccion")?.closest("label");if(pp&&dl)dl.after(pp)}pintarNS();pintarBusq();$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
+  titAuto();organizarFicha(col,id,d);if(FV_COLS.includes(col)&&id){fvRefrescar();if(!S.censo)cargarCenso().then(()=>{if(cur&&cur.col===col&&cur.id===id&&$("#fld-_fval"))fvRepintar(null)})}pintarRec(col,id,d);pintarSemaforo(col,id,d);historialLateral(id);{const pp=$("#fld-_props"),dl=$("#fld-direccion")?.closest("label");if(pp&&dl)dl.after(pp)}pintarNS();pintarBusq();$("#dlg").showModal(); pistaZona();if(col==="encargos"){const el=$("#fld-cp");if(el&&!el.value&&!encMun(d))el.value=cpEnc(d)}
   if(col==="compradores"||col==="llamadaVend")pintarCompDir(true);
   if(col==="compradores"&&soloLeeComp()){$("#frm .db").querySelectorAll("input,select,textarea").forEach(x=>x.disabled=true);$("#frm .df").innerHTML=`<span class="vb-s">Solo lectura: para cambiar algo, avisa a Daniel.</span><div class="right"><button class="btn" type="button" data-act="cerrar">Cerrar</button></div>`}
   if(col==="contactos"){cur.censoId=d.censoId||"";cur.manual=!d.censoId&&(d.etapa||"Desarrollo")==="Desarrollo"&&!!id;cur.vq=null;pintarVivBox()}
@@ -2313,7 +2487,7 @@ function bloqueHist(d,conHist){
 }
 function leerForm(){
   const F=FORMS[cur.col],o={};
-  for(const [k,,t,op] of F.fields){if(t==="h")continue;if(t==="tit"){const on=!!$("#fld-"+op.chk)?.checked;o[op.chk]=on;o[k]=on?titLeer(k):[];continue}if(t==="multi"||t==="multikv"||t==="busq"){o[k]=[...document.querySelectorAll(`#frm input[name="${k}"]:checked`)].map(e=>e.value);continue}if(t==="chips"){o[k]=[...document.querySelectorAll(`#chips-${k} [data-v]`)].map(e=>e.dataset.v);continue}const el=$("#fld-"+k); if(t==="check") o[k]=el.checked; else if(t==="number") o[k]=el.value===""?null:Number(el.value); else o[k]=el.value.trim();}
+  for(const [k,,t,op] of F.fields){if(t==="h")continue;if(t==="tit"){const on=!!$("#fld-"+op.chk)?.checked;o[op.chk]=on;o[k]=on?titLeer(k):[];continue}if(t==="multi"||t==="multikv"||t==="busq"){o[k]=[...document.querySelectorAll(`#frm input[name="${k}"]:checked`)].map(e=>e.value);continue}if(t==="chips"){o[k]=[...document.querySelectorAll(`#chips-${k} [data-v]`)].map(e=>e.dataset.v);continue}const el=$("#fld-"+k);if(!el||t==="fval"||el.tagName==="DIV")continue; if(t==="check") o[k]=el.checked; else if(t==="number") o[k]=el.value===""?null:Number(el.value); else o[k]=el.value.trim();}
   return o;
 }
 function claveDir(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()
@@ -2357,7 +2531,9 @@ $("#frm").addEventListener("submit",async ev=>{
   if(!cur.id&&cur.col==="contactos"&&data.censoId){}else if(!cur.id&&(cur.col==="contactos"||cur.col==="encargos"||cur.col==="captaciones")){const k=claveDir(data.direccion);const dup=k&&S[cur.col].find(x=>claveDir(x.direccion)===k);
     if(dup){$("#dlg").close();toast("Ese inmueble ya tiene ficha: te abro la existente");setTimeout(()=>{abrir(cur.col,dup.id);if(nota)$("#fld-nuevaNota").value=nota},150);return}}
   const pxh=cur.col==="contactos"?($("#px-hora")?.value||""):"";
+  if(cur.col==="encargos")fvAntesGuardar(data,!cur.id);else if(cur.col==="contactos")fvNoticiaAntes(data);
   const nid=await guardar(cur.col,cur.id,data,nota);
+  if(nid&&cur.col==="encargos"&&!cur.id){pestUlt["encargos"+nid]="fval";setTimeout(()=>{abrir("encargos",nid);toast("Encargo creado: rellena la ficha de valoración")},350)}
   if(nid){$("#dlg").close();toast(cur.col==="contactos"&&sinBusq(data)?"Guardado. Recuerda buscarla en Tecnofind o Inglobaly":"Guardado");if(cur.col==="contactos"){sincronizarCenso(data);if(pxh)recPx(nid,data,pxh)}
     if(cur.col==="compradores"&&cur.avisoId&&await guardar("avisos",cur.avisoId,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:"",compradorId:nid},"Ficha creada."))toast("Ficha creada y aviso cerrado");
     if(cur.col==="compradores"&&cur.visitaId&&await guardar("visitas",cur.visitaId,{compradorId:nid,compradorNombre:data.nombre||"",telComprador:data.telefono||""},"Dado de alta como comprador."))toast("Comprador dado de alta y unido a su visita")}
@@ -2471,8 +2647,8 @@ $("#frm").addEventListener("click",async ev=>{
   if(a==="revisado"){$("#fld-ultimaRevisionPrecio").value=hoyISO();return}
   if(a==="aEncargo"){const c=leerForm();c.etapa="Encargo";const cid=cur.id,id=await guardar("contactos",cid,c);if(!id)return;$("#dlg").close();
     const ya=S.encargos.find(e=>e.contactoId===cid);if(ya){toast("Esta noticia ya tiene encargo: te lo abro");S.view="encargos";render();setTimeout(()=>abrir("encargos",ya.id),300);return}
-    const nid=await guardar("encargos",null,{direccion:c.direccion,asesor:c.asesor,zona:c.zona,precio:c.precioPropietario||c.precioValorado||null,exclusiva:"Sí",estado:"Activo",fechaCaptacion:hoyISO(),honorarioPrevisto:6000,contactoId:cid,notas:""});
-    if(nid){S.view="encargos";render();setTimeout(()=>abrir("encargos",nid),300)}return}
+    const nid=await guardar("encargos",null,{direccion:c.direccion,asesor:c.asesor,zona:c.zona,precio:c.precioPropietario||c.precioValorado||null,exclusiva:"Sí",estado:"Activo",fechaCaptacion:hoyISO(),honorarioPrevisto:6000,contactoId:cid,notas:"",...fvDeCenso(c.censoId||cur.censoId||(S.contactos.find(x=>x.id===cid)||{}).censoId),...fvCopia(c)});
+    if(nid){pestUlt["encargos"+nid]="fval";toast("Encargo creado: rellena la ficha de valoración");S.view="encargos";render();setTimeout(()=>abrir("encargos",nid),300)}return}
   if(a==="cruceComp"){cruceComp();return}
   if(a==="fusComp"){if(!b.dataset.sure){b.dataset.sure=1;b.textContent="¿Seguro? Pulsa otra vez para fusionar";return}b.disabled=true;await fusionarComp(cur.id,b.dataset.con);return}
   if(a==="aOp"){const e=leerForm(),encId=cur.id;$("#dlg").close();
