@@ -1771,6 +1771,30 @@ function pintarVisitasEntrada(L){let w=$("#dlgVisEnt");
 window.avisoVisitasEntrada=function(){if(!S.visEntPend||!S.yo||!S.cargado||!S.cargado.visitas||!S.cargado.encargos||$("#dlg").open)return;
   const para=Array.isArray(S.ajustes.ventanaVisitas)?S.ajustes.ventanaVisitas:["Mery"];S.visEntPend=false;
   if(!para.includes(S.yo.nombre))return;const L=visitasEntrada();if(L.length)pintarVisitasEntrada(L)};
+/* Cambios en visitas (Stiwhar, 07/11/2026: «cada vez que haya un cambio que le salte una pantalla emergente a los que les afecte y a Daniel»).
+   Los avisos «Cambio de visita» los crea la base de datos (trigger aviso_cambio_visita) para el asesor de la visita y Daniel, menos quien cambia.
+   Salen en una ventana al entrar y en cuanto llegan; «Entendido» los marca como hechos. La × la cierra hasta que llegue otro cambio. */
+const TIPO_CV="Cambio de visita";
+function avisosCambioVisita(){const yo=S.yo&&S.yo.nombre;if(!yo)return[];return S.avisos.filter(a=>a.tipo===TIPO_CV&&!a.hecho&&a.para===yo).sort((a,b)=>String(b.creado||"").localeCompare(String(a.creado||"")))}
+window.avisoCambiosVisita=function(){const L=avisosCambioVisita(),oc=S.cvOcultos||(S.cvOcultos=new Set());
+  let w=$("#dlgCamVis");if(!L.length){if(w)w.hidden=true;return}
+  if(L.every(a=>oc.has(a.id))&&(!w||w.hidden))return;
+  if(!w){w=document.createElement("div");w.id="dlgCamVis";w.className="modal vpop";w.setAttribute("role","dialog");w.setAttribute("aria-modal","true");w.hidden=true;
+    w.innerHTML='<style>#dlgCamVis{padding:16px!important;align-items:center!important;z-index:60}#dlgCamVis form{width:min(520px,100%)!important;height:auto!important;max-height:86dvh!important;border-radius:20px!important}#dlgCamVis .db{display:block;padding:6px 18px 10px}#dlgCamVis .dh{position:relative;padding-right:56px;border-bottom:0}#dlgCamVis .vs{font-size:14px;color:var(--muted);font-family:var(--body,inherit);font-weight:400;margin-top:2px}#dlgCamVis .cv{border:1px solid var(--line);border-left:4px solid var(--c,var(--accent));border-radius:10px;padding:9px 12px;margin-bottom:8px;cursor:pointer}#dlgCamVis .cv.bor{cursor:default}#dlgCamVis .cv b{font-weight:700}#dlgCamVis .cv ul{margin:6px 0 2px;padding-left:18px}#dlgCamVis .cv li{margin:2px 0}#dlgCamVis .cv small{color:var(--muted)}</style><form id="frmCamVis" novalidate></form>';
+    document.body.appendChild(w);
+    w.addEventListener("click",async e=>{const x=e.target.closest("[data-cv]");
+      if(x){e.preventDefault();const ids=String(x.dataset.ids||"").split(",").filter(Boolean);w.hidden=true;
+        if(x.dataset.cv==="ok"){for(const id of ids)await guardar("avisos",id,{hecho:new Date().toISOString(),hechoPor:S.yo?S.yo.nombre:""},"Cambio de visita visto.");render()}
+        else ids.forEach(id=>(S.cvOcultos||(S.cvOcultos=new Set())).add(id));return}
+      const r=e.target.closest("[data-open]");if(r){e.preventDefault();w.hidden=true;$("#frmCamVis [data-cv]")&&String($("#frmCamVis [data-cv]").dataset.ids||"").split(",").forEach(id=>S.cvOcultos.add(id));abrir(r.dataset.open,r.dataset.id)}})}
+  const fd=a=>a.fecha?new Date(a.fecha+"T12:00").toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"})+(a.hora?" "+a.hora:""):"";
+  const ids=L.map(a=>a.id).join(",");
+  $("#frmCamVis").innerHTML=`<div class="dh">${L.length>1?L.length+" cambios en visitas":"Cambio en una visita"}<div class="vs">Revísalo y pulsa «Entendido».</div><button type="button" class="dx" data-cv="x" data-ids="${esc(ids)}" aria-label="Cerrar" title="Cerrar">×</button></div>
+    <div class="db">${L.map(a=>{const v=!a.borrada&&S.visitas.find(x=>x.id===a.refId);return `<div class="cv${v?"":" bor"}" style="--c:${(a.cambios||[]).some(c=>/cancelada|borrada/i.test(c))?"#9a9a9a":colorAsesor(a.asesorVisita)}" ${v?`data-open="visitas" data-id="${esc(a.refId)}"`:""}>
+      <div><b>${esc(fd(a))}</b> · ${esc(a.direccion||"")}</div><small>${esc([a.nombre,a.telefono].filter(Boolean).join(" · "))}${a.asesorVisita?" · visita de "+esc(a.asesorVisita):""}</small>
+      <ul>${(a.cambios||[a.texto]).map(c=>`<li>${esc(c)}</li>`).join("")}</ul><small>Lo ha cambiado ${esc(a.de||"alguien")}${a.creado?" · "+esc(new Date(a.creado).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):""}</small></div>`}).join("")}</div>
+    <div class="df"><span class="pg-m" style="align-self:center">Toca una visita para ver la ficha.</span><button class="btn primary" type="button" data-cv="ok" data-ids="${esc(ids)}">Entendido</button></div>`;
+  w.hidden=false};
 function rowVisita(v){const pas=v.fecha&&v.fecha<hoyISO(),inf=pas&&!v.informeEnviado&&!v.cancelada;
   if(v.cancelada)return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}" style="opacity:.5;filter:grayscale(1)"><span class="t" style="text-decoration:line-through">${esc(v.direccion||"")}${v.compradorNombre?` · ${esc(v.compradorNombre)}`:""}</span><span class="r">${fmtF(v.fecha)}${v.hora?" "+esc(v.hora):""}</span><span class="m"><span>${esc(v.asesor||"")}</span><span class="pill">Cancelada</span></span></button>`;
   return `<button class="row" type="button" data-open="visitas" data-id="${esc(v.id)}">
@@ -2873,7 +2897,7 @@ render();
   for(const col of ["contactos","encargos","operaciones","captaciones","compradores","visitas"]){
     db.collection(col).limit(1000).onSnapshot(s=>{S[col]=s.docs.map(d=>{const o={id:d.id,...d.data()};if(ETAPA_ANTIGUA[o.etapa])o.etapa=ETAPA_ANTIGUA[o.etapa];return o});if(!$("#dlg").open)render()},()=>{});
   }
-  {let prev=null;db.collection("avisos").limit(1000).onSnapshot(sn=>{const L=sn.docs.map(d=>({id:d.id,...d.data()}));avisosNuevos(prev,L);prev=new Set(L.map(x=>x.id));S.avisos=L;if(!$("#dlg").open)render()},()=>{})}
+  {let prev=null;db.collection("avisos").limit(1000).onSnapshot(sn=>{const L=sn.docs.map(d=>({id:d.id,...d.data()}));avisosNuevos(prev,L);prev=new Set(L.map(x=>x.id));S.avisos=L;if(!$("#dlg").open)render();if(window.avisoCambiosVisita)window.avisoCambiosVisita()},()=>{})}
   db.doc("zonas/indice").onSnapshot(s=>{if(!s.exists)return;const d=s.data(),I={};for(const [c,v] of Object.entries(d.calles||{})){const P={};for(const t of String(v).split(",")){const m=t.match(/^(\d+[A-Z]?)([A-Z])$/);if(m)P[m[1]]=(d.codigos||{})[m[2]]||""}I[c]=P}S.zidx=I},()=>{});
   db.doc("ajustes/general").onSnapshot(s=>{S.ajustes=s.exists?{...DEF_AJUSTES,...s.data()}:DEF_AJUSTES;render()},()=>{});
   render();

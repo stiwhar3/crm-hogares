@@ -1,5 +1,7 @@
 // Visitas del CRM → Google Calendar «FUENLABRADA LA AVANZADA».
 // La llama la base de datos (trigger cal_visita) al crear una visita o al cambiarle la fecha o la hora.
+// Desde el 07/11/2026 también al cambiar comprador, teléfono, inmueble o asesor (actualiza título y color)
+// y al borrar una visita que tenía evento (lo pone en gris).
 // Solo acepta llamadas con la cabecera x-secreto guardada en push_config.
 // Necesita el secreto GOOGLE_SA_JSON (clave JSON de una cuenta de servicio de Google con permiso
 // «Hacer cambios en eventos» en ese calendario). Sin él no hace nada: la revisión programada de las
@@ -61,10 +63,53 @@ Deno.serve(async (req) => {
   try {
     const { data: c } = await db.from("push_config").select("v").eq("k", "secreto").single();
     if (!c || req.headers.get("x-secreto") !== c.v) return json({ error: "no autorizado" }, 401);
-    const { id } = await req.json();
-    const { data: v } = await db.from("visitas").select("id,d").eq("id", id).single();
+    const body = await req.json();
+    const { id } = body;
+    // Stiwhar (07/11): visita borrada en el CRM → su evento se pone en gris (no se borra, por si fue un error)
+    if (body.borrado) {
+      if (!body.calEventId) return json({ ok: false, motivo: "sin evento" });
+      // Si otra visita sigue enlazada a ese evento (p. ej. al unir repetidos), no se toca
+      const { data: otra } = await db.from("visitas").select("id").eq("d->>calEventId", body.calEventId).limit(1);
+      if (otra && otra.length) return json({ ok: false, motivo: "evento enlazado a otra visita" });
+      const ev = await gcal("GET", "/" + encodeURIComponent(body.calEventId));
+      const t = String(ev.summary || "");
+      await gcal("PATCH", "/" + encodeURIComponent(body.calEventId), { colorId: "8", ...(/BORRADA EN EL CRM/.test(t) ? {} : { summary: t + " (BORRADA EN EL CRM)" }) });
+      return json({ ok: true, borrada: true });
+    }
+    let { data: v } = await db.from("visitas").select("id,d").eq("id", id).single();
     if (!v) return json({ ok: false, motivo: "no existe" });
-    const d = v.d || {};
+    let d = v.d || {};
+    // Stiwhar (07/11): cambió el comprador, el teléfono, el inmueble o el asesor → se cambia esa parte del título
+    // (respetando lo demás que se haya escrito a mano, como «EF») y el color del asesor
+    if (d.calEventId && body.antes) {
+      const a = body.antes || {};
+      const dirDe = async (enc: string, dir: string) => {
+        const { data: e } = enc ? await db.from("encargos").select("d").eq("id", enc).maybeSingle() : { data: null };
+        return String((e?.d?.direccion) || dir || "").split(",")[0].trim();
+      };
+      const dirAnt = await dirDe(a.encargoId, a.direccion), dirNue = await dirDe(d.encargoId, d.direccion);
+      const ev = await gcal("GET", "/" + encodeURIComponent(d.calEventId));
+      let t = String(ev.summary || ""), rehacer = false;
+      for (const [viejo, nuevo] of [[dirAnt, dirNue], [String(a.compradorNombre || ""), String(d.compradorNombre || "")], [String(a.telComprador || ""), String(d.telComprador || "")]]) {
+        if (viejo === nuevo) continue;
+        if (viejo && t.includes(viejo)) t = t.split(viejo).join(nuevo); else if (nuevo) rehacer = true;
+      }
+      if (rehacer) {
+        const pre = (t.match(/^\s*(2da\s+)?cv/i) || ["CV"])[0].trim();
+        t = pre + " " + [dirNue, [d.compradorNombre, d.telComprador].filter(Boolean).join(" ")].filter(Boolean).join(" - ");
+      }
+      t = t.replace(/\s{2,}/g, " ").replace(/\s+-\s*$/, "").trim();
+      const patch: Record<string, string> = {};
+      if (t && t !== ev.summary) patch.summary = t;
+      if ((a.asesor || "") !== (d.asesor || "") && !d.cancelada && COLOR[d.asesor]) patch.colorId = COLOR[d.asesor];
+      if (Object.keys(patch).length) {
+        await gcal("PATCH", "/" + encodeURIComponent(d.calEventId), patch);
+        const h = Array.isArray(d.historial) ? d.historial : [];
+        await db.from("visitas").update({ d: { ...d, historial: [...h, { f: new Date().toISOString(), n: "Calendario: actualizado" + (patch.summary ? " «" + patch.summary + "»" : "") + (patch.colorId ? " (color de " + d.asesor + ")" : "") }] } }).eq("id", id);
+        ({ data: v } = await db.from("visitas").select("id,d").eq("id", id).single());
+        d = v?.d || d;
+      }
+    }
     // Stiwhar (03/11): una visita cancelada no se borra; su evento se pone en gris (colorId 8) y vuelve a su color si se reactiva
     if (d.calEventId && !!d.cancelada !== !!d.calGris) {
       const gris = !!d.cancelada;

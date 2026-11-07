@@ -184,7 +184,7 @@ async function arrancar(sesion){
   for(const col of ["contactos","encargos","operaciones","captaciones","compradores","visitas"]){
     db.collection(col).limit(1000).onSnapshot(s=>{S[col]=s.docs.map(d=>{const o={id:d.id,...d.data()};if(ETAPA_ANTIGUA[o.etapa])o.etapa=ETAPA_ANTIGUA[o.etapa];return o});if(!$("#dlg").open)render();(S.cargado=S.cargado||{})[col]=1;if(window.avisoVisitasEntrada)window.avisoVisitasEntrada()},()=>{});
   }
-  {let prev=null;db.collection("avisos").limit(1000).onSnapshot(sn=>{const L=sn.docs.map(d=>({id:d.id,...d.data()}));avisosNuevos(prev,L);prev=new Set(L.map(x=>x.id));S.avisos=L;if(!$("#dlg").open)render()},()=>{})}
+  {let prev=null;db.collection("avisos").limit(1000).onSnapshot(sn=>{const L=sn.docs.map(d=>({id:d.id,...d.data()}));avisosNuevos(prev,L);prev=new Set(L.map(x=>x.id));S.avisos=L;if(!$("#dlg").open)render();if(window.avisoCambiosVisita)window.avisoCambiosVisita()},()=>{})}
   /* Resumen del día de los asesores (mañana y tarde): solo Stiwhar; se guarda hasta que cambia el mes */
   if(yo.rol==="responsable")db.collection("resumenes").onSnapshot(sn=>{S.resumenes=sn.docs.map(d=>({id:d.id,...d.data()}));if(S.view==="resumenes"&&!$("#dlg").open)render()},()=>{});
   db.doc("zonas/indice").onSnapshot(s=>{if(!s.exists)return;const d=s.data(),I={};for(const [c,v] of Object.entries(d.calles||{})){const P={};for(const t of String(v).split(",")){const m=t.match(/^(\d+[A-Z]?)([A-Z])$/);if(m)P[m[1]]=(d.codigos||{})[m[2]]||""}I[c]=P}S.zidx=I},()=>{});
